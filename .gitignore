@@ -14,8 +14,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+#SC lib/
+#SC lib64/
 parts/
 sdist/
 var/
@@ -127,3 +127,15 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Sass
+.sass-cache/
+
+# PyCharm/IDEA
+.idea/
+
+dist.backup/
+/playground/
+
+# Mac
+.DS_Store

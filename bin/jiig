@@ -1,0 +1,38 @@
+#!/usr/bin/env python3
+
+""" Main Jiig program. """
+
+import sys
+import os
+
+APP_NAME = 'jiig'
+BASE_FOLDER = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+TASK_PACKAGES = {
+    'jiigtasks': os.path.join(BASE_FOLDER, 'jiigtasks'),
+}
+PIP_PACKAGES = ['pyyaml']
+
+# Add the Jiig library to the Python module load path.
+sys.path.insert(0, os.path.join(BASE_FOLDER, 'lib'))
+
+from jiig import constants
+
+
+def run_main():
+    # Make sure to run in a virtual environment. Build it as needed.
+    venv_path = os.path.join(BASE_FOLDER, constants.Jiig.virtual_environment)
+    venv_python_path = os.path.join(venv_path, 'bin', 'python')
+    if sys.executable != venv_python_path:
+        from jiig.utility import build_virtual_environment
+        build_virtual_environment(venv_path,
+                                  packages=PIP_PACKAGES,
+                                  rebuild=False,
+                                  quiet=True,
+                                  dry_run=False)
+        os.execlp(venv_python_path, venv_python_path, *sys.argv)
+    from jiig.main import main
+    main(APP_NAME, BASE_FOLDER, TASK_PACKAGES)
+
+
+if __name__ == '__main__':
+    run_main()
