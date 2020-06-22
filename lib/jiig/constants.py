@@ -1,5 +1,4 @@
 class Jiig:
-    virtual_environment = 'venv'
     configuration_extension = '.yaml'
     local_configuration_suffix = '-local'
     # Command line parsing constants.

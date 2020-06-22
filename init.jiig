@@ -1,0 +1,12 @@
+APP_NAME = 'jiig'
+BASE_FOLDER = ''
+VENV_FOLDER = 'venv'
+LIB_FOLDERS = [
+    'lib',
+]
+TASK_PACKAGES = {
+    'tasks': 'tasks',
+}
+PIP_PACKAGES = [
+    'pyyaml'
+]

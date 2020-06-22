@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from glob import glob
 from string import Template
-from typing import Text, List, Dict, Any
+from typing import Text, List, Dict, Any, Optional, Tuple
 from urllib.request import urlopen
 from urllib.error import URLError
 
@@ -488,17 +488,57 @@ def import_module_path(module_name, module_path):
     module_spec = importlib.util.spec_from_file_location(module_name, module_path)
     module = importlib.util.module_from_spec(module_spec)
     module_spec.loader.exec_module(module)
+    sys.modules[module_name] = module
     return module
 
 
-def import_modules_from_folder(package_name: Text, folder: Text):
+def import_modules_from_folder(package_name: Text,
+                               folder: Text,
+                               retry: bool = False):
+    # Stage 1 - gather the list of module paths and names to import.
+    init_path = os.path.join(folder, '__init__.py')
+    to_import: List[Tuple[Text, Text]] = []
+    # if os.path.exists(init_path):
+    #     to_import.append((package_name, init_path))
     for walk_folder, _walk_sub_folders, walk_file_names in os.walk(folder):
+        relative_folder = walk_folder[len(folder):]
         for file_name in walk_file_names:
             base_name, extension = os.path.splitext(file_name)
-            if extension == '.py':
+            if not base_name.startswith('_') and extension == '.py':
                 module_path = os.path.join(walk_folder, file_name)
-                sub_package_name = '.'.join(walk_folder.split(os.path.sep))
-                module_name = f'{package_name}.{sub_package_name}.{base_name}'
-                imported_module = import_module_path(module_name, module_path)
-                globals()[module_name] = imported_module
-    return
+                package_parts = [package_name]
+                if relative_folder:
+                    package_parts.extend(relative_folder.split(os.path.sep))
+                package_parts.append(base_name)
+                module_name = '.'.join(package_parts)
+                to_import.append((module_name, module_path))
+    # Stage 2 - attempt the imports and handle errors, optionally with retries.
+    retry_count: Optional[int] = None
+    exceptions: List[Tuple[Text, Text, Exception]] = []
+    while to_import:
+        to_retry: List[Tuple[Text, Text]] = []
+        for module_name, module_path in to_import:
+            try:
+                import_module_path(module_name, module_path)
+            except ModuleNotFoundError as exc:
+                # Only module not found errors are retry-able, because they
+                # may be due to inter-module dependencies with ordering issues.
+                if retry:
+                    to_retry.append((module_name, module_path))
+                exceptions.append((module_name, module_path, exc))
+            except Exception as exc:
+                exceptions.append((module_name, module_path, exc))
+        to_import = []
+        if to_retry:
+            # If we're retrying, keep going as long as some failed imports succeeded.
+            if retry_count is None or len(to_retry) < retry_count:
+                retry_count = len(to_retry)
+                to_import = to_retry
+                exceptions = []
+    # Stage 3 - report remaining exceptions, if any.
+    if exceptions:
+        display_error(f'{len(exceptions)} exceptions during folder'
+                      f' import: {folder}["{package_name}"]')
+        for module_name, module_path, exc in exceptions:
+            display_error(f'{module_path}["{module_name}"]: {exc}')
+        abort('Module folder import failure.')

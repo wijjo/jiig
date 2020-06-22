@@ -201,19 +201,18 @@ class TaskRunner:
 
     @property
     def configuration_path(self) -> Text:
-        file_name = self.params.app_name + constants.Jiig.configuration_extension
+        file_name = self.params.APP_NAME + constants.Jiig.configuration_extension
         return os.path.join(self.app_folder, file_name)
 
     @property
     def local_configuration_path(self) -> Text:
-        file_name = (self.params.app_name +
+        file_name = (self.params.APP_NAME +
                      constants.Jiig.local_configuration_suffix +
                      constants.Jiig.configuration_extension)
         return os.path.join(self.app_folder, file_name)
 
     def virtual_environment_program(self, name: Text) -> Text:
-        folder = os.path.join(self.params.base_folder, constants.Jiig.virtual_environment)
-        return os.path.join(folder, 'bin', name)
+        return os.path.join(self.params.VENV_FOLDER, 'bin', name)
 
     def get_flask_app_string(self) -> Text:
         config_path = getattr(self.args, 'CONFIG_PATH', None)
@@ -222,7 +221,7 @@ class TaskRunner:
         else:
             add_arg_text = ''
         return '{}.app:create_app("{}"{})'.format(
-            self.params.app_name, self.app_folder, add_arg_text)
+            self.params.APP_NAME, self.app_folder, add_arg_text)
 
     @property
     def local_configuration(self) -> utility.AttrDict:
