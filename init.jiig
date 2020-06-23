@@ -5,7 +5,7 @@ LIB_FOLDERS = [
     'lib',
 ]
 TASK_PACKAGES = {
-    'tasks': 'tasks',
+    'tasks.jiig': 'tasks',
 }
 PIP_PACKAGES = [
     'pyyaml'

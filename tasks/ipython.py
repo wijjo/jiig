@@ -1,13 +1,11 @@
 import os
 from jiig.task import map_task, TaskRunner
-from .venv import task_venv
 
 
 @map_task(
     'ipython',
     help='run ipython from virtual environment',
-    description='Run an interactive IPython session from the Python virtual environment.',
-    dependencies=[task_venv])
+    description='Run an interactive IPython session from the Python virtual environment.')
 def task_ipython(runner: TaskRunner):
     ipython_path = runner.virtual_environment_program('ipython')
     if not os.path.exists(ipython_path):
