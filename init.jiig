@@ -4,9 +4,6 @@ VENV_FOLDER = 'venv'
 LIB_FOLDERS = [
     'lib',
 ]
-TASK_PACKAGES = {
-    'tasks.jiig': 'tasks',
-}
 PIP_PACKAGES = [
     'pyyaml'
 ]

@@ -12,9 +12,8 @@ from jiig import utility
     description='Build the Python virtual environment.')
 def task_venv(runner: TaskRunner):
     if runner.params.PRIMARY_TASK:
-        utility.display_phase('Build virtual environment')
+        utility.display_heading(1, 'Build virtual environment')
     utility.build_virtual_environment(runner.params.VENV_FOLDER,
                                       packages=runner.params.PIP_PACKAGES,
                                       rebuild=runner.args.REBUILD_VENV,
-                                      dry_run=runner.args.DRY_RUN,
                                       quiet=not runner.params.PRIMARY_TASK)

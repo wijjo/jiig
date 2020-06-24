@@ -1,3 +1,11 @@
+"""
+General-purpose utility functions and classes.
+
+IMPORTANT: Keep this generic, and make sure it only depends on the Python
+standard library, in its most basic form. E.g. don't import `yaml` here. The
+jiig script may import this module when running under the system interpreter,
+before re-invoking itself in the virtual environment.
+"""
 import sys
 import os
 import importlib.util
@@ -14,8 +22,6 @@ from urllib.request import urlopen
 from urllib.error import URLError
 
 from . import constants
-
-VERBOSE = False
 
 
 class Regex:
@@ -71,7 +77,14 @@ def display_message(text: Any, *args, **kwargs):
 
     tag is a special keyword that prefixes all lines in uppercase.
     """
+
     tag = kwargs.pop('tag', None)
+    verbose = kwargs.pop('verbose', None)
+    debug = kwargs.pop('debug', None)
+    if verbose and not constants.VERBOSE:
+        return
+    if debug and not constants.DEBUG:
+        return
     lines = []
     if text:
         if isinstance(text, (list, tuple)):
@@ -103,7 +116,7 @@ def abort(text: Any, *args, **kwargs):
     skip = kwargs.pop('skip', 0)
     kwargs['tag'] = 'FATAL'
     display_message(text, *args, **kwargs)
-    if VERBOSE:
+    if constants.DEBUG:
         print_call_stack(skip=skip + 2)
     sys.exit(255)
 
@@ -118,15 +131,9 @@ def display_error(text: Any, *args, **kwargs):
     display_message(text, *args, **kwargs)
 
 
-def display_task(name: Text, before_gap: bool = False):
-    if before_gap:
-        print('')
-    print('===== Task: {} ====='.format(name))
-
-
-def display_phase(name: Text):
-    print('')
-    print('--- Phase: {} ---'.format(name))
+def display_heading(level: int, heading: Text):
+    decoration = '=====' if level == 1 else '---'
+    print(f'{decoration} {heading} {decoration}')
 
 
 @contextmanager
@@ -161,37 +168,30 @@ def curl(url: Text):
         abort('cURL failed', url, exception=exc)
 
 
-def delete_folder(path: Text,
-                  quiet: bool = False,
-                  dry_run: bool = False):
+def delete_folder(path: Text, quiet: bool = False):
     path = short_path(path, is_folder=True)
     if os.path.exists(path):
         if not quiet:
             display_message('Delete folder and contents.', path)
-        run(['rm', '-rf', path], dry_run=dry_run)
+        run(['rm', '-rf', path])
 
 
-def delete_file(path: Text,
-                quiet: bool = False,
-                dry_run: bool = False):
+def delete_file(path: Text, quiet: bool = False):
     path = short_path(path)
     if os.path.exists(path):
         if not quiet:
             display_message('Delete file.', path)
-        run(['rm', '-f', path], dry_run=dry_run)
+        run(['rm', '-f', path])
 
 
-def create_folder(path: Text,
-                  keep: bool = False,
-                  quiet: bool = False,
-                  dry_run: bool = False):
+def create_folder(path: Text, keep: bool = False, quiet: bool = False):
     path = short_path(path, is_folder=True)
     if not keep:
-        delete_folder(path, quiet=quiet, dry_run=dry_run)
+        delete_folder(path, quiet=quiet)
     if not os.path.exists(path):
         if not quiet:
             display_message('Create folder.', folder_path(path))
-        run(['mkdir', '-p', path], dry_run=dry_run)
+        run(['mkdir', '-p', path])
     elif not os.path.isdir(path):
         abort('Path is not a folder', path)
 
@@ -227,86 +227,81 @@ def check_folder_not_exists(path: Text):
 def copy_folder(src_path: Text,
                 dst_path: Text,
                 merge: bool = False,
-                quiet: bool = False,
-                dry_run: bool = False):
+                quiet: bool = False):
     src_folder_path = short_path(src_path, is_folder=True)
     dst_folder_path = short_path(dst_path, is_folder=True)
-    if not dry_run:
+    if not constants.DRY_RUN:
         check_folder_exists(src_folder_path)
     if not merge:
-        delete_folder(dst_path, quiet=quiet, dry_run=dry_run)
-    create_folder(os.path.dirname(dst_path), keep=True, quiet=quiet, dry_run=dry_run)
+        delete_folder(dst_path, quiet=quiet)
+    create_folder(os.path.dirname(dst_path), keep=True, quiet=quiet)
     if not quiet:
         display_message('Folder copy.',
                         source=folder_path(src_folder_path),
                         target=folder_path(dst_folder_path))
     if os.path.isdir(dst_folder_path):
-        run(['rsync', '-aq', src_folder_path, dst_folder_path], dry_run=dry_run)
+        run(['rsync', '-aq', src_folder_path, dst_folder_path])
     else:
-        run(['cp', '-a', src_folder_path, dst_folder_path], dry_run=dry_run)
+        run(['cp', '-a', src_folder_path, dst_folder_path])
 
 
 def copy_files(src_glob: Text,
                dst_path: Text,
                allow_empty: bool = False,
-               quiet: bool = False,
-               dry_run: bool = False):
+               quiet: bool = False):
     src_paths = glob(src_glob)
     if not src_paths and not allow_empty:
         abort('File copy source is empty.', src_glob)
-    create_folder(dst_path, keep=True, quiet=quiet, dry_run=dry_run)
+    create_folder(dst_path, keep=True, quiet=quiet)
     if not quiet:
         display_message('File copy.',
                         source=short_path(src_glob),
                         target=short_path(dst_path, is_folder=True))
     for src_path in src_paths:
-        run(['cp', short_path(src_path), short_path(dst_path, is_folder=True)],
-            dry_run=dry_run)
+        run(['cp', short_path(src_path), short_path(dst_path, is_folder=True)])
 
 
 def move_file(src_path: Text,
               dst_path: Text,
               overwrite: bool = False,
-              quiet: bool = False,
-              dry_run: bool = False):
+              quiet: bool = False):
     """Move a file to a fully-specified file path, not a folder."""
     src_path_short = short_path(src_path, is_folder=False)
     dst_path_short = short_path(dst_path, is_folder=False)
-    if not dry_run:
+    if not constants.DRY_RUN:
         check_file_exists(src_path_short)
     if overwrite:
         # If overwriting is allowed a file (only) can be clobbered.
-        if os.path.exists(dst_path) and not dry_run:
+        if os.path.exists(dst_path) and not constants.DRY_RUN:
             check_file_exists(dst_path)
     else:
         # If overwriting is prohibited don't clobber anything.
-        if not dry_run:
+        if not constants.DRY_RUN:
             check_file_not_exists(dst_path_short)
     parent_folder = os.path.dirname(dst_path)
     if not os.path.exists(parent_folder):
-        create_folder(parent_folder, keep=True, quiet=quiet, dry_run=dry_run)
-    run(['mv', '-f', src_path_short, dst_path_short], dry_run=dry_run)
+        create_folder(parent_folder, keep=True, quiet=quiet)
+    run(['mv', '-f', src_path_short, dst_path_short])
 
 
 def move_folder(src_path: Text,
                 dst_path: Text,
                 overwrite: bool = False,
-                quiet: bool = False,
-                dry_run: bool = False):
+                quiet: bool = False):
     """Move a folder to a fully-specified folder path, not a parent folder."""
     src_path_short = short_path(src_path, is_folder=True)
     dst_path_short = short_path(dst_path, is_folder=True)
-    if not dry_run:
+    if not constants.DRY_RUN:
         check_folder_exists(src_path_short)
     if overwrite:
         delete_folder(dst_path, quiet=quiet)
     else:
-        if not dry_run:
+        if not constants.DRY_RUN:
             check_folder_not_exists(dst_path_short)
     parent_folder = os.path.dirname(dst_path)
     if not os.path.exists(parent_folder):
-        create_folder(parent_folder, keep=True, quiet=quiet, dry_run=dry_run)
-    run(['mv', '-f', src_path_short, dst_path_short], dry_run=dry_run)
+        create_folder(parent_folder, keep=True, quiet=quiet)
+    run(['mv', '-f', src_path_short, dst_path_short])
 
 
 def sync_folders(src_folder: Text,
@@ -314,12 +309,11 @@ def sync_folders(src_folder: Text,
                  exclude: List = None,
                  check_contents: bool = False,
                  show_files: bool = False,
-                 quiet: bool = False,
-                 dry_run: bool = False):
+                 quiet: bool = False):
     # Add the trailing slash for rsync. This works for remote paths too.
     src_folder = folder_path(src_folder)
     dst_folder = folder_path(dst_folder)
-    if not dry_run:
+    if not constants.DRY_RUN:
         check_folder_exists(src_folder)
     if not quiet:
         display_message('Folder sync.',
@@ -327,7 +321,7 @@ def sync_folders(src_folder: Text,
                         target=dst_folder,
                         exclude=exclude or [])
     cmd_args = ['rsync']
-    if dry_run:
+    if constants.DRY_RUN:
         cmd_args.append('--dry-run')
     cmd_args.extend(['-a', '--stats', '-h'])
     if check_contents:
@@ -345,12 +339,11 @@ def expand_template(source_path: Text,
                     target_path: Text,
                     overwrite: bool = False,
                     executable: bool = False,
-                    symbols: Dict = None,
-                    dry_run: bool = False):
+                    symbols: Dict = None):
     source_path = short_path(source_path)
     target_path = short_path(target_path)
     symbols = symbols or {}
-    if not dry_run:
+    if not constants.DRY_RUN:
         check_file_exists(source_path)
     if os.path.exists(target_path):
         if not os.path.isfile(target_path):
@@ -359,7 +352,7 @@ def expand_template(source_path: Text,
             display_message('Template expansion target exists - skipping', target_path)
             return
     display_message('Generate from template.', source=source_path, target=target_path)
-    if not dry_run:
+    if not constants.DRY_RUN:
         try:
             with open(source_path, encoding='utf-8') as src_file:
                 with open(target_path, 'w', encoding='utf-8') as target_file:
@@ -387,7 +380,7 @@ def run(cmd_args: List[Text],
         env: Dict = None,
         host: Text = None,
         shell: bool = False,
-        dry_run: bool = False):
+        run_always: bool = False):
     # TODO: Remote commands don't support all option parameters.
     assert cmd_args
     assert not host or not (shell or env or working_folder)
@@ -409,14 +402,14 @@ def run(cmd_args: List[Text],
         message_data['exec'] = 'yes'
     display_message('Run command.', cmd_string, **message_data)
     # A dry run can stop here, before taking real action.
-    if dry_run:
+    if constants.DRY_RUN and not run_always:
         return None
     # Generate the command run environment.
     run_env = dict(os.environ)
     if env:
         run_env.update(env)
     # Set a temporary working folder, if specified.
-    if working_folder and not dry_run:
+    if working_folder:
         if not os.path.isdir(working_folder):
             abort('Desired working folder does not exist',
                   folder_path(working_folder))
@@ -442,11 +435,35 @@ def run(cmd_args: List[Text],
             os.chdir(restore_folder)
 
 
+def run_shell(cmd_args: List[Text],
+              unchecked: bool = False,
+              working_folder: Text = None,
+              replace_process: bool = False,
+              run_always: bool = False):
+    return run(cmd_args,
+               unchecked=unchecked,
+               replace_process=replace_process,
+               working_folder=working_folder,
+               shell=True,
+               run_always=run_always)
+
+
+def run_remote(host: Text,
+               cmd_args: List[Text],
+               unchecked: bool = False,
+               replace_process: bool = False,
+               run_always: bool = False):
+    return run(cmd_args,
+               host=host,
+               unchecked=unchecked,
+               replace_process=replace_process,
+               run_always=run_always)
+
+
 def build_virtual_environment(venv_folder: Text,
                               packages: List = None,
                               rebuild: bool = False,
-                              quiet: bool = False,
-                              dry_run: bool = False):
+                              quiet: bool = False):
     def _program_path(name):
         return os.path.join(venv_folder, 'bin', name)
     venv_short_path = short_path(venv_folder, is_folder=True)
@@ -455,36 +472,38 @@ def build_virtual_environment(venv_folder: Text,
             if not quiet:
                 display_message('Virtual environment already exists.', venv_short_path)
             return
-        delete_folder(venv_folder, dry_run=dry_run)
+        delete_folder(venv_folder)
     display_message('Create virtual environment', venv_short_path)
-    run(['python3', '-m', 'venv', venv_folder], dry_run=dry_run)
+    run(['python3', '-m', 'venv', venv_folder])
     pip_path = _program_path('pip')
     display_message('Upgrade pip in virtual environment.', verbose=True)
-    run([pip_path, 'install', '--upgrade', 'pip'], dry_run=dry_run)
+    run([pip_path, 'install', '--upgrade', 'pip'])
     if packages:
         display_message('Install pip packages in virtual environment.', verbose=True)
-        run([pip_path, 'install'] + packages, dry_run=dry_run)
+        run([pip_path, 'install'] + packages)
 
 
 def make_dest_name(*names: Text) -> Text:
     """Produce a dest name based on a name list."""
-    prefixed_names = [constants.Jiig.cli_dest_name_prefix] + [name.upper() for name in names]
-    return constants.Jiig.cli_dest_name_separator.join(prefixed_names)
+    prefixed_names = [constants.CLI_DEST_NAME_PREFIX] + [name.upper() for name in names]
+    return constants.CLI_DEST_NAME_SEPARATOR.join(prefixed_names)
 
 
 def append_dest_name(dest_name: Text, *names: Text) -> Text:
     """Add to an existing dest name."""
-    return constants.Jiig.cli_dest_name_separator.join(
+    return constants.CLI_DEST_NAME_SEPARATOR.join(
         [dest_name] + [name.upper() for name in names])
 
 
 def make_metavar(*names: Text) -> Text:
     """Produce a metavar name based on a name list."""
-    suffixed_names = [name.upper() for name in names] + [constants.Jiig.cli_metavar_suffix]
-    return constants.Jiig.cli_metavar_separator.join(suffixed_names)
+    suffixed_names = [name.upper() for name in names] + [constants.CLI_METAVAR_SUFFIX]
+    return constants.CLI_METAVAR_SEPARATOR.join(suffixed_names)
 
 
-def import_module_path(module_name, module_path):
+def import_module_path(module_name: Text, module_path: Text):
+    """Dynamically import a module by name and path."""
+    display_message(f'import_module_path({module_name}, {module_path})', debug=True)
     module_spec = importlib.util.spec_from_file_location(module_name, module_path)
     module = importlib.util.module_from_spec(module_spec)
     module_spec.loader.exec_module(module)
@@ -492,11 +511,9 @@ def import_module_path(module_name, module_path):
     return module
 
 
-def import_modules_from_folder(package_name: Text,
-                               folder: Text,
-                               retry: bool = False):
+def import_modules_from_folder(package_name: Text, folder: Text, retry: bool = False):
+    """Dynamically import modules as a named package from a folder."""
     # Stage 1 - gather the list of module paths and names to import.
-    init_path = os.path.join(folder, '__init__.py')
     to_import: List[Tuple[Text, Text]] = []
     # if os.path.exists(init_path):
     #     to_import.append((package_name, init_path))

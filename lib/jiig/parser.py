@@ -1,4 +1,5 @@
 import argparse
+from dataclasses import dataclass
 from typing import Optional, List, Text, Dict
 
 from . import constants
@@ -20,60 +21,89 @@ class ArgparseHelpFormatter(HelpFormatter):
         return self.parser.format_help()
 
 
+def _add_global_args(parser: argparse.ArgumentParser):
+    parser.add_argument('-d', dest='DEBUG', action='store_true',
+                        help='enable debug mode')
+    parser.add_argument('-v', dest='VERBOSE', action='store_true',
+                        help='display additional (verbose) messages')
+    parser.add_argument('-n', dest='DRY_RUN', action='store_true',
+                        help='display actions without executing them')
+
+
+def pre_parse_global_args() -> argparse.Namespace:
+    """Extract just the global option args for various run modes."""
+    parser = argparse.ArgumentParser()
+    _add_global_args(parser)
+    return parser.parse_known_args()[0]
+
+
+@dataclass
+class CommandLineData:
+    """Results returned after parsing the command line."""
+    args: argparse.Namespace
+    mapped_task: MappedTask
+    help_formatters: Dict[Text, HelpFormatter]
+
+
 class CommandLineParser:
+    """Performs command line argument parsing for a Jiig application."""
 
     def __init__(self):
         self.parser: Optional[argparse.ArgumentParser] = None
         self.mapped_tasks: List[MappedTask] = []
-        self.args = None
-        self.mapped_task: Optional[MappedTask] = None
-        self.help_formatters: Dict[Text, HelpFormatter] = {}
-        self.dest_name_preamble = (constants.Jiig.cli_dest_name_prefix +
-                                   constants.Jiig.cli_dest_name_separator)
+        self.dest_name_preamble = (constants.CLI_DEST_NAME_PREFIX +
+                                   constants.CLI_DEST_NAME_SEPARATOR)
 
-    def parse(self):
-        self.parser = argparse.ArgumentParser(description='Execute application build/run tasks.')
-        self.help_formatters[make_dest_name()] = ArgparseHelpFormatter(self.parser)
-        self.parser.add_argument('-d', dest='DEBUG', action='store_true',
-                                 help='enable debug mode')
-        self.parser.add_argument('-v', dest='VERBOSE', action='store_true',
-                                 help='display additional (verbose) messages')
-        self.parser.add_argument('-n', dest='DRY_RUN', action='store_true',
-                                 help='display actions without executing them')
-        top_sub_group = self.parser.add_subparsers(dest=constants.Jiig.cli_dest_name_prefix,
-                                                   metavar=constants.Jiig.cli_dest_name_prefix,
+    def parse(self, *args, **kwargs) -> CommandLineData:
+        """
+        Build argparse parser and parse the command line.
+
+        All ArgumentParser positional and keyword arguments may be provided.
+        """
+        self.parser = argparse.ArgumentParser(*args, **kwargs)
+        # Add global debug/verbose/dry-run option args.
+        _add_global_args(self.parser)
+        # Container group for top level commands.
+        top_sub_group = self.parser.add_subparsers(dest=constants.CLI_DEST_NAME_PREFIX,
+                                                   metavar=constants.CLI_DEST_NAME_PREFIX,
                                                    required=True)
         # Recursively build the parser tree.
+        help_formatters = {make_dest_name(): ArgparseHelpFormatter(self.parser)}
         for mt in sorted(filter(lambda m: m.name, MAPPED_TASKS), key=lambda m: m.name):
             top_sub_parser = top_sub_group.add_parser(mt.name,
                                                       help=mt.help,
                                                       description=mt.description)
-            self._prepare_parser_recursive(mt, top_sub_parser)
+            self._prepare_parser_recursive(mt, top_sub_parser, help_formatters)
         # Parse the command line arguments.
-        self.args = self.parser.parse_args()
+        args = self.parser.parse_args()
         # Get the most specific task name (longest length TASK.* name).
         task_dest = ''
-        for dest in dir(self.args):
-            if ((dest == constants.Jiig.cli_dest_name_prefix or
+        for dest in dir(args):
+            if ((dest == constants.CLI_DEST_NAME_PREFIX or
                  dest.startswith(self.dest_name_preamble)) and
                     len(dest) > len(task_dest)):
                 task_dest = dest
         if not task_dest:
-            raise RuntimeError(f'No {constants.Jiig.cli_dest_name_prefix}* member'
-                               f' in command line arguments namespace: {self.args}')
+            raise RuntimeError(f'No {constants.CLI_DEST_NAME_PREFIX}* member'
+                               f' in command line arguments namespace: {args}')
         # Look up the mapped task using <dest>.<uppercase-name>.
-        full_dest_name = append_dest_name(task_dest, getattr(self.args, task_dest))
+        full_dest_name = append_dest_name(task_dest, getattr(args, task_dest))
         if full_dest_name not in MAPPED_TASKS_BY_DEST_NAME:
             raise RuntimeError(f'''\
 No mapped task was registered with the name: {full_dest_name}.
-Parsed args: {self.args}
+Parsed args: {args}
 Known dests: {list(MAPPED_TASKS_BY_DEST_NAME.keys())}
 ''')
-        self.mapped_task = MAPPED_TASKS_BY_DEST_NAME[full_dest_name]
+        return CommandLineData(args,
+                               MAPPED_TASKS_BY_DEST_NAME[full_dest_name],
+                               help_formatters)
 
-    def _prepare_parser_recursive(self, mt: MappedTask, parser: argparse.ArgumentParser):
+    def _prepare_parser_recursive(self,
+                                  mt: MappedTask,
+                                  parser: argparse.ArgumentParser,
+                                  help_formatters: Dict[Text, HelpFormatter]):
         # The task runner must be able to format help text.
-        self.help_formatters[mt.dest_name] = ArgparseHelpFormatter(parser)
+        help_formatters[mt.dest_name] = ArgparseHelpFormatter(parser)
         self.mapped_tasks.append(mt)
         if mt.options:
             for flag, option_data in mt.options.items():
@@ -89,4 +119,4 @@ Known dests: {list(MAPPED_TASKS_BY_DEST_NAME.keys())}
                 sub_parser = sub_group.add_parser(sub_task.name,
                                                   help=sub_task.help,
                                                   description=sub_task.description)
-                self._prepare_parser_recursive(sub_task, sub_parser)
+                self._prepare_parser_recursive(sub_task, sub_parser, help_formatters)

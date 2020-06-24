@@ -1,9 +1,16 @@
-class Jiig:
-    configuration_extension = '.yaml'
-    local_configuration_suffix = '-local'
-    # Command line parsing constants.
-    cli_dest_name_prefix = 'TASK'
-    cli_dest_name_separator = '.'
-    cli_dest_name_preamble = cli_dest_name_prefix + cli_dest_name_separator
-    cli_metavar_suffix = 'SUB_TASK'
-    cli_metavar_separator = '_'
+INIT_FILE = 'init.jiig'
+TASKS_FILE = 'tasks.jiig'
+
+CONFIGURATION_EXTENSION = '.yaml'
+LOCAL_CONFIGURATION_SUFFIX = '-local'
+
+# Command line parsing constants.
+CLI_DEST_NAME_PREFIX = 'TASK'
+CLI_DEST_NAME_SEPARATOR = '.'
+CLI_DEST_NAME_PREAMBLE = CLI_DEST_NAME_PREFIX + CLI_DEST_NAME_SEPARATOR
+CLI_METAVAR_SUFFIX = 'SUB_TASK'
+CLI_METAVAR_SEPARATOR = '_'
+
+DEBUG = False
+VERBOSE = False
+DRY_RUN = False
