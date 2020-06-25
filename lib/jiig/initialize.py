@@ -10,7 +10,7 @@ This is a bit of a "magic" module that is responsible for:
 """
 import sys
 import os
-from typing import Text
+from typing import Text, List
 
 from . import constants, init_file, utility
 
@@ -23,11 +23,9 @@ INIT_PARAM_TYPES = [
 ]
 
 
-def load_configuration(jiig_folder: Text) -> init_file.ParamData:
+def load_configuration(folders: List[Text]) -> init_file.ParamData:
     """Load and return Jiig configuration parameters."""
-    return init_file.load(INIT_PARAM_TYPES,
-                          [jiig_folder, os.getcwd()],
-                          constants.INIT_FILE)
+    return init_file.load(INIT_PARAM_TYPES, folders, constants.INIT_FILE)
 
 
 def virtual_environment_check(params: init_file.ParamData):
@@ -44,6 +42,7 @@ def virtual_environment_check(params: init_file.ParamData):
 
 def virtual_environment_main(params: init_file.ParamData):
     """Run Jiig application, assuming we're inside the virtual environment."""
+
     venv_python_path = os.path.join(params.VENV_FOLDER, 'bin', 'python')
     if sys.executable != venv_python_path:
         utility.abort('Not executing inside the virtual environment.')
@@ -52,10 +51,11 @@ def virtual_environment_main(params: init_file.ParamData):
     main(params)
 
 
-def initialize_application(app_folder: Text):
+def initialize_application(jiig_folder: Text):
     """Perform all steps to execute the application."""
     # Load configuration parameters and add any extras.
-    params = load_configuration(app_folder)
+    app_folder = os.getcwd()
+    params = load_configuration([jiig_folder, app_folder])
     params['APP_FOLDER'] = app_folder
     # Re-execute inside the virtual environment or continue.
     virtual_environment_check(params)

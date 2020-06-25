@@ -130,7 +130,8 @@ class ParamList(Param):
     def finalize(self):
         super().finalize()
         if self.unique and self.value:
-            self.value = list(set(self.value))
+            # Use dict instead of set, because dict is ordered and set is not.
+            self.value = list(dict.fromkeys(self.value).keys())
 
 
 class ParamFolderList(ParamList):

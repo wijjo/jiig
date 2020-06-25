@@ -31,4 +31,4 @@ JIIG_FOLDER = os.path.dirname(os.path.realpath(__file__))
 if __name__ == '__main__':
     sys.path.insert(0, os.path.join(JIIG_FOLDER, 'lib'))
     from jiig.initialize import initialize_application
-    initialize_application(app_folder=os.getcwd())
+    initialize_application(jiig_folder=JIIG_FOLDER)
