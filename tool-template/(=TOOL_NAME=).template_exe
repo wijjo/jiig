@@ -1,11 +1,21 @@
 #!/usr/bin/env python3
 
-"""Front end shim script for Jiig-based tools."""
+"""
+Front end shim script for Jiig-based tools.
+
+This boilerplate script can be copied unmodified for use with other tools. It
+performs the following two steps to initialize the tool.
+
+1. Look for a .jiigrc file and, if found, add JIIG_ROOT to `sys.path`, otherwise
+   assume Jiig is available globally in the operating system.
+2. Call `jiig.initialize.initialize_tool()` to start the Jiig-based tool.
+
+Tweak TOOL_ROOT if not at the root of a source tree (with `init.jiig` present).
+"""
 
 import sys
 import os
 
-# Tweak if this script is not at the root of a source tree with an init.jiig file.
 TOOL_ROOT = os.path.dirname(os.path.realpath(__file__))
 
 
@@ -23,8 +33,8 @@ def run_main():
             sys.stderr.write(f'ERROR: Failed to load ".jiigrc": {exc}.{nl}')
             sys.exit(1)
     try:
-        from jiig.initialize import initialize_tool
-        initialize_tool(tool_root=TOOL_ROOT)
+        import jiig.initialize
+        jiig.initialize.initialize_tool(tool_root=TOOL_ROOT)
     except ModuleNotFoundError:
         sys.stderr.write(f'ERROR: Unable to import the Jiig "initialize" module.{nl}')
         sys.stderr.write(f'To link to a Jiig source folder set JIIG_ROOT properly in .jiigrc".{nl}')
