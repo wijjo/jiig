@@ -1,16 +1,23 @@
 import os
 from jiig.task import map_task, TaskRunner
-from jiig.utility import run, display_message
+from jiig.utility import run, display_message, abort
 
 
 @map_task(
     'ipython',
     help='run ipython from virtual environment',
-    description='Run an interactive IPython session from the Python virtual environment.')
+    description='Run an interactive IPython session from the Python virtual environment.',
+    not_inherited=True,
+)
 def task_ipython(runner: TaskRunner):
-    ipython_path = runner.virtual_environment_program('ipython')
+    ipython_path = runner.expand_path_template('{VENV_ROOT}/bin/ipython')
     if not os.path.exists(ipython_path):
-        pip_path = runner.virtual_environment_program('pip')
+        pip_path = runner.expand_path_template('{VENV_ROOT}/bin/pip')
         display_message('Install iPython in virtual environment.')
         run([pip_path, 'install', 'ipython'])
-    os.execl(ipython_path, ipython_path)
+    try:
+        os.execl(ipython_path, ipython_path)
+    except Exception as exc:
+        abort(f'Failed to execute "ipython" command.',
+              command_path=ipython_path,
+              exception=exc)

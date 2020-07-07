@@ -1,4 +1,6 @@
 from __future__ import annotations
+import sys
+import os
 from dataclasses import dataclass
 from typing import Optional, List, Text, Dict, Callable, Set
 
@@ -33,12 +35,18 @@ class MappedTask:
     options: Dict[Text, Dict]
     arguments: List[Dict]
     execution_tasks: List[MappedTask]
+    not_inherited: bool
     # Sub-tasks added when discovered child tasks reference this as the parent.
     sub_tasks: List[MappedTask] = None
 
     @property
     def tag(self) -> Text:
         return self.name.upper() if self.name else None
+
+    @property
+    def folder(self) -> Text:
+        # noinspection PyUnresolvedReferences
+        return os.path.dirname(sys.modules[self.task_function.__module__].__file__)
 
 
 # noinspection PyShadowingBuiltins
@@ -48,7 +56,8 @@ def map_task(name: Text = None,
              description: Text = None,
              options: Dict[Text, Dict] = None,
              arguments: List[Dict] = None,
-             dependencies: List[TaskFunction] = None):
+             dependencies: List[TaskFunction] = None,
+             not_inherited: bool = False):
     """
     Decorator for mapped task functions.
 
@@ -161,7 +170,8 @@ def map_task(name: Text = None,
                         help=help,
                         options=merged_options,
                         arguments=merged_arguments,
-                        execution_tasks=merged_execution_tasks)
+                        execution_tasks=merged_execution_tasks,
+                        not_inherited=not_inherited)
         # Complete the registration, now that there is a new MappedTask.
         MAPPED_TASKS_BY_ID[id(task_function)] = mt
         if dest_name:

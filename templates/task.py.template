@@ -1,0 +1,16 @@
+from jiig.task import map_task, TaskRunner
+
+
+@map_task(
+    '${TASK_NAME}',
+    help='${TASK_NAME} help',
+    description='${TASK_NAME} description',
+    # Each option value or argument item is a dictionary of
+    # ArgumentParser.add_argument() keyword arguments.
+    options={
+    },
+    arguments=[
+    ],
+)
+def task_${TASK_NAME}(runner: TaskRunner):
+    pass

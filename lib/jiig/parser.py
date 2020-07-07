@@ -48,11 +48,21 @@ class CommandLineData:
 class CommandLineParser:
     """Performs command line argument parsing for a Jiig application."""
 
-    def __init__(self):
+    def __init__(self, tool_lib_folders: List[Text]):
+        self.tool_lib_folders = tool_lib_folders
         self.parser: Optional[argparse.ArgumentParser] = None
         self.mapped_tasks: List[MappedTask] = []
         self.dest_name_preamble = (constants.CLI_DEST_NAME_PREFIX +
                                    constants.CLI_DEST_NAME_SEPARATOR)
+
+    def _is_task_enabled(self, mt: MappedTask) -> bool:
+        task_folder = mt.folder
+        if not mt.not_inherited:
+            return True
+        for lib_folder in self.tool_lib_folders:
+            if task_folder.startswith(lib_folder):
+                return True
+        return False
 
     def parse(self, *args, **kwargs) -> CommandLineData:
         """
@@ -70,10 +80,12 @@ class CommandLineParser:
         # Recursively build the parser tree.
         help_formatters = {make_dest_name(): ArgparseHelpFormatter(self.parser)}
         for mt in sorted(filter(lambda m: m.name, MAPPED_TASKS), key=lambda m: m.name):
-            top_sub_parser = top_sub_group.add_parser(mt.name,
-                                                      help=mt.help,
-                                                      description=mt.description)
-            self._prepare_parser_recursive(mt, top_sub_parser, help_formatters)
+            # Skip non-inheritable tasks that are not owned by the tool.
+            if self._is_task_enabled(mt):
+                top_sub_parser = top_sub_group.add_parser(mt.name,
+                                                          help=mt.help,
+                                                          description=mt.description)
+                self._prepare_parser_recursive(mt, top_sub_parser, help_formatters)
         # Parse the command line arguments.
         args = self.parser.parse_args()
         # Get the most specific task name (longest length TASK.* name).

@@ -1,9 +1,3 @@
-APP_NAME = 'jiig'
-BASE_FOLDER = ''
-VENV_FOLDER = 'venv'
-LIB_FOLDERS = [
-    'lib',
-]
-PIP_PACKAGES = [
-    'pyyaml'
-]
+TOOL_NAME = 'jiig'
+TOOL_DESCRIPTION = 'Jiig tool management commands.'
+LIB_FOLDERS = ['lib']

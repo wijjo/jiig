@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+
+"""Front end shim script for Jiig-based tools."""
+
+import sys
+import os
+
+# Tweak if this script is not at the root of a source tree with an init.jiig file.
+TOOL_ROOT = os.path.dirname(os.path.realpath(__file__))
+
+
+def run_main():
+    nl = os.linesep
+    if os.path.isfile('.jiigrc'):
+        try:
+            with open('.jiigrc', encoding='utf-8') as rc_file:
+                symbols = {}
+                exec(rc_file.read(), symbols)
+                jiig_root = symbols.get('JIIG_ROOT')
+                if jiig_root:
+                    sys.path.insert(0, os.path.join(jiig_root, 'lib'))
+        except Exception as exc:
+            sys.stderr.write(f'ERROR: Failed to load ".jiigrc": {exc}.{nl}')
+            sys.exit(1)
+    try:
+        from jiig.initialize import initialize_tool
+        initialize_tool(tool_root=TOOL_ROOT)
+    except ModuleNotFoundError:
+        sys.stderr.write(f'ERROR: Unable to import the Jiig "initialize" module.{nl}')
+        if loaded_rc_path:
+            sys.stderr.write(f'To link to a Jiig source folder set JIIG_ROOT properly in .jiigrc".{nl}')
+        sys.exit(1)
+
+
+if __name__ == '__main__':
+    run_main()

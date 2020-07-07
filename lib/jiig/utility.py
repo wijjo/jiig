@@ -26,6 +26,7 @@ from . import constants
 
 class Regex:
     remote_path = re.compile(r'^([\w\d.@-]+):([\w\d_-~/]+)$')
+    template_folder_symbol = re.compile(constants.TEMPLATE_FOLDER_SYMBOL_PATTERN)
 
 
 class AttrDict(dict):
@@ -137,13 +138,19 @@ def display_heading(level: int, heading: Text):
 
 
 @contextmanager
-def chdir(folder):
+def chdir(folder: Optional[Text]):
+    """
+    Change work folder and restore when done.
+
+    Treats an empty or None folder, or when folder is the current work folder, a
+    do-nothing operation. But at least the caller doesn't have to check.
+    """
     restore_folder = os.getcwd()
-    if os.path.realpath(folder) != restore_folder:
+    if folder and os.path.realpath(folder) != restore_folder:
         display_message('Change working directory.', folder)
         os.chdir(folder)
     yield restore_folder
-    if os.path.realpath(folder) != restore_folder:
+    if folder and os.path.realpath(folder) != restore_folder:
         display_message('Restore working directory.', restore_folder)
         os.chdir(restore_folder)
 
@@ -339,19 +346,31 @@ def expand_template(source_path: Text,
                     target_path: Text,
                     overwrite: bool = False,
                     executable: bool = False,
-                    symbols: Dict = None):
-    source_path = short_path(source_path)
-    target_path = short_path(target_path)
+                    symbols: Dict = None,
+                    source_relative_to: Text = None,
+                    target_relative_to: Text = None):
+    if source_relative_to:
+        short_source_path = source_path[len(source_relative_to) + 1:]
+    else:
+        short_source_path = short_path(source_path)
+    if target_relative_to:
+        short_target_path = target_path[len(target_relative_to) + 1:]
+    else:
+        short_target_path = short_path(target_path)
     symbols = symbols or {}
     if not constants.DRY_RUN:
         check_file_exists(source_path)
     if os.path.exists(target_path):
         if not os.path.isfile(target_path):
-            abort('Template expansion target exists, but is not a file', target_path)
+            abort('Template expansion target exists, but is not a file',
+                  short_target_path)
         if not overwrite:
-            display_message('Template expansion target exists - skipping', target_path)
+            display_message('Template expansion target exists - skipping',
+                            short_target_path)
             return
-    display_message('Generate from template.', source=source_path, target=target_path)
+    display_message('Generate from template.',
+                    source=short_source_path,
+                    target=short_target_path)
     if not constants.DRY_RUN:
         try:
             with open(source_path, encoding='utf-8') as src_file:
@@ -366,11 +385,112 @@ def expand_template(source_path: Text,
                     os.remove(target_path)
                 except (IOError, OSError) as exc_remove:
                     display_warning('Unable to remove failed target file.',
-                                    target_path, exception=exc_remove)
-            abort('Missing template symbol', source=source_path, symbol=exc_key_error)
+                                    short_target_path,
+                                    exception=exc_remove)
+            abort('Missing template symbol',
+                  source=short_source_path,
+                  symbol=exc_key_error)
         except (IOError, OSError) as exc_write_error:
             abort('Template expansion failed',
-                  source=source_path, target=target_path, exception=exc_write_error)
+                  source=short_source_path,
+                  target=short_target_path,
+                  exception=exc_write_error)
+
+
+def expand_templates(source_glob: Text,
+                     target_folder_path: Text,
+                     overwrite: bool = False,
+                     executable: bool = False,
+                     symbols: Dict = None):
+    for source_path in glob(source_glob):
+        target_path = os.path.join(target_folder_path, os.path.basename(source_path))
+        expand_template(source_path,
+                        target_path,
+                        overwrite=overwrite,
+                        executable=executable,
+                        symbols=symbols)
+
+
+def expand_template_path(source_path: Text, symbols: Dict) -> Text:
+    """
+    Expand name symbols in path.
+
+    :param source_path: source path with potential symbols to expand
+    :param symbols: symbol substitution dictionary
+    :return: output path with symbols expanded
+    """
+    name_parts = []
+    pos = 0
+    for match in Regex.template_folder_symbol.finditer(source_path):
+        name = match.group(1)
+        start_pos, end_pos = match.span()
+        if start_pos > pos:
+            name_parts.append(source_path[pos:start_pos])
+        if name in symbols:
+            name_parts.append(symbols[name])
+        else:
+            display_error(f'Symbol "{name}" not found for path template "{source_path}".')
+            name_parts.append(source_path[start_pos:end_pos])
+        pos = end_pos
+    if pos < len(source_path):
+        name_parts.append(source_path[pos:])
+    return ''.join(name_parts)
+
+
+def expand_template_folder(template_folder: Text,
+                           target_folder: Text,
+                           overwrite: bool = False,
+                           symbols: Dict = None):
+    """
+    Recursively populate a target folder based on a template folder.
+
+    Note that .template* extensions are removed with special extensions handled
+    for generating dot name prefixes and setting executable permissions.
+
+    Source folder names may take advantage of symbol expansion by using special
+    syntax for name substitution. Target folder names will receive any
+    substituted symbols.
+
+    :param template_folder: path to template source folder
+    :param target_folder: path to target folder
+    :param overwrite: overwrite files if True
+    :param symbols: symbols for template expansion
+    :return:
+    """
+    symbols = symbols or {}
+    if not os.path.isdir(template_folder):
+        abort('Template source folder does not exist',
+              source_folder=folder_path(template_folder))
+    if os.path.exists(target_folder):
+        if not os.path.isdir(target_folder):
+            abort('Template target folder exists, but is not a folder',
+                  target_folder=target_folder)
+    display_heading(2, f'Expanding templates.')
+    display_message(None, template_folder=template_folder, target_folder=target_folder)
+    create_folder(target_folder, keep=True)
+    for walk_source_folder, _walk_sub_folders, walk_file_names in os.walk(template_folder):
+        relative_folder = walk_source_folder[len(template_folder) + 1:]
+        expanded_folder = expand_template_path(relative_folder, symbols)
+        walk_target_folder = os.path.join(target_folder, expanded_folder)
+        create_folder(walk_target_folder, keep=True)
+        for file_name in walk_file_names:
+            source_path = os.path.join(walk_source_folder, file_name)
+            stripped_file_name, extension = os.path.splitext(file_name)
+            if extension in constants.ALL_TEMPLATE_EXTENSIONS:
+                if extension == constants.TEMPLATE_EXTENSION_DOT:
+                    stripped_file_name = '.' + stripped_file_name
+                expanded_file_name = expand_template_path(stripped_file_name, symbols)
+                target_path = os.path.join(walk_target_folder, expanded_file_name)
+                executable = extension == constants.TEMPLATE_EXTENSION_EXE
+                expand_template(source_path,
+                                target_path,
+                                overwrite=overwrite,
+                                executable=executable,
+                                symbols=symbols,
+                                source_relative_to=template_folder,
+                                target_relative_to=target_folder)
+            else:
+                copy_files(source_path, walk_target_folder)
 
 
 def run(cmd_args: List[Text],
@@ -380,10 +500,19 @@ def run(cmd_args: List[Text],
         env: Dict = None,
         host: Text = None,
         shell: bool = False,
-        run_always: bool = False):
-    # TODO: Remote commands don't support all option parameters.
-    assert cmd_args
-    assert not host or not (shell or env or working_folder)
+        run_always: bool = False,
+        quiet: bool = False,
+        capture: bool = False,
+        ) -> Optional[subprocess.CompletedProcess]:
+    if not cmd_args:
+        abort('Called run() without a command.')
+    if not isinstance(cmd_args, (tuple, list)):
+        abort('Called run() with a non-list/tuple.', cmd_args=cmd_args)
+    if host:
+        if shell or env or working_folder:
+            abort('Remote run() command, i.e. with "host" specified, may not'
+                  ' use "shell", "env", or "working_folder" keywords.',
+                  cmd_args=cmd_args)
     # The command string for display or shell execution.
     cmd_string = ' '.join([shlex.quote(arg)
                            for arg in [short_path(cmd_args[0])] + cmd_args[1:]])
@@ -400,6 +529,8 @@ def run(cmd_args: List[Text],
         message_data['host'] = host
     if replace_process:
         message_data['exec'] = 'yes'
+    if quiet:
+        message_data['verbose'] = True
     display_message('Run command.', cmd_string, **message_data)
     # A dry run can stop here, before taking real action.
     if constants.DRY_RUN and not run_always:
@@ -423,13 +554,19 @@ def run(cmd_args: List[Text],
     # Or run the command and continue.
     try:
         try:
-            return subprocess.run(
-                cmd_args,
+            kwargs = dict(
                 check=not unchecked,
                 shell=shell,
-                env=run_env)
+                env=run_env,
+                capture_output=capture,
+            )
+            if capture:
+                kwargs['encoding'] = 'utf-8'
+            return subprocess.run(cmd_args, **kwargs)
         except subprocess.CalledProcessError as exc:
-            abort('Command failed', exc)
+            abort('Command failed.', cmd_string, exc)
+        except FileNotFoundError as exc:
+            abort('Command not found.', cmd_string, exc)
     finally:
         if restore_folder:
             os.chdir(restore_folder)
@@ -511,19 +648,39 @@ def import_module_path(module_name: Text, module_path: Text):
     return module
 
 
-def import_modules_from_folder(package_name: Text, folder: Text, retry: bool = False):
-    """Dynamically import modules as a named package from a folder."""
+def import_modules_from_folder(folder: Text,
+                               package_name: Text = None,
+                               retry: bool = False,
+                               marker: Text = None,
+                               ) -> List[Text]:
+    """
+    Dynamically and recursively import modules from a folder.
+
+    :param folder: search root folder
+    :param package_name: optional container package name
+    :param retry: retry modules with ModuleNotFoundError exceptions if True
+    :param marker: file that must exist in order to load modules in a visited folder
+    :return: imported paths
+    """
     # Stage 1 - gather the list of module paths and names to import.
+    display_message(f'import_modules_from_folder({package_name}, {folder})', debug=True)
     to_import: List[Tuple[Text, Text]] = []
-    # if os.path.exists(init_path):
-    #     to_import.append((package_name, init_path))
+    imported: List[Text] = []
     for walk_folder, _walk_sub_folders, walk_file_names in os.walk(folder):
-        relative_folder = walk_folder[len(folder):]
+        if os.path.basename(walk_folder).startswith('_'):
+            continue
+        if marker and marker not in walk_file_names:
+            continue
+        relative_folder = walk_folder[len(folder) + 1:]
         for file_name in walk_file_names:
+            if marker and file_name == marker:
+                continue
             base_name, extension = os.path.splitext(file_name)
             if not base_name.startswith('_') and extension == '.py':
                 module_path = os.path.join(walk_folder, file_name)
-                package_parts = [package_name]
+                package_parts = []
+                if package_name:
+                    package_parts.append(package_name)
                 if relative_folder:
                     package_parts.extend(relative_folder.split(os.path.sep))
                 package_parts.append(base_name)
@@ -537,14 +694,19 @@ def import_modules_from_folder(package_name: Text, folder: Text, retry: bool = F
         for module_name, module_path in to_import:
             try:
                 import_module_path(module_name, module_path)
+                imported.append(module_path)
             except ModuleNotFoundError as exc:
                 # Only module not found errors are retry-able, because they
                 # may be due to inter-module dependencies with ordering issues.
                 if retry:
                     to_retry.append((module_name, module_path))
                 exceptions.append((module_name, module_path, exc))
+                if constants.DEBUG:
+                    raise
             except Exception as exc:
                 exceptions.append((module_name, module_path, exc))
+                if constants.DEBUG:
+                    raise
         to_import = []
         if to_retry:
             # If we're retrying, keep going as long as some failed imports succeeded.
@@ -559,3 +721,4 @@ def import_modules_from_folder(package_name: Text, folder: Text, retry: bool = F
         for module_name, module_path, exc in exceptions:
             display_error(f'{module_path}["{module_name}"]: {exc}')
         abort('Module folder import failure.')
+    return imported

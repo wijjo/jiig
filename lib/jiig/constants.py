@@ -1,8 +1,17 @@
 INIT_FILE = 'init.jiig'
 TASKS_FILE = 'tasks.jiig'
-
-CONFIGURATION_EXTENSION = '.yaml'
-LOCAL_CONFIGURATION_SUFFIX = '-local'
+TEMPLATE_EXTENSION = '.template'
+TEMPLATE_EXTENSION_EXE = '.template_exe'
+TEMPLATE_EXTENSION_DOT = '.template_dot'
+ALL_TEMPLATE_EXTENSIONS = [
+    TEMPLATE_EXTENSION,
+    TEMPLATE_EXTENSION_EXE,
+    TEMPLATE_EXTENSION_DOT,
+]
+TOOL_TEMPLATE_FOLDER = 'tool-template'
+TEMPLATES_FOLDER = 'templates'
+TASK_TEMPLATE = 'task.py.template'
+TEMPLATE_FOLDER_SYMBOL_PATTERN = r'\(=(\w+)=\)'
 
 # Command line parsing constants.
 CLI_DEST_NAME_PREFIX = 'TASK'

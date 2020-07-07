@@ -1,7 +1,7 @@
 import os
 from typing import Dict, Text, Optional, Any, Callable
 
-from . import constants, utility, configuration_file
+from . import utility
 
 
 class HelpFormatter:
@@ -33,62 +33,8 @@ class TaskRunner:
         self.args = data.args
         self.params = utility.AttrDict(data.params)
         self.help_formatters = data.help_formatters
-        self._local_configuration: Optional[utility.AttrDict] = None
 
     # === Public methods.
-
-    def has_application(self) -> bool:
-        return hasattr(self.args, 'APP_FOLDER')
-
-    @property
-    def app_folder(self) -> Text:
-        if not hasattr(self.args, 'APP_FOLDER') or not self.args.APP_FOLDER:
-            utility.abort('No APP_FOLDER argument was provided by the Task.')
-        return os.path.realpath(self.args.APP_FOLDER)
-
-    @property
-    def configuration_path(self) -> Text:
-        file_name = self.params.APP_NAME + constants.CONFIGURATION_EXTENSION
-        return os.path.join(self.app_folder, file_name)
-
-    @property
-    def local_configuration_path(self) -> Text:
-        file_name = (self.params.APP_NAME +
-                     constants.LOCAL_CONFIGURATION_SUFFIX +
-                     constants.CONFIGURATION_EXTENSION)
-        return os.path.join(self.app_folder, file_name)
-
-    def virtual_environment_program(self, name: Text) -> Text:
-        return os.path.join(self.params.VENV_FOLDER, 'bin', name)
-
-    def get_flask_app_string(self) -> Text:
-        config_path = getattr(self.args, 'CONFIG_PATH', None)
-        if config_path:
-            add_arg_text = ', config_path="{}"'.format(config_path)
-        else:
-            add_arg_text = ''
-        return '{}.app:create_app("{}"{})'.format(
-            self.params.APP_NAME, self.app_folder, add_arg_text)
-
-    @property
-    def local_configuration(self) -> utility.AttrDict:
-        if self._local_configuration is None:
-            config_path = utility.short_path(self.local_configuration_path)
-            if not os.path.exists(config_path):
-                utility.abort('Local configuration file does not exist.',
-                              path=config_path)
-            utility.display_message('Load local configuration file.',
-                                    path=config_path)
-            try:
-                self._local_configuration = utility.AttrDict(
-                    configuration_file.for_file(self.local_configuration_path).load())
-            except configuration_file.ConfigurationError as exc:
-                utility.abort('Unable to read local configuration file.',
-                              config_path=config_path, exception=exc)
-        return self._local_configuration
-
-    def clear_local_configuration(self):
-        self._local_configuration = None
 
     def format_help(self, *task_names: Text):
         dest_name = utility.make_dest_name(*task_names)
@@ -97,6 +43,22 @@ class TaskRunner:
             utility.display_error(f'No help available for: {" ".join(task_names)}')
             return None
         return help_formatter.format_help()
+
+    def expand_string(self, text: Text, **more_params) -> Text:
+        """Expands string template against symbols from self.params and more_params."""
+        return text.format(**self.params, **more_params)
+
+    def expand_path_template(self, path: Text, **more_params) -> Text:
+        """Calls expand_string() after fixing slashes, as needed."""
+        if os.path.sep != '/':
+            path = path.replace('/', os.path.sep)
+        return self.expand_string(path, **more_params)
+
+    def get_primary_task_folder(self):
+        for task_folder in self.params.TASK_FOLDERS:
+            if task_folder.startswith(self.params.BASE_FOLDER):
+                return task_folder
+        utility.abort('Could not determine primary task folder.')
 
 
 # Runner factory registered by @runner_factory decorator. Last registered one wins.

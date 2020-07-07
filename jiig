@@ -1,34 +1,19 @@
 #!/usr/bin/env python3
 
-"""
-Main Jiig program.
+"""Main Jiig program."""
 
-Yes, there's not much here. The action happens in the `initialize` module and
-elsewhere.
-
-Most applications should work fine by running this script without change, from
-its installed location. The application configuration allows Jiig to find all
-needed components.
-
-The minimal style of this front end script also allows it to be easily copied
-and specialized. If copied, change JIIG_FOLDER to the Jiig installation folder
-or project root.
-
-The following steps occur, mostly in initialize_application().
-  - Modifies the Python path to access Jiig library modules.
-  - Call initialize_application(), which does the following.
-    - Loads the configuration.
-    - Builds a virtual environment as needed.
-    - Forces execution to occur inside the virtual environment.
-    - Parses the command line.
-    - Invokes the task function, preceded by calls to its dependencies.
-"""
 import os
 import sys
 
-JIIG_FOLDER = os.path.dirname(os.path.realpath(__file__))
+# Hard-code to load `initialize` and dependency modules from the source tree.
+LIB_FOLDER = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lib')
+if os.path.isdir(LIB_FOLDER):
+    sys.path.insert(0, LIB_FOLDER)
+
 
 if __name__ == '__main__':
-    sys.path.insert(0, os.path.join(JIIG_FOLDER, 'lib'))
-    from jiig.initialize import initialize_application
-    initialize_application(jiig_folder=JIIG_FOLDER)
+    try:
+        from jiig.initialize import initialize_tool
+        initialize_tool()
+    except KeyboardInterrupt:
+        print('')
