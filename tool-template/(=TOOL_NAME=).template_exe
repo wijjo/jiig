@@ -27,8 +27,7 @@ def run_main():
         initialize_tool(tool_root=TOOL_ROOT)
     except ModuleNotFoundError:
         sys.stderr.write(f'ERROR: Unable to import the Jiig "initialize" module.{nl}')
-        if loaded_rc_path:
-            sys.stderr.write(f'To link to a Jiig source folder set JIIG_ROOT properly in .jiigrc".{nl}')
+        sys.stderr.write(f'To link to a Jiig source folder set JIIG_ROOT properly in .jiigrc".{nl}')
         sys.exit(1)
 
 
