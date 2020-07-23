@@ -54,12 +54,6 @@ class TaskRunner:
             path = path.replace('/', os.path.sep)
         return self.expand_string(path, **more_params)
 
-    def get_primary_task_folder(self):
-        for task_folder in self.params.TASK_FOLDERS:
-            if task_folder.startswith(self.params.BASE_FOLDER):
-                return task_folder
-        utility.abort('Could not determine primary task folder.')
-
 
 # Runner factory registered by @runner_factory decorator. Last registered one wins.
 RunnerFactoryFunction = Callable[[RunnerData], TaskRunner]

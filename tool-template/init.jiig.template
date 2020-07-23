@@ -1,5 +1,3 @@
-BASE_FOLDER = ''
-VENV_ROOT = 'venv'
 LIB_FOLDERS = ['jiig']
-TASK_FOLDERS = ['tasks']
+VENV_ROOT = 'venv'
 PIP_PACKAGES = []

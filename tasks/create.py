@@ -68,7 +68,8 @@ def task_create_tool(runner: TaskRunner):
 )
 def task_create_task(runner: TaskRunner):
     display_heading(1, 'Create task module(s)')
-    task_folder = runner.get_primary_task_folder()
+    # TODO: Need more control over which task folder to choose if multiple?
+    task_folder = runner.params.TASK_FOLDERS[0]
     template_path = os.path.join(runner.params.JIIG_ROOT,
                                  constants.TEMPLATES_FOLDER,
                                  constants.TASK_TEMPLATE)

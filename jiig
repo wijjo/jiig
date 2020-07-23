@@ -5,15 +5,21 @@
 import os
 import sys
 
-# Hard-code to load `initialize` and dependency modules from the source tree.
-LIB_FOLDER = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lib')
-if os.path.isdir(LIB_FOLDER):
-    sys.path.insert(0, LIB_FOLDER)
+JIIG_ROOT = os.path.dirname(os.path.realpath(__file__))
+JIIG_LIB_FOLDER = os.path.join(JIIG_ROOT, 'lib')
+JIIG_TASKS_FOLDER = os.path.join(JIIG_ROOT, 'tasks')
 
+if os.path.isdir(JIIG_LIB_FOLDER):
+    sys.path.insert(0, JIIG_LIB_FOLDER)
+
+from jiig.main import main
 
 if __name__ == '__main__':
     try:
-        from jiig.initialize import initialize_jiig
-        initialize_jiig()
+        main({'TOOL_NAME': 'jiig',
+              'TOOL_DESCRIPTION': 'Jiig tool management commands.',
+              'JIIG_ROOT': JIIG_ROOT,
+              'LIB_FOLDERS': [JIIG_LIB_FOLDER],
+              'TASK_FOLDERS': [JIIG_TASKS_FOLDER]})
     except KeyboardInterrupt:
         print('')

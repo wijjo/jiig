@@ -845,3 +845,12 @@ def open_text(*,
     elif request is not None:
         with urlopen(url, timeout=timeout) as request_stream:
             yield request_stream
+
+
+def resolve_paths_abs(root: Text, folders: List[Text]) -> Iterator[Text]:
+    """Generate folder sequence with absolute paths."""
+    for folder in folders:
+        if os.path.isabs(folder):
+            yield folder
+        else:
+            yield os.path.join(root, folder)

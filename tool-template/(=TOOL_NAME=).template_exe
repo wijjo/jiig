@@ -17,8 +17,9 @@ import sys
 import os
 
 TOOL_NAME = '${TOOL_NAME}'
-TOOL_DESCRIPTION = '${TOOL_DESCRIPTION}'
-TOOL_ROOT = os.path.dirname(os.path.realpath(__file__))
+TOOL_DESCRIPTION = '(edit the "${TOOL_NAME}" script to provide a description)'
+TOOL_ROOT = os.path.dirname(__file__)
+TOOL_TASK_FOLDERS = ['tasks']
 
 
 def run_main():
@@ -38,7 +39,8 @@ def run_main():
         import jiig.initialize
         jiig.initialize.initialize_tool(name=TOOL_NAME,
                                         description=TOOL_DESCRIPTION,
-                                        root=TOOL_ROOT)
+                                        root=TOOL_ROOT,
+                                        task_folders=TOOL_TASK_FOLDERS)
     except ModuleNotFoundError:
         sys.stderr.write(f'ERROR: Unable to import the Jiig "initialize" module.{nl}')
         sys.stderr.write(f'To link to a Jiig source folder set JIIG_ROOT properly in .jiigrc".{nl}')
