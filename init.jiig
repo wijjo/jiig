@@ -1,3 +1,2 @@
-TOOL_NAME = 'jiig'
-TOOL_DESCRIPTION = 'Jiig tool management commands.'
 LIB_FOLDERS = ['lib']
+TASK_FOLDERS = ['tasks']

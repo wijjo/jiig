@@ -10,12 +10,14 @@ performs the following two steps to initialize the tool.
    assume Jiig is available globally in the operating system.
 2. Call `jiig.initialize.initialize_tool()` to start the Jiig-based tool.
 
-Tweak TOOL_ROOT if not at the root of a source tree (with `init.jiig` present).
+Tweak the TOOL... global variables as appropriate.
 """
 
 import sys
 import os
 
+TOOL_NAME = '${TOOL_NAME}'
+TOOL_DESCRIPTION = '${TOOL_DESCRIPTION}'
 TOOL_ROOT = os.path.dirname(os.path.realpath(__file__))
 
 
@@ -34,7 +36,9 @@ def run_main():
             sys.exit(1)
     try:
         import jiig.initialize
-        jiig.initialize.initialize_tool(tool_root=TOOL_ROOT)
+        jiig.initialize.initialize_tool(name=TOOL_NAME,
+                                        description=TOOL_DESCRIPTION,
+                                        root=TOOL_ROOT)
     except ModuleNotFoundError:
         sys.stderr.write(f'ERROR: Unable to import the Jiig "initialize" module.{nl}')
         sys.stderr.write(f'To link to a Jiig source folder set JIIG_ROOT properly in .jiigrc".{nl}')

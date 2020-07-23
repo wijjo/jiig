@@ -4,7 +4,7 @@ from typing import Optional, List, Text, Dict
 
 from . import constants
 from .task import MappedTask, MAPPED_TASKS, MAPPED_TASKS_BY_DEST_NAME
-from .utility import append_dest_name, make_dest_name
+from .utility import append_dest_name, make_dest_name, display_message, abort, format_call_string
 from .runner import HelpFormatter
 
 # Expose Namespace, since it's pretty generic, so that other modules don't need
@@ -19,6 +19,41 @@ class ArgparseHelpFormatter(HelpFormatter):
 
     def format_help(self) -> Text:
         return self.parser.format_help()
+
+
+class ArgumentParser(argparse.ArgumentParser):
+    """Wrap a few functions for debug output."""
+
+    @staticmethod
+    def _dump(method_name, args, kwargs):
+        if constants.DEBUG:
+            display_message(f'argparse: {format_call_string(method_name, *args, **kwargs)})')
+
+    @staticmethod
+    def _abort(method_name, exc, args, kwargs):
+        abort(f'argparse: {format_call_string(method_name, *args, **kwargs)})', exception=exc)
+
+    def __init__(self, *args, **kwargs):
+        self._dump('ArgumentParser', args, kwargs)
+        try:
+            super().__init__(*args, **kwargs)
+        except Exception as exc:
+            self._abort('ArgumentParser', exc, args, kwargs)
+
+    def add_subparsers(self, *args, **kwargs):
+        self._dump('add_subparsers', args, kwargs)
+        try:
+            return super().add_subparsers(*args, **kwargs)
+        except Exception as exc:
+            self._abort('add_subparsers', exc, args, kwargs)
+
+    def add_argument(self, *args, **kwargs):
+        if constants.DEBUG:
+            self._dump('add_argument', args, kwargs)
+        try:
+            return super().add_argument(*args, **kwargs)
+        except Exception as exc:
+            self._abort('add_argument', exc, args, kwargs)
 
 
 def _add_global_args(parser: argparse.ArgumentParser):
@@ -48,8 +83,8 @@ class CommandLineData:
 class CommandLineParser:
     """Performs command line argument parsing for a Jiig application."""
 
-    def __init__(self, tool_lib_folders: List[Text]):
-        self.tool_lib_folders = tool_lib_folders
+    def __init__(self, tool_task_folders: List[Text]):
+        self.tool_task_folders = tool_task_folders
         self.parser: Optional[argparse.ArgumentParser] = None
         self.mapped_tasks: List[MappedTask] = []
         self.dest_name_preamble = (constants.CLI_DEST_NAME_PREFIX +
@@ -59,8 +94,8 @@ class CommandLineParser:
         task_folder = mt.folder
         if not mt.not_inherited:
             return True
-        for lib_folder in self.tool_lib_folders:
-            if task_folder.startswith(lib_folder):
+        for tool_task_folder in self.tool_task_folders:
+            if tool_task_folder.startswith(task_folder):
                 return True
         return False
 
@@ -70,7 +105,7 @@ class CommandLineParser:
 
         All ArgumentParser positional and keyword arguments may be provided.
         """
-        self.parser = argparse.ArgumentParser(*args, **kwargs)
+        self.parser = ArgumentParser(*args, **kwargs)
         # Add global debug/verbose/dry-run option args.
         _add_global_args(self.parser)
         # Container group for top level commands.
@@ -118,8 +153,11 @@ Known dests: {list(MAPPED_TASKS_BY_DEST_NAME.keys())}
         help_formatters[mt.dest_name] = ArgparseHelpFormatter(parser)
         self.mapped_tasks.append(mt)
         if mt.options:
-            for flag, option_data in mt.options.items():
-                parser.add_argument(flag, **option_data)
+            for flag_or_flags, option_data in mt.options.items():
+                if isinstance(flag_or_flags, str):
+                    parser.add_argument(flag_or_flags, **option_data)
+                else:
+                    parser.add_argument(*flag_or_flags, **option_data)
         if mt.arguments:
             for argument_data in mt.arguments:
                 parser.add_argument(**argument_data)

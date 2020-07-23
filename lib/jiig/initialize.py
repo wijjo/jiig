@@ -10,18 +10,20 @@ This is a bit of a "magic" module that is responsible for:
 """
 import sys
 import os
-from typing import Text, Set, List
+from typing import Text
 
 from . import constants, init_file, utility
 
 INIT_PARAM_TYPES = [
-    init_file.ParamString('TOOL_NAME'),
-    init_file.ParamString('TOOL_DESCRIPTION', default_value='(no description provided)'),
     init_file.ParamFolder('BASE_FOLDER'),
     init_file.ParamFolder('VENV_ROOT'),
     init_file.ParamFolderList('LIB_FOLDERS'),
+    init_file.ParamFolderList('TASK_FOLDERS'),
     init_file.ParamList('PIP_PACKAGES', unique=True, default_value=[]),
 ]
+
+JIIG_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+JIIG_LIB_FOLDER = os.path.dirname(os.path.realpath(__file__))
 
 
 def virtual_environment_check(params: init_file.ParamData):
@@ -36,47 +38,41 @@ def virtual_environment_check(params: init_file.ParamData):
         os.execlp(venv_python_path, venv_python_path, *sys.argv)
 
 
-class InitFileFinder:
-
-    def __init__(self):
-        self.folder_real_paths: Set[Text] = set()
-        self.init_paths: List[Text] = []
-
-    def add_folder(self, folder: Text):
-        if folder:
-            folder_real_path = os.path.realpath(folder)
-            if folder_real_path not in self.folder_real_paths:
-                init_path = os.path.join(folder, constants.INIT_FILE)
-                if os.path.isfile(init_path):
-                    self.init_paths.append(init_path)
-                    self.folder_real_paths.add(folder_real_path)
-
-
-def initialize_tool(tool_root: Text = None):
-    """Perform all steps to execute the application."""
+def get_jiig_init_path() -> Text:
     # If running a *IX system-installed copy, find the init file in a parallel etc folder.
-    init_file_finder = InitFileFinder()
-    my_folder = os.path.dirname(os.path.realpath(__file__))
-    if os.path.sep == '/' and my_folder.startswith('/'):
-        init_file_finder.add_folder('/usr/local/etc/jiig')
-        init_file_finder.add_folder('/etc/jiig')
-    jiig_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    if not init_file_finder.init_paths:
-        init_file_finder.add_folder(jiig_root)
-    if not init_file_finder.init_paths:
-        utility.abort(f'Jiig init file, "{constants.INIT_FILE}", not found.')
-    init_file_finder.add_folder(tool_root)
-    init_file_finder.add_folder(os.getcwd())
-    all_params = init_file.load_files(INIT_PARAM_TYPES, *init_file_finder.init_paths)
-    all_params['JIIG_ROOT'] = jiig_root
-    # Isolate the tool's own parameters to handle things like checking if a
-    # non-inheritable task should be included. Will receive a None value for
-    # tool_root when running the `jiig` command instead of the tool script.
-    # Use the first init path for `jiig` script or the last path for the tool.
-    if tool_root:
-        tool_init_path = init_file_finder.init_paths[-1]
-    else:
-        tool_init_path = init_file_finder.init_paths[0]
+    if os.path.sep == '/' and JIIG_LIB_FOLDER.startswith('/'):
+        for jiig_sys_folder in ['/usr/local/etc/jiig', '/etc/jiig']:
+            init_path = os.path.join(jiig_sys_folder, constants.INIT_FILE)
+            if os.path.isfile(init_path):
+                return init_path
+    init_path = os.path.join(JIIG_ROOT, constants.INIT_FILE)
+    if os.path.isfile(init_path):
+        return init_path
+    utility.abort(f'Jiig init file, "{constants.INIT_FILE}", not found.')
+
+
+def get_tool_init_path(root: Text) -> Text:
+    init_path = os.path.join(root, constants.INIT_FILE)
+    if os.path.isfile(init_path):
+        return init_path
+    utility.abort(f'Jiig tool init file, "{init_path}", not found.')
+
+
+def initialize_tool(name: Text, description: Text, root: Text):
+    """
+    Perform all steps to execute the tool application.
+
+    :param name: tool name for help, etc.
+    :param description: tool description for help, etc.
+    :param root: tool base folder
+    """
+    jiig_init_path = get_jiig_init_path()
+    tool_init_path = get_tool_init_path(root)
+    all_params = init_file.load_files(INIT_PARAM_TYPES, jiig_init_path, tool_init_path)
+    all_params['TOOL_NAME'] = name or os.path.basename(sys.argv[0])
+    all_params['TOOL_DESCRIPTION'] = description or '(no TOOL_DESCRIPTION provided)'
+    all_params['JIIG_ROOT'] = JIIG_ROOT
+    # Separate tool init parameters help with checking for non-inheritable tasks.
     tool_params = init_file.load_files(INIT_PARAM_TYPES, tool_init_path)
     if all_params.VENV_ROOT:
         # Re-execute inside the virtual environment or continue.
@@ -85,6 +81,24 @@ def initialize_tool(tool_root: Text = None):
         venv_python_path = os.path.join(all_params.VENV_ROOT, 'bin', 'python')
         if sys.executable != venv_python_path:
             utility.abort('Not executing inside the expected virtual environment.')
-    # Main import can not be global, because it depends on virtual environment.
+    # Import is done here, inside the virtual environment, in case the virtual
+    # environment is needed for resolving external task module dependencies.
     from .main import main
-    main(all_params, tool_params)
+    main(all_params, tool_params=tool_params)
+
+
+def initialize_jiig():
+    """
+    Initialize main Jiig application.
+
+    This is specifically for the "jiig" command. Use `initialize_tool()` instead
+    of this function for initializing a Jiig-based tool.
+    """
+    jiig_init_path = get_jiig_init_path()
+    params = init_file.load_files(INIT_PARAM_TYPES, jiig_init_path)
+    params['TOOL_NAME'] = os.path.basename(sys.argv[0])
+    params['TOOL_DESCRIPTION'] = 'Jiig tool management commands.'
+    params['JIIG_ROOT'] = JIIG_ROOT
+    # This import can't be global. See comment in `initialize_tool()`.
+    from .main import main
+    main(params)

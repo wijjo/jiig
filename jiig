@@ -13,7 +13,7 @@ if os.path.isdir(LIB_FOLDER):
 
 if __name__ == '__main__':
     try:
-        from jiig.initialize import initialize_tool
-        initialize_tool()
+        from jiig.initialize import initialize_jiig
+        initialize_jiig()
     except KeyboardInterrupt:
         print('')

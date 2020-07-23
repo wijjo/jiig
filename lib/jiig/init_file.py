@@ -229,3 +229,23 @@ def load_files(param_types: List[Param],
                                     verbose=True)
             container.load_file(file_path)
     return container.finalize()
+
+
+def load_nearest_file(param_types: List[Param],
+                      file_name: Text,
+                      folder: Text = None) -> ParamData:
+    """Load parameter data from working folder or parent folder."""
+    container = ParamLoader(param_types)
+    done = False
+    while not done:
+        path = os.path.join(folder, file_name)
+        if os.path.isfile(path):
+            container.load_file(path)
+            done = True
+        else:
+            parent_folder = os.path.dirname(folder)
+            if parent_folder == folder:
+                done = True
+            else:
+                folder = parent_folder
+    return container.finalize()

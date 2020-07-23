@@ -8,7 +8,10 @@ before re-invoking itself in the virtual environment.
 """
 import sys
 import os
+from io import StringIO
+
 import importlib.util
+import json
 import re
 import shlex
 import subprocess
@@ -17,8 +20,8 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from glob import glob
 from string import Template
-from typing import Text, List, Dict, Any, Optional, Tuple
-from urllib.request import urlopen
+from typing import Text, List, Dict, Any, Optional, Tuple, IO, Iterator
+from urllib.request import urlopen, Request
 from urllib.error import URLError
 
 from . import constants
@@ -191,9 +194,9 @@ def delete_file(path: Text, quiet: bool = False):
         run(['rm', '-f', path])
 
 
-def create_folder(path: Text, keep: bool = False, quiet: bool = False):
+def create_folder(path: Text, delete_existing: bool = False, quiet: bool = False):
     path = short_path(path, is_folder=True)
-    if not keep:
+    if delete_existing:
         delete_folder(path, quiet=quiet)
     if not os.path.exists(path):
         if not quiet:
@@ -241,7 +244,7 @@ def copy_folder(src_path: Text,
         check_folder_exists(src_folder_path)
     if not merge:
         delete_folder(dst_path, quiet=quiet)
-    create_folder(os.path.dirname(dst_path), keep=True, quiet=quiet)
+    create_folder(os.path.dirname(dst_path), quiet=quiet)
     if not quiet:
         display_message('Folder copy.',
                         source=folder_path(src_folder_path),
@@ -259,7 +262,7 @@ def copy_files(src_glob: Text,
     src_paths = glob(src_glob)
     if not src_paths and not allow_empty:
         abort('File copy source is empty.', src_glob)
-    create_folder(dst_path, keep=True, quiet=quiet)
+    create_folder(dst_path, quiet=quiet)
     if not quiet:
         display_message('File copy.',
                         source=short_path(src_glob),
@@ -287,7 +290,7 @@ def move_file(src_path: Text,
             check_file_not_exists(dst_path_short)
     parent_folder = os.path.dirname(dst_path)
     if not os.path.exists(parent_folder):
-        create_folder(parent_folder, keep=True, quiet=quiet)
+        create_folder(parent_folder, quiet=quiet)
     run(['mv', '-f', src_path_short, dst_path_short])
 
 
@@ -307,7 +310,7 @@ def move_folder(src_path: Text,
             check_folder_not_exists(dst_path_short)
     parent_folder = os.path.dirname(dst_path)
     if not os.path.exists(parent_folder):
-        create_folder(parent_folder, keep=True, quiet=quiet)
+        create_folder(parent_folder, quiet=quiet)
     run(['mv', '-f', src_path_short, dst_path_short])
 
 
@@ -467,12 +470,12 @@ def expand_template_folder(template_folder: Text,
                   target_folder=target_folder)
     display_heading(2, f'Expanding templates.')
     display_message(None, template_folder=template_folder, target_folder=target_folder)
-    create_folder(target_folder, keep=True)
+    create_folder(target_folder)
     for walk_source_folder, _walk_sub_folders, walk_file_names in os.walk(template_folder):
         relative_folder = walk_source_folder[len(template_folder) + 1:]
         expanded_folder = expand_template_path(relative_folder, symbols)
         walk_target_folder = os.path.join(target_folder, expanded_folder)
-        create_folder(walk_target_folder, keep=True)
+        create_folder(walk_target_folder)
         for file_name in walk_file_names:
             source_path = os.path.join(walk_source_folder, file_name)
             stripped_file_name, extension = os.path.splitext(file_name)
@@ -651,7 +654,6 @@ def import_module_path(module_name: Text, module_path: Text):
 def import_modules_from_folder(folder: Text,
                                package_name: Text = None,
                                retry: bool = False,
-                               marker: Text = None,
                                ) -> List[Text]:
     """
     Dynamically and recursively import modules from a folder.
@@ -659,7 +661,6 @@ def import_modules_from_folder(folder: Text,
     :param folder: search root folder
     :param package_name: optional container package name
     :param retry: retry modules with ModuleNotFoundError exceptions if True
-    :param marker: file that must exist in order to load modules in a visited folder
     :return: imported paths
     """
     # Stage 1 - gather the list of module paths and names to import.
@@ -669,12 +670,8 @@ def import_modules_from_folder(folder: Text,
     for walk_folder, _walk_sub_folders, walk_file_names in os.walk(folder):
         if os.path.basename(walk_folder).startswith('_'):
             continue
-        if marker and marker not in walk_file_names:
-            continue
         relative_folder = walk_folder[len(folder) + 1:]
         for file_name in walk_file_names:
-            if marker and file_name == marker:
-                continue
             base_name, extension = os.path.splitext(file_name)
             if not base_name.startswith('_') and extension == '.py':
                 module_path = os.path.join(walk_folder, file_name)
@@ -716,9 +713,135 @@ def import_modules_from_folder(folder: Text,
                 exceptions = []
     # Stage 3 - report remaining exceptions, if any.
     if exceptions:
-        display_error(f'{len(exceptions)} exceptions during folder'
+        display_error(f'{len(exceptions)} exception(s) during folder'
                       f' import: {folder}["{package_name}"]')
         for module_name, module_path, exc in exceptions:
             display_error(f'{module_path}["{module_name}"]: {exc}')
         abort('Module folder import failure.')
     return imported
+
+
+def format_call_string(name: Text, *args, **kwargs) -> Text:
+    parts = []
+    if args:
+        parts.append(str(list(args))[1:-1])
+    if kwargs:
+        parts.append(str(kwargs)[1:-1])
+    arg_body = ', '.join(parts)
+    return f'{name}({arg_body})'
+
+
+def get_folder_stack(folder: Text) -> List[Text]:
+    """
+    Get a list of folders from top-most down to the one provided.
+
+    TODO: This needs a little work for Windows compatibility!
+
+    :param folder: bottom-most folder
+    :return: top-to-bottom folder list
+    """
+    folders = []
+    while True:
+        head, tail = os.path.split(folder)
+        if not tail:
+            break
+        folders.append(folder)
+        folder = head
+    return list(reversed(folders))
+
+
+def load_json_file_stack(file_name: Text, folder: Text = None) -> Dict:
+    """
+    Load JSON data from file in folder and containing folders.
+
+    JSON data in each discovered file must be wrapped in a dictionary.
+
+    Traversal is top-down so that data from the closest file takes precedence
+    over (and overwrites) data from files that are farther up the stack.
+
+    List elements with common names in multiple files are concatenated.
+
+    Dictionary elements with common names in multiple files are merged.
+
+    Scalar value elements keep only the named value from the closest file.
+
+    :param file_name: file name to look for in each folder of the stack
+    :param folder: bottom folder of the search stack, defaults to working folder
+    :return: merged data dictionary
+    """
+    folder_stack = get_folder_stack(os.path.abspath(folder) if folder else os.getcwd())
+    data = {}
+    for stack_folder in folder_stack:
+        path = os.path.join(stack_folder, file_name)
+        if not os.path.isfile(path):
+            continue
+        try:
+            with open(path) as config_file:
+                config_data = json.load(config_file)
+                if not isinstance(config_data, dict):
+                    display_error(f'JSON file "{path}" is not a dictionary.')
+                    continue
+                for key, value in config_data.items():
+                    if key in data:
+                        if isinstance(value, list):
+                            if isinstance(data[key], list):
+                                data[key].extend(value)
+                            else:
+                                display_error(f'Ignoring non-list value'
+                                              f' for "{key}" in "{path}".')
+                        elif isinstance(value, dict):
+                            if isinstance(data[key], dict):
+                                data[key].update(value)
+                            else:
+                                display_error(f'Ignoring non-dictionary value'
+                                              f' for "{key}" in "{path}".')
+                        else:
+                            data[key] = value
+                    else:
+                        data[key] = value
+        except Exception as exc:
+            display_error(f'Failed to load JSON file "{path}".',
+                          exception=exc)
+    return data
+
+
+@contextmanager
+def open_text(*,
+              text: Text = None,
+              file: Text = None,
+              stream: IO = None,
+              url: Text = None,
+              request: Request = None,
+              timeout: int = None) -> Iterator[IO]:
+    """
+    Open a text stream, given a string, file path, stream, URL, or Request object.
+
+    :param text: HTML input string
+    :param file: HTML file path
+    :param stream: HTML input stream
+    :param url: HTML input URL for downloading HTML
+    :param request: HTML input Request object for downloading HTML
+    :param timeout: timeout in seconds when downloading URL or Request
+    :return: a yielded stream to use in a `with` block for proper closing
+
+    Generates a RuntimeError if one and only one input keyword is not specified.
+
+    Depending on the input type, various kinds of I/O exceptions are possible.
+    """
+    if len([arg for arg in (text, file, stream, url, request)
+            if arg is not None]) != 1:
+        raise RuntimeError(f'Exactly one of the following keywords is required:'
+                           f' text, file, stream, url, or request')
+    if text is not None:
+        yield StringIO(text)
+    elif file is not None:
+        with open(file, encoding='utf-8') as file_stream:
+            yield file_stream
+    elif stream is not None:
+        yield stream
+    elif url is not None:
+        with urlopen(url, timeout=timeout) as url_stream:
+            yield url_stream
+    elif request is not None:
+        with urlopen(url, timeout=timeout) as request_stream:
+            yield request_stream

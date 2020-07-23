@@ -2,7 +2,7 @@ from __future__ import annotations
 import sys
 import os
 from dataclasses import dataclass
-from typing import Optional, List, Text, Dict, Callable, Set
+from typing import Optional, List, Text, Dict, Callable, Set, Union, Sequence
 
 from .runner import TaskRunner
 from .utility import make_dest_name, make_metavar
@@ -54,7 +54,7 @@ def map_task(name: Text = None,
              parent: TaskFunction = None,
              help: Text = None,
              description: Text = None,
-             options: Dict[Text, Dict] = None,
+             options: Dict[Union[Text, Sequence[Text]], Dict] = None,
              arguments: List[Dict] = None,
              dependencies: List[TaskFunction] = None,
              not_inherited: bool = False):

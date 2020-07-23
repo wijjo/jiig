@@ -1,6 +1,5 @@
-TOOL_NAME = '${TOOL_NAME}'
-TOOL_DESCRIPTION = '(edit init.jiig to set description and more)'
 BASE_FOLDER = ''
 VENV_ROOT = 'venv'
 LIB_FOLDERS = ['jiig']
+TASK_FOLDERS = ['tasks']
 PIP_PACKAGES = []

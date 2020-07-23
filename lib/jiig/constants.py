@@ -1,5 +1,4 @@
 INIT_FILE = 'init.jiig'
-TASKS_FILE = 'tasks.jiig'
 TEMPLATE_EXTENSION = '.template'
 TEMPLATE_EXTENSION_EXE = '.template_exe'
 TEMPLATE_EXTENSION_DOT = '.template_dot'
