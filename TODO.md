@@ -1,9 +1,5 @@
 # Planned Features
 
-## Minimize tool main script
-
-Look at using `jiig` in the script "shebang" line to do the heavy lifting.
-
 ## Aliases
 
 An `alias` sub-task is inherited by all Jiig-based tools.

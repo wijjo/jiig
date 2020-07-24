@@ -10,7 +10,6 @@ from jiig import constants
     'create',
     help='create tool assets',
     description='Create various tool asset types. See sub-tasks for specifics.',
-    not_inherited=True,
 )
 def task_create(runner: TaskRunner):
     if os.getcwd() == runner.params.CORE_ROOT:
@@ -35,7 +34,6 @@ def task_create(runner: TaskRunner):
          'default': os.getcwd(),
          'help': 'output folder for generated tool (default=".")'},
     ],
-    not_inherited=True,
 )
 def task_create_tool(runner: TaskRunner):
     display_heading(1, 'Create tool skeleton')
@@ -64,7 +62,6 @@ def task_create_tool(runner: TaskRunner):
          'nargs': '+',
          'help': 'task/module name(s)'},
     ],
-    not_inherited=True,
 )
 def task_create_task(runner: TaskRunner):
     display_heading(1, 'Create task module(s)')

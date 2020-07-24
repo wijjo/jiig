@@ -1,0 +1,18 @@
+#!/usr/bin/env python3
+
+"""
+Front end script for Jiig-based tools.
+
+Use as the program in the "shebang" line of the main script.
+"""
+
+import sys
+import os
+
+
+if __name__ == '__main__':
+    jiig_root = os.path.dirname(os.path.realpath(sys.argv[0]))
+    print()
+    os.execve(sys.executable,
+              [sys.executable] + sys.argv[1:],
+              {'PYTHONPATH': os.path.join(jiig_root, 'lib')})

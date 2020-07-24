@@ -90,15 +90,6 @@ class CommandLineParser:
         self.dest_name_preamble = (constants.CLI_DEST_NAME_PREFIX +
                                    constants.CLI_DEST_NAME_SEPARATOR)
 
-    def _is_task_enabled(self, mt: MappedTask) -> bool:
-        task_folder = mt.folder
-        if not mt.not_inherited:
-            return True
-        for tool_task_folder in self.tool_task_folders:
-            if tool_task_folder.startswith(task_folder):
-                return True
-        return False
-
     def parse(self, *args, **kwargs) -> CommandLineData:
         """
         Build argparse parser and parse the command line.
@@ -115,12 +106,10 @@ class CommandLineParser:
         # Recursively build the parser tree.
         help_formatters = {make_dest_name(): ArgparseHelpFormatter(self.parser)}
         for mt in sorted(filter(lambda m: m.name, MAPPED_TASKS), key=lambda m: m.name):
-            # Skip non-inheritable tasks that are not owned by the tool.
-            if self._is_task_enabled(mt):
-                top_sub_parser = top_sub_group.add_parser(mt.name,
-                                                          help=mt.help,
-                                                          description=mt.description)
-                self._prepare_parser_recursive(mt, top_sub_parser, help_formatters)
+            top_sub_parser = top_sub_group.add_parser(mt.name,
+                                                      help=mt.help,
+                                                      description=mt.description)
+            self._prepare_parser_recursive(mt, top_sub_parser, help_formatters)
         # Parse the command line arguments.
         args = self.parser.parse_args()
         # Get the most specific task name (longest length TASK.* name).

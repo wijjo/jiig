@@ -1,25 +1,13 @@
-#!/usr/bin/env python3
+#!/usr/bin/env jiig-run
 
-"""Main Jiig program."""
+"""
+Main Jiig program.
 
-import os
-import sys
+The jiig-run "shebang" line at the top performs the magic to run the script with
+Python and a path that finds the Jiig library.
+"""
 
-JIIG_ROOT = os.path.dirname(os.path.realpath(__file__))
-JIIG_LIB_FOLDER = os.path.join(JIIG_ROOT, 'lib')
-JIIG_TASKS_FOLDER = os.path.join(JIIG_ROOT, 'tasks')
-
-if os.path.isdir(JIIG_LIB_FOLDER):
-    sys.path.insert(0, JIIG_LIB_FOLDER)
-
-from jiig.main import main
+from jiig.main import jiig_main
 
 if __name__ == '__main__':
-    try:
-        main({'TOOL_NAME': 'jiig',
-              'TOOL_DESCRIPTION': 'Jiig tool management commands.',
-              'JIIG_ROOT': JIIG_ROOT,
-              'LIB_FOLDERS': [JIIG_LIB_FOLDER],
-              'TASK_FOLDERS': [JIIG_TASKS_FOLDER]})
-    except KeyboardInterrupt:
-        print('')
+    jiig_main()

@@ -1,51 +1,22 @@
-#!/usr/bin/env python3
+#!/usr/bin/env jiig-run
 
 """
 Front end shim script for Jiig-based tools.
 
-This boilerplate script can be copied unmodified for use with other tools. It
-performs the following two steps to initialize the tool.
+The jiig-run "shebang" line at the top performs the magic to run the script with
+Python and a path that finds the Jiig library.
 
-1. Look for a .jiigrc file and, if found, add JIIG_ROOT to `sys.path`, otherwise
-   assume Jiig is available globally in the operating system.
-2. Call `jiig.initialize.initialize_tool()` to start the Jiig-based tool.
-
-Tweak the TOOL... global variables as appropriate.
+Can be copied and reused unchanged (or not) for other Jiig scripts.
 """
 
-import sys
 import os
+from jiig.main import tool_main
 
-TOOL_NAME = '${TOOL_NAME}'
-TOOL_DESCRIPTION = '(edit the "${TOOL_NAME}" script to provide a description)'
-TOOL_ROOT = os.path.dirname(__file__)
-TOOL_TASK_FOLDERS = ['tasks']
-
-
-def run_main():
-    nl = os.linesep
-    if os.path.isfile('.jiigrc'):
-        try:
-            with open('.jiigrc', encoding='utf-8') as rc_file:
-                symbols = {}
-                exec(rc_file.read(), symbols)
-                jiig_root = symbols.get('JIIG_ROOT')
-                if jiig_root:
-                    sys.path.insert(0, os.path.join(jiig_root, 'lib'))
-        except Exception as exc:
-            sys.stderr.write(f'ERROR: Failed to load ".jiigrc": {exc}.{nl}')
-            sys.exit(1)
-    try:
-        import jiig.initialize
-        jiig.initialize.initialize_tool(name=TOOL_NAME,
-                                        description=TOOL_DESCRIPTION,
-                                        root=TOOL_ROOT,
-                                        task_folders=TOOL_TASK_FOLDERS)
-    except ModuleNotFoundError:
-        sys.stderr.write(f'ERROR: Unable to import the Jiig "initialize" module.{nl}')
-        sys.stderr.write(f'To link to a Jiig source folder set JIIG_ROOT properly in .jiigrc".{nl}')
-        sys.exit(1)
-
+# Customize these if anything should not be based on this file's name and location.
+NAME = os.path.basename(__file__)
+DESCRIPTION = f'(edit the "{NAME}" script to provide a description)'
+ROOT = os.path.dirname(__file__)
+TASK_FOLDERS = ['tasks']
 
 if __name__ == '__main__':
-    run_main()
+    tool_main(name=NAME, description=DESCRIPTION, root=ROOT, task_folders=TASK_FOLDERS)

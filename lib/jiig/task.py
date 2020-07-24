@@ -35,7 +35,6 @@ class MappedTask:
     options: Dict[Text, Dict]
     arguments: List[Dict]
     execution_tasks: List[MappedTask]
-    not_inherited: bool
     # Sub-tasks added when discovered child tasks reference this as the parent.
     sub_tasks: List[MappedTask] = None
 
@@ -56,8 +55,7 @@ def map_task(name: Text = None,
              description: Text = None,
              options: Dict[Union[Text, Sequence[Text]], Dict] = None,
              arguments: List[Dict] = None,
-             dependencies: List[TaskFunction] = None,
-             not_inherited: bool = False):
+             dependencies: List[TaskFunction] = None):
     """
     Decorator for mapped task functions.
 
@@ -170,8 +168,7 @@ def map_task(name: Text = None,
                         help=help,
                         options=merged_options,
                         arguments=merged_arguments,
-                        execution_tasks=merged_execution_tasks,
-                        not_inherited=not_inherited)
+                        execution_tasks=merged_execution_tasks)
         # Complete the registration, now that there is a new MappedTask.
         MAPPED_TASKS_BY_ID[id(task_function)] = mt
         if dest_name:

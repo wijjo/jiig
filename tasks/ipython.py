@@ -7,7 +7,6 @@ from jiig.utility import run, display_message, abort
     'ipython',
     help='run ipython from virtual environment',
     description='Run an interactive IPython session from the Python virtual environment.',
-    not_inherited=True,
 )
 def task_ipython(runner: TaskRunner):
     ipython_path = runner.expand_path_template('{VENV_ROOT}/bin/ipython')

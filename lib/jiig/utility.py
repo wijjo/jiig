@@ -614,7 +614,7 @@ def build_virtual_environment(venv_folder: Text,
             return
         delete_folder(venv_folder)
     display_message('Create virtual environment', venv_short_path)
-    run(['python3', '-m', 'venv', venv_folder])
+    run([sys.executable, '-m', 'venv', venv_folder])
     pip_path = _program_path('pip')
     display_message('Upgrade pip in virtual environment.', verbose=True)
     run([pip_path, 'install', '--upgrade', 'pip'])
@@ -847,10 +847,11 @@ def open_text(*,
             yield request_stream
 
 
-def resolve_paths_abs(root: Text, folders: List[Text]) -> Iterator[Text]:
+def resolve_paths_abs(root: Text, folders: Optional[List[Text]]) -> Iterator[Text]:
     """Generate folder sequence with absolute paths."""
-    for folder in folders:
-        if os.path.isabs(folder):
-            yield folder
-        else:
-            yield os.path.join(root, folder)
+    if folders:
+        for folder in folders:
+            if os.path.isabs(folder):
+                yield folder
+            else:
+                yield os.path.join(root, folder)

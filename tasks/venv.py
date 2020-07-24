@@ -10,7 +10,6 @@ from jiig import utility
         'action': 'store_true',
         'help': 'force virtual environment rebuild'}},
     description='Build the Python virtual environment.',
-    not_inherited=True,
 )
 def task_venv(runner: TaskRunner):
     if runner.params.PRIMARY_TASK:
