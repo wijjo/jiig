@@ -13,6 +13,5 @@ import os
 if __name__ == '__main__':
     jiig_root = os.path.dirname(os.path.realpath(sys.argv[0]))
     print()
-    os.execve(sys.executable,
-              [sys.executable] + sys.argv[1:],
-              {'PYTHONPATH': os.path.join(jiig_root, 'lib')})
+    env = dict(os.environ, PYTHONPATH=os.path.join(jiig_root, 'lib'))
+    os.execve(sys.executable, [sys.executable] + sys.argv[1:], env)
