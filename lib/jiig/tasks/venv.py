@@ -9,7 +9,6 @@ from jiig import utility
         'dest': 'REBUILD_VENV',
         'action': 'store_true',
         'help': 'force virtual environment rebuild'}},
-    description='Build the Python virtual environment.',
 )
 def task_venv(runner: TaskRunner):
     if runner.params.PRIMARY_TASK:

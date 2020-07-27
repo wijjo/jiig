@@ -30,7 +30,6 @@ class MappedTask:
     parent: Optional[MappedTask]
     dest_name: Optional[Text]
     metavar: Optional[Text]
-    description: Text
     help: Text
     options: Dict[Text, Dict]
     arguments: List[Dict]
@@ -52,7 +51,6 @@ class MappedTask:
 def map_task(name: Text = None,
              parent: TaskFunction = None,
              help: Text = None,
-             description: Text = None,
              options: Dict[Union[Text, Sequence[Text]], Dict] = None,
              arguments: List[Dict] = None,
              dependencies: List[TaskFunction] = None):
@@ -164,7 +162,6 @@ def map_task(name: Text = None,
                         parent=parent_mapped_task,
                         dest_name=dest_name,
                         metavar=metavar,
-                        description=description,
                         help=help,
                         options=merged_options,
                         arguments=merged_arguments,

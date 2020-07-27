@@ -5,7 +5,6 @@ from jiig.utility import run, short_path
 @map_task(
     'hello',
     help='display hello message',
-    description='Format and display a "hello" message.',
     # See ArgumentParser.add_argument() keyword arguments.
     options={
         '-t': {'dest': 'TEXAS_STYLE', 'action': 'store_true', 'help': 'greet with a drawl'},

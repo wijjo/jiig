@@ -1,3 +1,10 @@
-LIB_FOLDERS = ['jiig']
-VENV_ROOT = 'venv'
-PIP_PACKAGES = []
+# This file is not required if the commented-out defaults are okay.
+
+# Library folders that are automatically added to the Python path by jiig-run.
+#LIB_FOLDERS = ['lib']
+
+# Virtual environment root folder.
+#VENV_ROOT = None
+
+# Package names to install into the virtual environment using its "pip" command.
+#PIP_PACKAGES = []

@@ -5,7 +5,6 @@ from jiig.task import map_task, TaskRunner
 @map_task(
     'pip',
     help='run pip from virtual environment',
-    description='Run the Pip package manager from the virtual environment.',
     arguments=[{'dest': 'ARGS', 'nargs': '*', 'help': 'Pip command line arguments'}],
 )
 def task_pip(runner: TaskRunner):

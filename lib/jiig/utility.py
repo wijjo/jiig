@@ -110,7 +110,22 @@ def display_message(text: Any, *args, **kwargs):
             print(line)
 
 
-def print_call_stack(skip=0, limit=None):
+def execute_python_file(path: Text) -> Dict:
+    symbols = {}
+    with open_text(file=path) as text_stream:
+        # noinspection PyBroadException
+        try:
+            exec(text_stream.read(), symbols)
+            return symbols
+        except Exception:
+            exc_path = short_path(os.path.realpath(path))
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            display_error(f'{exc_path}.{exc_traceback.tb_lineno}: {exc_type.__name__}: {exc_value}')
+            abort(f'Unable to execute Python script: {exc_path}')
+            sys.exit(1)
+
+
+def print_call_stack(skip: int = 0, limit: int = None):
     print('  ::Call Stack::')
     for file, line, function, source in traceback.extract_stack(limit=limit)[:-skip]:
         print('  {}.{}, {}()'.format(file, line, function))
@@ -816,11 +831,11 @@ def open_text(*,
     """
     Open a text stream, given a string, file path, stream, URL, or Request object.
 
-    :param text: HTML input string
-    :param file: HTML file path
-    :param stream: HTML input stream
-    :param url: HTML input URL for downloading HTML
-    :param request: HTML input Request object for downloading HTML
+    :param text: input string
+    :param file: file path
+    :param stream: input stream
+    :param url: input URL for downloading
+    :param request: input Request object for downloading
     :param timeout: timeout in seconds when downloading URL or Request
     :return: a yielded stream to use in a `with` block for proper closing
 

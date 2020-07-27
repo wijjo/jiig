@@ -6,11 +6,7 @@ from jiig.utility import display_heading, display_message, abort,\
 from jiig import constants
 
 
-@map_task(
-    'create',
-    help='create tool assets',
-    description='Create various tool asset types. See sub-tasks for specifics.',
-)
+@map_task('create', help='create tool assets')
 def task_create(runner: TaskRunner):
     if os.getcwd() == runner.params.CORE_ROOT:
         abort('Please run this command from an application folder.')
@@ -20,7 +16,6 @@ def task_create(runner: TaskRunner):
     'tool',
     parent=task_create,
     help='create Jiig tool skeleton',
-    description='Create or update Jiig tool files.',
     options={
         '-o': {'dest': 'OVERWRITE',
                'action': 'store_true',
@@ -51,11 +46,9 @@ def task_create_tool(runner: TaskRunner):
     'task',
     parent=task_create,
     help='create task module(s)',
-    description='Create new Jiig tool task module.',
     options={
-        '-o': {'dest': 'OVERWRITE',
-               'action': 'store_true',
-               'help': 'overwrite target file'},
+        '-o': {'dest': 'OUTPUT_FOLDER',
+               'help': 'folder for generated module(s) (default: working folder)'},
     },
     arguments=[
         {'dest': 'NEW_TASK_NAME',
@@ -65,14 +58,13 @@ def task_create_tool(runner: TaskRunner):
 )
 def task_create_task(runner: TaskRunner):
     display_heading(1, 'Create task module(s)')
-    # TODO: Need more control over which task folder to choose if multiple?
-    task_folder = runner.params.TASK_FOLDERS[0]
+    output_folder = runner.params.OUTPUT_FOLDER or os.getcwd()
     template_path = os.path.join(runner.params.JIIG_ROOT,
                                  constants.TEMPLATES_FOLDER,
                                  constants.TASK_TEMPLATE)
     for task_name in runner.args.NEW_TASK_NAME:
         module_name = f'{task_name}.py'
-        module_path = os.path.join(task_folder, module_name)
+        module_path = os.path.join(output_folder, module_name)
         if os.path.exists(module_path):
             if not runner.args.OVERWRITE:
                 display_message(f'Not overwriting existing task module.',

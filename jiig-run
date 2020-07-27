@@ -4,14 +4,127 @@
 Front end script for Jiig-based tools.
 
 Use as the program in the "shebang" line of the main script.
+
+## Responsibilities
+- Load tool parameters.
+- Check whether or not a virtual environment is needed.
+- Build any needed virtual environment.
+- Restart inside the virtual environment, as needed.
+- Load the original tool script after any restart.
+- Parse the command line.
+- Execute task(s).
 """
 
 import sys
 import os
+from typing import Text, List
+
+JIIG_ROOT = os.path.dirname(os.path.realpath(sys.argv[0]))
+JIIG_LIB = os.path.join(JIIG_ROOT, 'lib')
+# Add the Jiig library path if missing.
+if JIIG_LIB not in sys.path:
+    sys.path.insert(0, JIIG_LIB)
+# The automatically-added Jiig root path (added due to this script) is not used, so lose it.
+if JIIG_ROOT in sys.path:
+    sys.path.remove(JIIG_ROOT)
+
+from jiig import constants, init_file, parser, runner, task, utility
+# Always pull in the help task.
+from jiig.tasks import help     # noqa
+
+INIT_PARAM_TYPES = [
+    init_file.ParamFolderList('LIB_FOLDERS', default_value=['lib']),
+    init_file.ParamFolder('VENV_ROOT'),
+    init_file.ParamList('PIP_PACKAGES', unique=True, default_value=[]),
+]
+
+
+def start_tool(script: Text, cli_args: List[Text], params: init_file.ParamData):
+
+    # Add tool library folders to the Python module loading path.
+    if params.LIB_FOLDERS:
+        for tool_lib_folder in reversed(params.LIB_FOLDERS):
+            if tool_lib_folder not in sys.path:
+                sys.path.insert(0, tool_lib_folder)
+
+    # Peek at global options to enable debug/verbose modes .
+    global_args = parser.pre_parse_global_args()
+    if global_args.VERBOSE:
+        # Dry-run implies verbose.
+        constants.VERBOSE = global_args.VERBOSE or global_args.DRY_RUN
+    if global_args.DEBUG:
+        constants.DEBUG = global_args.DEBUG
+    if global_args.DRY_RUN:
+        constants.DRY_RUN = global_args.DRY_RUN
+
+    # Load the script and initialize parameters.
+    tool_params = utility.execute_python_file(script)
+    params_obj = init_file.ParamData(params)
+    params_obj['JIIG_ROOT'] = JIIG_ROOT
+    params_obj['TOOL_NAME'] = tool_params.get('TOOL_NAME', os.path.basename(script))
+    params_obj['TOOL_DESCRIPTION'] = tool_params.get('DESCRIPTION', '(no description provided)')
+
+    # Parse the command line.
+    cli_parser = parser.CommandLineParser(cli_args=cli_args, prog=params_obj.TOOL_NAME)
+    cli_results = cli_parser.parse(description=params_obj.TOOL_DESCRIPTION)
+
+    # Local function for executing a mapped task.
+    def _execute_task(mt: task.MappedTask):
+        task_runner = runner.TaskRunner.create_runner(
+            runner.RunnerData(cli_results.args,
+                              cli_results.help_formatters,
+                              PRIMARY_TASK=mt == cli_results.mapped_task,
+                              **params_obj))
+        mt.task_function(task_runner)
+
+    try:
+        # Execute task dependencies first.
+        for dependency_task in cli_results.mapped_task.execution_tasks:
+            _execute_task(dependency_task)
+        # Then execute the primary task.
+        _execute_task(cli_results.mapped_task)
+    except RuntimeError as exc:
+        print(exc)
+        print(cli_results.args)
+    except KeyboardInterrupt:
+        print('')
+
+
+def main():
+    if len(sys.argv) < 2:
+        sys.stderr.write(f'FATAL: jiig-run should not be run directly.{os.linesep}')
+        sys.exit(1)
+
+    # Load tool parameters (empty for Jiig itself).
+    tool_root = os.path.dirname(os.path.realpath(sys.argv[1]))
+    if tool_root == JIIG_ROOT:
+        params = init_file.ParamData()
+    else:
+        init_path = os.path.join(tool_root, constants.INIT_FILE)
+        params = init_file.load_files(INIT_PARAM_TYPES, init_path)
+
+    # Check what interpreter is needed, and see if it's available and running.
+    interpreter = sys.executable
+    run_direct = True
+    if params.VENV_ROOT:
+        venv_interpreter = os.path.join(params.VENV_ROOT, 'bin', 'python')
+        if sys.executable != venv_interpreter:
+            utility.build_virtual_environment(params.VENV_ROOT,
+                                              packages=params.PIP_PACKAGES,
+                                              rebuild=False,
+                                              quiet=True)
+            interpreter = venv_interpreter
+            run_direct = False
+
+    # Invoke directly or after restarting, depending on the current interpreter.
+    if run_direct:
+        # Remove previously-added "--" as needed and start the tool.
+        arg_idx = 3 if len(sys.argv) > 2 and sys.argv[2] == '--' else 2
+        start_tool(sys.argv[1], sys.argv[arg_idx:], params)
+    else:
+        # Re-run with the required interpreter.
+        os.execl(interpreter, interpreter, sys.argv[0], sys.argv[1], '--', *sys.argv[2:])
 
 
 if __name__ == '__main__':
-    jiig_root = os.path.dirname(os.path.realpath(sys.argv[0]))
-    print()
-    env = dict(os.environ, PYTHONPATH=os.path.join(jiig_root, 'lib'))
-    os.execve(sys.executable, [sys.executable] + sys.argv[1:], env)
+    main()

@@ -10,8 +10,8 @@ class NoDefault:
 
 
 class ParamPayload:
-    def __init__(self):
-        self.value: Optional[Any] = None
+    def __init__(self, default_value: Any = None):
+        self.value: Optional[Any] = default_value
 
 
 class Param:
@@ -169,9 +169,10 @@ class ParamLoader:
     def __init__(self, param_types: List[Param]):
         self._params: Dict[Text, Param] = {}
         self._payloads: Dict[Text, ParamPayload] = {}
-        for param in param_types:
-            self._params[param.name] = param
-            self._payloads[param.name] = ParamPayload()
+        for param_type in param_types:
+            self._params[param_type.name] = param_type
+            self._payloads[param_type.name] = ParamPayload(
+                default_value=param_type.default_value)
 
     def update(self, raw_dict: Dict):
         """Merge parameter data."""
@@ -225,7 +226,7 @@ def load_files(param_types: List[Param],
         real_path = os.path.realpath(file_path)
         if real_path not in visited:
             visited.add(real_path)
-            utility.display_message(f'Load Jiig configuration file "{file_path}".',
+            utility.display_message(f'Load configuration file "{file_path}".',
                                     verbose=True)
             container.load_file(file_path)
     return container.finalize()

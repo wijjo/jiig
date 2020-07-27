@@ -4,7 +4,6 @@ from jiig.task import map_task, TaskRunner
 @map_task(
     'help',
     help='display help screen',
-    description='Display help for one task or all.',
     arguments=[{'dest': 'HELP_NAMES',
                 'nargs': '*',
                 'help': 'command task name sequence or empty for top level help'}])

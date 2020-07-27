@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 from typing import Dict, Text, Optional, Any, Callable
 
@@ -54,6 +55,10 @@ class TaskRunner:
             path = path.replace('/', os.path.sep)
         return self.expand_string(path, **more_params)
 
+    @classmethod
+    def create_runner(cls, data: RunnerData) -> TaskRunner:
+        return RUNNER_FACTORY(data) if RUNNER_FACTORY else cls(data)
+
 
 # Runner factory registered by @runner_factory decorator. Last registered one wins.
 RunnerFactoryFunction = Callable[[RunnerData], TaskRunner]
@@ -61,6 +66,7 @@ RUNNER_FACTORY: Optional[RunnerFactoryFunction] = None
 
 
 def runner_factory() -> Callable[[RunnerFactoryFunction], RunnerFactoryFunction]:
+    """Decorator for custom runner factories."""
     def inner(function: RunnerFactoryFunction) -> RunnerFactoryFunction:
         global RUNNER_FACTORY
         RUNNER_FACTORY = function

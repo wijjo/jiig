@@ -1,22 +1,19 @@
 #!/usr/bin/env jiig-run
 
 """
-Front end shim script for Jiig-based tools.
-
-The jiig-run "shebang" line at the top performs the magic to run the script with
-Python and a path that finds the Jiig library.
-
-Can be copied and reused unchanged (or not) for other Jiig scripts.
+${TOOL_NAME} (jiig tool script).
 """
 
-import os
+# The top jiig-run "shebang" line re-runs with Python having a library
+# load path that allows all imports below to succeed.
+
 from jiig.main import tool_main
 
-# Customize these if anything should not be based on this file's name and location.
-NAME = os.path.basename(__file__)
-DESCRIPTION = f'(edit the "{NAME}" script to provide a description)'
-ROOT = os.path.dirname(__file__)
-TASK_FOLDERS = ['tasks']
+# Sub-command task imports for registration.
+# Replace this import and the hello.py task module with your own.
+from ${TOOL_NAME}.tasks import hello
 
 if __name__ == '__main__':
-    tool_main(name=NAME, description=DESCRIPTION, root=ROOT, task_folders=TASK_FOLDERS)
+    # tool_main() re-runs the script in the virtual environment.
+    # See the function documentation for other keyword arguments.
+    tool_main(description='(edit "${TOOL_NAME}" script to provide a description)')

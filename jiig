@@ -5,9 +5,11 @@ Main Jiig program.
 
 The jiig-run "shebang" line at the top performs the magic to run the script with
 Python and a path that finds the Jiig library.
+
+All the body of this script has to do is load task modules so that they get
+registered for when the CLI is built.
 """
 
-from jiig.main import jiig_main
+DESCRIPTION = 'Jiig tool manager.'
 
-if __name__ == '__main__':
-    jiig_main()
+from jiig.tasks import create, ipython, pip, python, venv     # noqa

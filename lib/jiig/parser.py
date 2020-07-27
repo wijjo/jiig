@@ -1,4 +1,5 @@
 import argparse
+import sys
 from dataclasses import dataclass
 from typing import Optional, List, Text, Dict
 
@@ -83,8 +84,9 @@ class CommandLineData:
 class CommandLineParser:
     """Performs command line argument parsing for a Jiig application."""
 
-    def __init__(self, tool_task_folders: List[Text]):
-        self.tool_task_folders = tool_task_folders
+    def __init__(self, cli_args: List[Text] = None, prog: Text = None):
+        self.cli_args = cli_args if cli_args is not None else sys.argv
+        self.prog = prog
         self.parser: Optional[argparse.ArgumentParser] = None
         self.mapped_tasks: List[MappedTask] = []
         self.dest_name_preamble = (constants.CLI_DEST_NAME_PREFIX +
@@ -96,7 +98,7 @@ class CommandLineParser:
 
         All ArgumentParser positional and keyword arguments may be provided.
         """
-        self.parser = ArgumentParser(*args, **kwargs)
+        self.parser = ArgumentParser(*args, **kwargs, prog=self.prog)
         # Add global debug/verbose/dry-run option args.
         _add_global_args(self.parser)
         # Container group for top level commands.
@@ -106,12 +108,10 @@ class CommandLineParser:
         # Recursively build the parser tree.
         help_formatters = {make_dest_name(): ArgparseHelpFormatter(self.parser)}
         for mt in sorted(filter(lambda m: m.name, MAPPED_TASKS), key=lambda m: m.name):
-            top_sub_parser = top_sub_group.add_parser(mt.name,
-                                                      help=mt.help,
-                                                      description=mt.description)
+            top_sub_parser = top_sub_group.add_parser(mt.name, help=mt.help)
             self._prepare_parser_recursive(mt, top_sub_parser, help_formatters)
         # Parse the command line arguments.
-        args = self.parser.parse_args()
+        args = self.parser.parse_args(self.cli_args)
         # Get the most specific task name (longest length TASK.* name).
         task_dest = ''
         for dest in dir(args):
@@ -155,7 +155,5 @@ Known dests: {list(MAPPED_TASKS_BY_DEST_NAME.keys())}
                                               metavar=mt.metavar,
                                               required=True)
             for sub_task in mt.sub_tasks:
-                sub_parser = sub_group.add_parser(sub_task.name,
-                                                  help=sub_task.help,
-                                                  description=sub_task.description)
+                sub_parser = sub_group.add_parser(sub_task.name, help=sub_task.help)
                 self._prepare_parser_recursive(sub_task, sub_parser, help_formatters)
