@@ -4,16 +4,13 @@
 ${TOOL_NAME} (jiig tool script).
 """
 
-# The top jiig-run "shebang" line re-runs with Python having a library
-# load path that allows all imports below to succeed.
+DESCRIPTION = '(no description)'
 
-from jiig.main import tool_main
+# The top jiig-run "shebang" runs this in a virtual environment with Pip
+# dependencies installed (based on PIP_PACKAGES), if VENV_ROOT is specified. It
+# also configures library load paths for access to tool and Jiig libraries,
+# taking into account the LIB_FOLDERS setting. The mentioned settings may be
+# managed in the jiig.init file.
 
-# Sub-command task imports for registration.
-# Replace this import and the hello.py task module with your own.
-from ${TOOL_NAME}.tasks import hello
-
-if __name__ == '__main__':
-    # tool_main() re-runs the script in the virtual environment.
-    # See the function documentation for other keyword arguments.
-    tool_main(description='(edit "${TOOL_NAME}" script to provide a description)')
+# Import task modules here
+import ${TOOL_NAME}.tasks.hello
