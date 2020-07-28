@@ -75,7 +75,7 @@ def short_path(path, is_folder=False):
     return path
 
 
-def display_message(text: Any, *args, **kwargs):
+def log_message(text: Any, *args, **kwargs):
     """
     Display message line(s) and indented lines for relevant keyword data.
 
@@ -110,18 +110,52 @@ def display_message(text: Any, *args, **kwargs):
             print(line)
 
 
-def execute_python_file(path: Text) -> Dict:
+def abort(text: Any, *args, **kwargs):
+    """Display, and in the future log, a fatal error message (to stderr) and quit."""
+    skip = kwargs.pop('skip', 0)
+    kwargs['tag'] = 'FATAL'
+    log_message(text, *args, **kwargs)
+    if constants.DEBUG:
+        print_call_stack(skip=skip + 2)
+    sys.exit(255)
+
+
+def log_warning(text: Any, *args, **kwargs):
+    """Display, and in the future log, a warning message (to stderr)."""
+    kwargs['tag'] = 'WARNING'
+    log_message(text, *args, **kwargs)
+
+
+def log_error(text: Any, *args, **kwargs):
+    """Display, and in the future log, an error message (to stderr)."""
+    kwargs['tag'] = 'ERROR'
+    log_message(text, *args, **kwargs)
+
+
+def log_heading(level: int, heading: Text):
+    """Display, and in the future log, a heading message to delineate blocks."""
+    decoration = '=====' if level == 1 else '---'
+    print(f'{decoration} {heading} {decoration}')
+
+
+def execute_source(*, text: Text = None, file: Text = None, stream: IO = None) -> Dict:
+    """Execute python source code text, file, or stream"""
     symbols = {}
-    with open_text(file=path) as text_stream:
+    with open_text(text=text, file=file, stream=stream) as text_stream:
         # noinspection PyBroadException
         try:
             exec(text_stream.read(), symbols)
             return symbols
         except Exception:
-            exc_path = short_path(os.path.realpath(path))
+            if text:
+                source = '(text)'
+            elif file:
+                source = short_path(file)
+            elif stream:
+                source = '(stream)'
             exc_type, exc_value, exc_traceback = sys.exc_info()
-            display_error(f'{exc_path}.{exc_traceback.tb_lineno}: {exc_type.__name__}: {exc_value}')
-            abort(f'Unable to execute Python script: {exc_path}')
+            log_error(f'{source}.{exc_traceback.tb_lineno}: {exc_type.__name__}: {exc_value}')
+            abort(f'Unable to execute Python script: {source}')
             sys.exit(1)
 
 
@@ -129,30 +163,6 @@ def print_call_stack(skip: int = 0, limit: int = None):
     print('  ::Call Stack::')
     for file, line, function, source in traceback.extract_stack(limit=limit)[:-skip]:
         print('  {}.{}, {}()'.format(file, line, function))
-
-
-def abort(text: Any, *args, **kwargs):
-    skip = kwargs.pop('skip', 0)
-    kwargs['tag'] = 'FATAL'
-    display_message(text, *args, **kwargs)
-    if constants.DEBUG:
-        print_call_stack(skip=skip + 2)
-    sys.exit(255)
-
-
-def display_warning(text: Any, *args, **kwargs):
-    kwargs['tag'] = 'WARNING'
-    display_message(text, *args, **kwargs)
-
-
-def display_error(text: Any, *args, **kwargs):
-    kwargs['tag'] = 'ERROR'
-    display_message(text, *args, **kwargs)
-
-
-def display_heading(level: int, heading: Text):
-    decoration = '=====' if level == 1 else '---'
-    print(f'{decoration} {heading} {decoration}')
 
 
 @contextmanager
@@ -165,11 +175,11 @@ def chdir(folder: Optional[Text]):
     """
     restore_folder = os.getcwd()
     if folder and os.path.realpath(folder) != restore_folder:
-        display_message('Change working directory.', folder)
+        log_message('Change working directory.', folder)
         os.chdir(folder)
     yield restore_folder
     if folder and os.path.realpath(folder) != restore_folder:
-        display_message('Restore working directory.', restore_folder)
+        log_message('Restore working directory.', restore_folder)
         os.chdir(restore_folder)
 
 
@@ -197,7 +207,7 @@ def delete_folder(path: Text, quiet: bool = False):
     path = short_path(path, is_folder=True)
     if os.path.exists(path):
         if not quiet:
-            display_message('Delete folder and contents.', path)
+            log_message('Delete folder and contents.', path)
         run(['rm', '-rf', path])
 
 
@@ -205,7 +215,7 @@ def delete_file(path: Text, quiet: bool = False):
     path = short_path(path)
     if os.path.exists(path):
         if not quiet:
-            display_message('Delete file.', path)
+            log_message('Delete file.', path)
         run(['rm', '-f', path])
 
 
@@ -215,7 +225,7 @@ def create_folder(path: Text, delete_existing: bool = False, quiet: bool = False
         delete_folder(path, quiet=quiet)
     if not os.path.exists(path):
         if not quiet:
-            display_message('Create folder.', folder_path(path))
+            log_message('Create folder.', folder_path(path))
         run(['mkdir', '-p', path])
     elif not os.path.isdir(path):
         abort('Path is not a folder', path)
@@ -261,9 +271,9 @@ def copy_folder(src_path: Text,
         delete_folder(dst_path, quiet=quiet)
     create_folder(os.path.dirname(dst_path), quiet=quiet)
     if not quiet:
-        display_message('Folder copy.',
-                        source=folder_path(src_folder_path),
-                        target=folder_path(dst_folder_path))
+        log_message('Folder copy.',
+                    source=folder_path(src_folder_path),
+                    target=folder_path(dst_folder_path))
     if os.path.isdir(dst_folder_path):
         run(['rsync', '-aq', src_folder_path, dst_folder_path])
     else:
@@ -279,9 +289,9 @@ def copy_files(src_glob: Text,
         abort('File copy source is empty.', src_glob)
     create_folder(dst_path, quiet=quiet)
     if not quiet:
-        display_message('File copy.',
-                        source=short_path(src_glob),
-                        target=short_path(dst_path, is_folder=True))
+        log_message('File copy.',
+                    source=short_path(src_glob),
+                    target=short_path(dst_path, is_folder=True))
     for src_path in src_paths:
         run(['cp', short_path(src_path), short_path(dst_path, is_folder=True)])
 
@@ -341,10 +351,10 @@ def sync_folders(src_folder: Text,
     if not constants.DRY_RUN:
         check_folder_exists(src_folder)
     if not quiet:
-        display_message('Folder sync.',
-                        source=src_folder,
-                        target=dst_folder,
-                        exclude=exclude or [])
+        log_message('Folder sync.',
+                    source=src_folder,
+                    target=dst_folder,
+                    exclude=exclude or [])
     cmd_args = ['rsync']
     if constants.DRY_RUN:
         cmd_args.append('--dry-run')
@@ -383,12 +393,12 @@ def expand_template(source_path: Text,
             abort('Template expansion target exists, but is not a file',
                   short_target_path)
         if not overwrite:
-            display_message('Template expansion target exists - skipping',
-                            short_target_path)
+            log_message('Template expansion target exists - skipping',
+                        short_target_path)
             return
-    display_message('Generate from template.',
-                    source=short_source_path,
-                    target=short_target_path)
+    log_message('Generate from template.',
+                source=short_source_path,
+                target=short_target_path)
     if not constants.DRY_RUN:
         try:
             with open(source_path, encoding='utf-8') as src_file:
@@ -402,9 +412,9 @@ def expand_template(source_path: Text,
                 try:
                     os.remove(target_path)
                 except (IOError, OSError) as exc_remove:
-                    display_warning('Unable to remove failed target file.',
-                                    short_target_path,
-                                    exception=exc_remove)
+                    log_warning('Unable to remove failed target file.',
+                                short_target_path,
+                                exception=exc_remove)
             abort('Missing template symbol',
                   source=short_source_path,
                   symbol=exc_key_error)
@@ -447,7 +457,7 @@ def expand_template_path(source_path: Text, symbols: Dict) -> Text:
         if name in symbols:
             name_parts.append(symbols[name])
         else:
-            display_error(f'Symbol "{name}" not found for path template "{source_path}".')
+            log_error(f'Symbol "{name}" not found for path template "{source_path}".')
             name_parts.append(source_path[start_pos:end_pos])
         pos = end_pos
     if pos < len(source_path):
@@ -483,8 +493,8 @@ def expand_template_folder(template_folder: Text,
         if not os.path.isdir(target_folder):
             abort('Template target folder exists, but is not a folder',
                   target_folder=target_folder)
-    display_heading(2, f'Expanding templates.')
-    display_message(None, template_folder=template_folder, target_folder=target_folder)
+    log_heading(2, f'Expanding templates.')
+    log_message(None, template_folder=template_folder, target_folder=target_folder)
     create_folder(target_folder)
     for walk_source_folder, _walk_sub_folders, walk_file_names in os.walk(template_folder):
         relative_folder = walk_source_folder[len(template_folder) + 1:]
@@ -549,7 +559,7 @@ def run(cmd_args: List[Text],
         message_data['exec'] = 'yes'
     if quiet:
         message_data['verbose'] = True
-    display_message('Run command.', cmd_string, **message_data)
+    log_message('Run command.', cmd_string, **message_data)
     # A dry run can stop here, before taking real action.
     if constants.DRY_RUN and not run_always:
         return None
@@ -625,16 +635,29 @@ def build_virtual_environment(venv_folder: Text,
     if os.path.exists(_program_path('python')):
         if not rebuild:
             if not quiet:
-                display_message('Virtual environment already exists.', venv_short_path)
+                log_message('Virtual environment already exists.', venv_short_path)
             return
         delete_folder(venv_folder)
-    display_message('Create virtual environment', venv_short_path)
+    log_message('Create virtual environment', venv_short_path)
     run([sys.executable, '-m', 'venv', venv_folder])
     pip_path = _program_path('pip')
-    display_message('Upgrade pip in virtual environment.', verbose=True)
+    log_message('Upgrade pip in virtual environment.', verbose=True)
     run([pip_path, 'install', '--upgrade', 'pip'])
     if packages:
-        display_message('Install pip packages in virtual environment.', verbose=True)
+        log_message('Install pip packages in virtual environment.', verbose=True)
+        run([pip_path, 'install'] + packages)
+
+
+def update_virtual_environment(venv_folder: Text, packages: List = None):
+    pip_path = os.path.join(venv_folder, 'bin', 'pip')
+    venv_short_path = short_path(venv_folder, is_folder=True)
+    if not os.path.isdir(venv_folder) or not os.path.isfile(pip_path):
+        abort('Virtual environment is missing or incomplete.', venv_short_path)
+    log_message('Update virtual environment', venv_short_path)
+    log_message('Upgrade pip in virtual environment.', verbose=True)
+    run([pip_path, 'install', '--upgrade', 'pip'])
+    if packages:
+        log_message('Install pip packages in virtual environment.', verbose=True)
         run([pip_path, 'install'] + packages)
 
 
@@ -658,7 +681,7 @@ def make_metavar(*names: Text) -> Text:
 
 def import_module_path(module_name: Text, module_path: Text):
     """Dynamically import a module by name and path."""
-    display_message(f'import_module_path({module_name}, {module_path})', debug=True)
+    log_message(f'import_module_path({module_name}, {module_path})', debug=True)
     module_spec = importlib.util.spec_from_file_location(module_name, module_path)
     module = importlib.util.module_from_spec(module_spec)
     module_spec.loader.exec_module(module)
@@ -679,7 +702,7 @@ def import_modules_from_folder(folder: Text,
     :return: imported paths
     """
     # Stage 1 - gather the list of module paths and names to import.
-    display_message(f'import_modules_from_folder({package_name}, {folder})', debug=True)
+    log_message(f'import_modules_from_folder({package_name}, {folder})', debug=True)
     to_import: List[Tuple[Text, Text]] = []
     imported: List[Text] = []
     for walk_folder, _walk_sub_folders, walk_file_names in os.walk(folder):
@@ -728,10 +751,10 @@ def import_modules_from_folder(folder: Text,
                 exceptions = []
     # Stage 3 - report remaining exceptions, if any.
     if exceptions:
-        display_error(f'{len(exceptions)} exception(s) during folder'
-                      f' import: {folder}["{package_name}"]')
+        log_error(f'{len(exceptions)} exception(s) during folder import:'
+                  f' {folder}["{package_name}"]')
         for module_name, module_path, exc in exceptions:
-            display_error(f'{module_path}["{module_name}"]: {exc}')
+            log_error(f'{module_path}["{module_name}"]: {exc}')
         abort('Module folder import failure.')
     return imported
 
@@ -794,7 +817,7 @@ def load_json_file_stack(file_name: Text, folder: Text = None) -> Dict:
             with open(path) as config_file:
                 config_data = json.load(config_file)
                 if not isinstance(config_data, dict):
-                    display_error(f'JSON file "{path}" is not a dictionary.')
+                    log_error(f'JSON file "{path}" is not a dictionary.')
                     continue
                 for key, value in config_data.items():
                     if key in data:
@@ -802,21 +825,21 @@ def load_json_file_stack(file_name: Text, folder: Text = None) -> Dict:
                             if isinstance(data[key], list):
                                 data[key].extend(value)
                             else:
-                                display_error(f'Ignoring non-list value'
-                                              f' for "{key}" in "{path}".')
+                                log_error(f'Ignoring non-list value'
+                                          f' for "{key}" in "{path}".')
                         elif isinstance(value, dict):
                             if isinstance(data[key], dict):
                                 data[key].update(value)
                             else:
-                                display_error(f'Ignoring non-dictionary value'
-                                              f' for "{key}" in "{path}".')
+                                log_error(f'Ignoring non-dictionary value'
+                                          f' for "{key}" in "{path}".')
                         else:
                             data[key] = value
                     else:
                         data[key] = value
         except Exception as exc:
-            display_error(f'Failed to load JSON file "{path}".',
-                          exception=exc)
+            log_error(f'Failed to load JSON file "{path}".',
+                      exception=exc)
     return data
 
 

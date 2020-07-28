@@ -1,6 +1,12 @@
+"""
+Task runner.
+
+Object passed to task functions for task execution.
+"""
+
 from __future__ import annotations
 import os
-from typing import Dict, Text, Optional, Any, Callable
+from typing import Dict, Text, Any
 
 from . import utility
 
@@ -41,7 +47,7 @@ class TaskRunner:
         dest_name = utility.make_dest_name(*task_names)
         help_formatter = self.help_formatters.get(dest_name, None)
         if not help_formatter:
-            utility.display_error(f'No help available for: {" ".join(task_names)}')
+            utility.log_error(f'No help available for: {" ".join(task_names)}')
             return None
         return help_formatter.format_help()
 
@@ -54,21 +60,3 @@ class TaskRunner:
         if os.path.sep != '/':
             path = path.replace('/', os.path.sep)
         return self.expand_string(path, **more_params)
-
-    @classmethod
-    def create_runner(cls, data: RunnerData) -> TaskRunner:
-        return RUNNER_FACTORY(data) if RUNNER_FACTORY else cls(data)
-
-
-# Runner factory registered by @runner_factory decorator. Last registered one wins.
-RunnerFactoryFunction = Callable[[RunnerData], TaskRunner]
-RUNNER_FACTORY: Optional[RunnerFactoryFunction] = None
-
-
-def runner_factory() -> Callable[[RunnerFactoryFunction], RunnerFactoryFunction]:
-    """Decorator for custom runner factories."""
-    def inner(function: RunnerFactoryFunction) -> RunnerFactoryFunction:
-        global RUNNER_FACTORY
-        RUNNER_FACTORY = function
-        return function
-    return inner

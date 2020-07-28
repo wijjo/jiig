@@ -4,7 +4,7 @@
 ${TOOL_NAME} (jiig tool script).
 """
 
-DESCRIPTION = '(no description)'
+DESCRIPTION = '${TOOL_NAME} description'
 
 # The top jiig-run "shebang" runs this in a virtual environment with Pip
 # dependencies installed (based on PIP_PACKAGES), if VENV_ROOT is specified. It

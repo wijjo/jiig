@@ -4,9 +4,9 @@ from dataclasses import dataclass
 from typing import Optional, List, Text, Dict
 
 from . import constants
-from .task import MappedTask, MAPPED_TASKS, MAPPED_TASKS_BY_DEST_NAME
-from .utility import append_dest_name, make_dest_name, display_message, abort, format_call_string
-from .runner import HelpFormatter
+from .registry import MappedTask, MAPPED_TASKS, MAPPED_TASKS_BY_DEST_NAME
+from .task_runner import HelpFormatter
+from .utility import append_dest_name, make_dest_name, log_message, abort, format_call_string
 
 # Expose Namespace, since it's pretty generic, so that other modules don't need
 # to know about argparse.
@@ -28,7 +28,7 @@ class ArgumentParser(argparse.ArgumentParser):
     @staticmethod
     def _dump(method_name, args, kwargs):
         if constants.DEBUG:
-            display_message(f'argparse: {format_call_string(method_name, *args, **kwargs)})')
+            log_message(f'argparse: {format_call_string(method_name, *args, **kwargs)})')
 
     @staticmethod
     def _abort(method_name, exc, args, kwargs):

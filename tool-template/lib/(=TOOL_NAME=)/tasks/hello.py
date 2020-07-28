@@ -1,8 +1,7 @@
-from jiig.task import map_task, TaskRunner
-from jiig.utility import run, short_path
+from jiig import task, TaskRunner, utility
 
 
-@map_task(
+@task(
     'hello',
     help='display hello message',
     # See ArgumentParser.add_argument() keyword arguments.
@@ -17,10 +16,10 @@ def task_hello(runner: TaskRunner):
     greeting = 'Howdy' if runner.args.TEXAS_STYLE else 'Hello'
     if runner.args.NAME:
         greeting = f'{greeting} {runner.args.NAME}'
-    run(['date'], quiet=True)
+    utility.run(['date'], quiet=True)
     print(f'''{greeting}:
 
-Sample task module: "{short_path(__file__)}"
+Sample task module: "{__file__}"
 
 The code in the above module demonstrates how to define a mapped task, with
 options and arguments. Feel free to delete when you no longer need it.''')

@@ -28,7 +28,7 @@ if JIIG_LIB not in sys.path:
 if JIIG_ROOT in sys.path:
     sys.path.remove(JIIG_ROOT)
 
-from jiig import constants, init_file, parser, runner, task, utility
+from jiig import constants, init_file, parser, registry, task_runner, utility
 # Always pull in the help task.
 from jiig.tasks import help     # noqa
 
@@ -58,7 +58,7 @@ def start_tool(script: Text, cli_args: List[Text], params: init_file.ParamData):
         constants.DRY_RUN = global_args.DRY_RUN
 
     # Load the script and initialize parameters.
-    tool_params = utility.execute_python_file(script)
+    tool_params = utility.execute_source(file=script)
     params_obj = init_file.ParamData(params)
     params_obj['JIIG_ROOT'] = JIIG_ROOT
     params_obj['TOOL_NAME'] = tool_params.get('TOOL_NAME', os.path.basename(script))
@@ -69,13 +69,13 @@ def start_tool(script: Text, cli_args: List[Text], params: init_file.ParamData):
     cli_results = cli_parser.parse(description=params_obj.TOOL_DESCRIPTION)
 
     # Local function for executing a mapped task.
-    def _execute_task(mt: task.MappedTask):
-        task_runner = runner.TaskRunner.create_runner(
-            runner.RunnerData(cli_results.args,
-                              cli_results.help_formatters,
-                              PRIMARY_TASK=mt == cli_results.mapped_task,
-                              **params_obj))
-        mt.task_function(task_runner)
+    def _execute_task(mt: registry.MappedTask):
+        runner = registry.create_runner(
+            task_runner.RunnerData(cli_results.args,
+                                   cli_results.help_formatters,
+                                   PRIMARY_TASK=mt == cli_results.mapped_task,
+                                   **params_obj))
+        mt.task_function(runner)
 
     try:
         # Execute task dependencies first.

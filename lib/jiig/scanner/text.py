@@ -29,7 +29,7 @@ also call next_line() to skip any other handlers for the current line.
 """
 
 import re
-from typing import List, Union, Callable, Text, IO, Dict, Any, Iterator
+from typing import List, Union, Callable, Text, IO, Dict, Any, Iterator, cast
 from urllib.request import Request
 
 from jiig.utility import open_text
@@ -79,7 +79,7 @@ class ScannerBase:
                 self.scan_text(text_stream)
             except StopIteration:
                 pass
-        # Make it chainable for one-liners.
+        # Make it chain-able for one-liners.
         return self
 
     def scan_text(self, text_stream):
@@ -145,7 +145,7 @@ class TScanner(ScannerBase):
         for line in text_stream.readlines():
             try:
                 for line_scanner in self.iterate_scanners():
-                    match = line_scanner.pattern.match(line)
+                    match = cast(TextLineScanner, line_scanner).pattern.match(line)
                     if match:
                         line_scanner.function(self, match)
             except NextLine:

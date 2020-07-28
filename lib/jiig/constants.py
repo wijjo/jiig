@@ -1,3 +1,7 @@
+"""
+Jiig constants.
+"""
+
 INIT_FILE = 'init.jiig'
 TEMPLATE_EXTENSION = '.template'
 TEMPLATE_EXTENSION_EXE = '.template_exe'

@@ -226,8 +226,8 @@ def load_files(param_types: List[Param],
         real_path = os.path.realpath(file_path)
         if real_path not in visited:
             visited.add(real_path)
-            utility.display_message(f'Load configuration file "{file_path}".',
-                                    verbose=True)
+            utility.log_message(f'Load configuration file "{file_path}".',
+                                verbose=True)
             container.load_file(file_path)
     return container.finalize()
 

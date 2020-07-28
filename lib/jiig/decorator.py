@@ -1,59 +1,27 @@
-from __future__ import annotations
-import sys
-import os
-from dataclasses import dataclass
-from typing import Optional, List, Text, Dict, Callable, Set, Union, Sequence
+"""
+Jiig decorators.
+"""
 
-from .runner import TaskRunner
-from .utility import make_dest_name, make_metavar
+from typing import Callable, Text, Dict, Union, Sequence, List, Set
 
-
-TaskFunction = Callable[[TaskRunner], None]
-
-MAPPED_TASKS: List[MappedTask] = []
-MAPPED_TASKS_BY_ID: Dict[int, MappedTask] = {}
-# To help map task name in command line arguments to MappedTask.
-MAPPED_TASKS_BY_DEST_NAME: Dict[Text, MappedTask] = {}
+from . import registry, utility
 
 
-@dataclass
-class MappedTask:
-    """
-    Externally-visible task that gets mapped into the command line interface.
-
-    NB: Do not create directly. It is done by the @map_task() decorator.
-    """
-
-    # noinspection PyShadowingBuiltins
-    task_function: TaskFunction
-    name: Optional[Text]
-    parent: Optional[MappedTask]
-    dest_name: Optional[Text]
-    metavar: Optional[Text]
-    help: Text
-    options: Dict[Text, Dict]
-    arguments: List[Dict]
-    execution_tasks: List[MappedTask]
-    # Sub-tasks added when discovered child tasks reference this as the parent.
-    sub_tasks: List[MappedTask] = None
-
-    @property
-    def tag(self) -> Text:
-        return self.name.upper() if self.name else None
-
-    @property
-    def folder(self) -> Text:
-        # noinspection PyUnresolvedReferences
-        return os.path.dirname(sys.modules[self.task_function.__module__].__file__)
+def runner_factory() -> Callable[[registry.RunnerFactoryFunction], registry.RunnerFactoryFunction]:
+    """Decorator for custom runner factories."""
+    def inner(function: registry.RunnerFactoryFunction) -> registry.RunnerFactoryFunction:
+        registry.RUNNER_FACTORY = function
+        return function
+    return inner
 
 
 # noinspection PyShadowingBuiltins
-def map_task(name: Text = None,
-             parent: TaskFunction = None,
-             help: Text = None,
-             options: Dict[Union[Text, Sequence[Text]], Dict] = None,
-             arguments: List[Dict] = None,
-             dependencies: List[TaskFunction] = None):
+def task(name: Text = None,
+         parent: registry.TaskFunction = None,
+         help: Text = None,
+         options: Dict[Union[Text, Sequence[Text]], Dict] = None,
+         arguments: List[Dict] = None,
+         dependencies: List[registry.TaskFunction] = None):
     """
     Decorator for mapped task functions.
 
@@ -63,7 +31,7 @@ def map_task(name: Text = None,
     Only named mapped tasks are added to an argument sub-parser.
     """
     if parent:
-        parent_mapped_task = MAPPED_TASKS_BY_ID.get(id(parent))
+        parent_mapped_task = registry.MAPPED_TASKS_BY_ID.get(id(parent))
         if not parent_mapped_task:
             raise RuntimeError(f'Unmapped parent task: {parent.__name__}')
         if not parent_mapped_task.name:
@@ -80,8 +48,8 @@ def map_task(name: Text = None,
             names.append(ancestor_mapped_task.name.upper())
             ancestor_mapped_task = ancestor_mapped_task.parent
         names.append(name.upper())
-        dest_name = make_dest_name(*names)
-        metavar = make_metavar(*names)
+        dest_name = utility.make_dest_name(*names)
+        metavar = utility.make_metavar(*names)
     else:
         dest_name = None
         metavar = None
@@ -100,7 +68,7 @@ def map_task(name: Text = None,
     #    with the current task's.
     #  - The final argument list includes (in order) all dependency argument
     #    lists, followed by the current task's.
-    merged_execution_tasks: List[MappedTask] = []
+    merged_execution_tasks: List[registry.MappedTask] = []
     # Catch and ignore tasks that are seen more than once via execution task lists.
     unique_function_ids: Set[int] = set()
     # The parent provides the execution task list for itself and its parents.
@@ -117,7 +85,7 @@ def map_task(name: Text = None,
             dependency_function_id = id(dependency_function)
             if dependency_function_id in unique_function_ids:
                 continue
-            dependency_mapped_task = MAPPED_TASKS_BY_ID.get(dependency_function_id, None)
+            dependency_mapped_task = registry.MAPPED_TASKS_BY_ID.get(dependency_function_id, None)
             if not dependency_mapped_task:
                 continue
             # Execution tasks property yields child tasks and the parent task.
@@ -156,26 +124,26 @@ def map_task(name: Text = None,
     _merge_opts_and_args(options, arguments)
 
     # Called after the outer function returns to provide the task function.
-    def inner(task_function: TaskFunction) -> TaskFunction:
-        mt = MappedTask(task_function=task_function,
-                        name=name,
-                        parent=parent_mapped_task,
-                        dest_name=dest_name,
-                        metavar=metavar,
-                        help=help,
-                        options=merged_options,
-                        arguments=merged_arguments,
-                        execution_tasks=merged_execution_tasks)
+    def inner(task_function: registry.TaskFunction) -> registry.TaskFunction:
+        mt = registry.MappedTask(task_function=task_function,
+                                 name=name,
+                                 parent=parent_mapped_task,
+                                 dest_name=dest_name,
+                                 metavar=metavar,
+                                 help=help,
+                                 options=merged_options,
+                                 arguments=merged_arguments,
+                                 execution_tasks=merged_execution_tasks)
         # Complete the registration, now that there is a new MappedTask.
-        MAPPED_TASKS_BY_ID[id(task_function)] = mt
+        registry.MAPPED_TASKS_BY_ID[id(task_function)] = mt
         if dest_name:
-            MAPPED_TASKS_BY_DEST_NAME[dest_name] = mt
+            registry.MAPPED_TASKS_BY_DEST_NAME[dest_name] = mt
         # Add to sub_tasks list of parent, if there is a parent.
         if parent_mapped_task:
             if parent_mapped_task.sub_tasks is None:
                 parent_mapped_task.sub_tasks = []
             parent_mapped_task.sub_tasks.append(mt)
         else:
-            MAPPED_TASKS.append(mt)
+            registry.MAPPED_TASKS.append(mt)
         return task_function
     return inner

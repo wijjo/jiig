@@ -20,7 +20,7 @@ import sys
 from dataclasses import dataclass
 from typing import Text, Optional, List, Callable, Any, NoReturn, Dict, ForwardRef
 
-import PySimpleGUI as gui
+import PySimpleGUI as Gui
 
 
 @dataclass
@@ -44,7 +44,7 @@ class AdminPanel:
         self.default_action: Optional[Text] = None
         self.debug = False
         self.dry_run = False
-        self.window: Optional[gui.Window] = None
+        self.window: Optional[Gui.Window] = None
         self.password: Optional[Text] = None
         self.handlers: Dict[Text, HandlerFunction] = {}
 
@@ -83,26 +83,26 @@ class AdminPanel:
     def make_layout(self) -> List:
         layout = []
         if self.heading:
-            layout.append([gui.Text(self.heading)])
+            layout.append([Gui.Text(self.heading)])
         if self.need_root:
-            layout.append([gui.Text('Password:'),
-                           gui.InputText(key='password', password_char='*')])
+            layout.append([Gui.Text('Password:'),
+                           Gui.InputText(key='password', password_char='*')])
             default_text = 'Password is required to run some commands as root.\n'
         else:
             default_text = ''
-        layout.append([gui.Multiline(key='status',
+        layout.append([Gui.Multiline(key='status',
                                      size=(0, 5),
                                      disabled=True,
                                      default_text=default_text)])
-        layout.append([gui.HorizontalSeparator()])
-        buttons = [gui.Cancel(button_text='Close',
+        layout.append([Gui.HorizontalSeparator()])
+        buttons = [Gui.Cancel(button_text='Close',
                               button_color=('white', 'grey')),
-                   gui.Text(key='filler')]
+                   Gui.Text(key='filler')]
         for action_name in self.actions:
             if self.default_action is None or action_name.lower() != self.default_action.lower():
-                buttons.append(gui.Button(button_text=action_name))
+                buttons.append(Gui.Button(button_text=action_name))
             else:
-                buttons.append(gui.Button(button_text=action_name,
+                buttons.append(Gui.Button(button_text=action_name,
                                           bind_return_key=True,
                                           button_color=('white', '#aa5555')))
         layout.append(buttons)
@@ -162,11 +162,11 @@ class AdminPanel:
 
     def start(self):
         assert self.window is None
-        # gui.theme_previewer()
-        gui.theme('BlueMono')
-        gui.set_options(font='Sans 14', margins=(20, 20), element_padding=(2, 10))
+        # Gui.theme_previewer()
+        Gui.theme('BlueMono')
+        Gui.set_options(font='Sans 14', margins=(20, 20), element_padding=(2, 10))
         layout = self.make_layout()
-        self.window = gui.Window(self.title, layout, finalize=True)
+        self.window = Gui.Window(self.title, layout, finalize=True)
         if self.bind_escape_key:
             self.window.bind('<Escape>', None)
         self.window['filler'].expand(expand_row=True, expand_x=True)
@@ -184,7 +184,7 @@ class AdminPanel:
             self.log(f'event="{event}", values={log_values}')
             if self.need_root:
                 self.password = values['password']
-            if event == gui.WIN_CLOSED or event == 'Close' or event == '<Escape>':
+            if event == Gui.WIN_CLOSED or event == 'Close' or event == '<Escape>':
                 self.window.close()
                 break
             try:

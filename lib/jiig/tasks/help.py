@@ -1,7 +1,7 @@
-from jiig.task import map_task, TaskRunner
+from jiig import task, TaskRunner
 
 
-@map_task(
+@task(
     'help',
     help='display help screen',
     arguments=[{'dest': 'HELP_NAMES',

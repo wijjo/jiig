@@ -15,6 +15,8 @@
 """
 Awk-like web scraping with decorated classes.
 
+*** This is a work in progress! ***
+
 Uses efficient parsing that scans elements on the fly with the standard library
 html.parser.HTMLParser class. It does not need to load an entire DOM tree in
 memory before scanning begins.
@@ -68,8 +70,8 @@ https://docs.python.org/3.8/library/re.html#regular-expression-syntax
 
 import re
 from urllib.request import Request
-from typing import List, Callable, Text, IO, Dict, Any, Set
-from .utility import open_text
+from typing import List, Callable, Text, IO, Dict, Any, Set, Optional, Hashable
+from jiig.utility import open_text
 
 
 class NoStateCls:
@@ -132,10 +134,9 @@ class WScanner:
         for matcher, handler in self.scanners.get(state, []):
             match = matcher.match(line)
             if match:
-                try:
-                    handler(self, match)
-                except NextLine:
-                    return True
+                handler(self, match)
+        # TODO
+        return False
 
     def scan(self,
              *,

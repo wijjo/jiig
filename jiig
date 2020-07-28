@@ -12,4 +12,4 @@ registered for when the CLI is built.
 
 DESCRIPTION = 'Jiig tool manager.'
 
-from jiig.tasks import create, ipython, pip, python, venv     # noqa
+from jiig.tasks import task, tool, venv     # noqa
