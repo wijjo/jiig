@@ -5,6 +5,8 @@ IMPORTANT: Keep this generic, and make sure it only depends on the Python
 standard library, in its most basic form. E.g. don't import `yaml` here. The
 jiig script may import this module when running under the system interpreter,
 before re-invoking itself in the virtual environment.
+
+TODO: Split this file by subject, e.g. filesystem, strings, data structures. It's getting too big!
 """
 import sys
 import os
@@ -138,14 +140,18 @@ def log_heading(level: int, heading: Text):
     print(f'{decoration} {heading} {decoration}')
 
 
-def execute_source(*, text: Text = None, file: Text = None, stream: IO = None) -> Dict:
+def execute_source(*,
+                   text: Text = None,
+                   file: Text = None,
+                   stream: IO = None,
+                   symbols: Dict = None) -> Dict:
     """Execute python source code text, file, or stream"""
-    symbols = {}
+    exec_symbols = symbols or {}
     with open_text(text=text, file=file, stream=stream) as text_stream:
         # noinspection PyBroadException
         try:
-            exec(text_stream.read(), symbols)
-            return symbols
+            exec(text_stream.read(), exec_symbols)
+            return exec_symbols
         except Exception:
             if text:
                 source = '(text)'
