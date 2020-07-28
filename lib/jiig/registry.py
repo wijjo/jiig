@@ -29,7 +29,7 @@ class MappedTask:
     """
     Externally-visible task that gets mapped into the command line interface.
 
-    NB: Do not create directly. It is done by the @map_task() decorator.
+    NB: Do not create directly. It is done by the @task() decorator.
     """
 
     # noinspection PyShadowingBuiltins
