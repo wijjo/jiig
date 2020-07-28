@@ -153,8 +153,12 @@ def execute_source(*, text: Text = None, file: Text = None, stream: IO = None) -
                 source = short_path(file)
             elif stream:
                 source = '(stream)'
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            log_error(f'{source}.{exc_traceback.tb_lineno}: {exc_type.__name__}: {exc_value}')
+            # Make it look like the Jiig script is the Python source file.
+            # The very specific substitution assures that if the text changes in
+            # the future the worst case is that it won't have the path, which is
+            # also shown in the abort() call..
+            tb_text = traceback.format_exc().replace('File "<string>"', f'File "{source}"')
+            sys.stderr.write(tb_text)
             abort(f'Unable to execute Python script: {source}')
             sys.exit(1)
 
