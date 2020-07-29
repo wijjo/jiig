@@ -28,7 +28,7 @@ if JIIG_LIB not in sys.path:
 if JIIG_ROOT in sys.path:
     sys.path.remove(JIIG_ROOT)
 
-from jiig import constants, decorator, init_file, parser, registry, task_runner, utility
+from jiig import constants, init_file, parser, registry, task_runner, utility
 # Always pull in the help task.
 from jiig.tasks import help     # noqa
 
@@ -58,23 +58,19 @@ def start_tool(script: Text, cli_args: List[Text], params: init_file.ParamData):
         constants.DRY_RUN = global_args.DRY_RUN
 
     # Load the script and initialize parameters.
-    # TODO: Decide whether or not providing special symbols is a good idea.
-    symbols = {'task':  decorator.task}
-    tool_params = utility.execute_source(file=script, symbols=symbols)
+    script_symbols = utility.execute_source(file=script)
     params_obj = init_file.ParamData(params)
     params_obj['JIIG_ROOT'] = JIIG_ROOT
-    params_obj['TOOL_NAME'] = tool_params.get('TOOL_NAME')
-    params_obj['TOOL_DESCRIPTION'] = tool_params.get('DESCRIPTION')
+    params_obj['TOOL_NAME'] = registry.ToolOptions.name
+    params_obj['TOOL_DESCRIPTION'] = registry.ToolOptions.description
     # Fall back to script name as the tool name.
     if not params_obj.TOOL_NAME:
         params_obj['TOOL_NAME'] = os.path.basename(script)
     # Fall back to the module doc string as the description, if available.
     if not params_obj.TOOL_DESCRIPTION:
-        doc_string = tool_params.get('__doc__', '').strip()
+        doc_string = script_symbols.get('__doc__', '').strip()
         if doc_string:
             params_obj['TOOL_DESCRIPTION'] = doc_string.splitlines()[0]
-    if not params_obj.TOOL_DESCRIPTION:
-        params_obj['TOOL_DESCRIPTION'] = f'(no DESCRIPTION or doc string in {script})'
 
     # Parse the command line.
     cli_parser = parser.CommandLineParser(cli_args=cli_args, prog=params_obj.TOOL_NAME)

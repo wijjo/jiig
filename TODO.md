@@ -1,5 +1,14 @@
 # Planned Features
 
+## Documentation
+
+Implement something like Sphinx to capture API documentation from doc strings.
+This may require a virtual environment. It could be a separate Jiig build tool.
+Incorporate higher level framework reference documentation from other files,
+e.g. from .rst files.
+
+Should also write a tutorial.
+
 ## Aliases
 
 An `alias` sub-task is inherited by all Jiig-based tools.

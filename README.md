@@ -77,21 +77,21 @@ The `task` sub-command can generate a basic task module.
 ### Simple Jiig script code
 
 The code generation is probably superfluous, because there is very little code
-needed for a basic Jiig script. Here is a minimal example. Note that as a 
-convenience Jiig automatically adds `@task` to the global namespace. The user
-can also do a more traditional `from jiig import task`.
+needed for a basic Jiig script. Here is a minimal example.
 
 ```
 #!/usr/bin/env jiig-run
 
 """This is my program!"""
 
-@task()
+import jiig
+
+@jiig.task()
 def hello(runner):
     """a friendly greeting"""
     print('hello')
 
-@task()
+@jiig.task()
 def goodbye(runner):
     """a friendly farewell"""
     print('goodbye')

@@ -1,5 +1,6 @@
 from __future__ import annotations
 import os
+import sys
 from dataclasses import dataclass
 from typing import Dict, Text, Optional, Callable, List
 
@@ -59,3 +60,18 @@ MAPPED_TASKS: List[MappedTask] = []
 MAPPED_TASKS_BY_ID: Dict[int, MappedTask] = {}
 # To help map task name in command line arguments to MappedTask.
 MAPPED_TASKS_BY_DEST_NAME: Dict[Text, MappedTask] = {}
+
+
+# === Options
+
+class ToolOptions:
+    name = os.path.basename(sys.argv[0])
+    description = '(no description provided)'
+
+
+def options(name: Text = None,
+            description: Text = None):
+    if name is not None:
+        ToolOptions.name = name
+    if description is not None:
+        ToolOptions.description = description
