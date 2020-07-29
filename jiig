@@ -10,6 +10,11 @@ All the body of this script has to do is load task modules so that they get
 registered for when the CLI is built.
 """
 
-DESCRIPTION = 'Jiig tool manager.'
+import jiig
+
+jiig.options(
+    name='jiig',
+    description='Jiig tool manager.',
+)
 
 from jiig.tasks import task, tool, venv     # noqa
