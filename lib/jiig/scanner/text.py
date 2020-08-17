@@ -74,7 +74,8 @@ class ScannerBase:
                        stream=stream,
                        url=url,
                        request=request,
-                       timeout=timeout) as text_stream:
+                       timeout=timeout,
+                       check=True) as text_stream:
             try:
                 self.scan_text(text_stream)
             except StopIteration:

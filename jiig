@@ -12,9 +12,6 @@ registered for when the CLI is built.
 
 import jiig
 
-jiig.options(
-    name='jiig',
-    description='Jiig tool manager.',
-)
+jiig.options(description='Jiig tool manager.')
 
 from jiig.tasks import task, tool, venv     # noqa

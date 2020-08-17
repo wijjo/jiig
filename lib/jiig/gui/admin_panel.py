@@ -32,6 +32,7 @@ class ActionButtonSpec:
 HandlerFunction = Callable[[ForwardRef('AdminPanel'), Any], NoReturn]
 
 
+# noinspection PyUnresolvedReferences,PyUnresolvedReferences,PyUnresolvedReferences,PyUnresolvedReferences
 class AdminPanel:
 
     def __init__(self, title: Text = None):
@@ -164,6 +165,7 @@ class AdminPanel:
         assert self.window is None
         # Gui.theme_previewer()
         Gui.theme('BlueMono')
+        # noinspection PyTypeChecker
         Gui.set_options(font='Sans 14', margins=(20, 20), element_padding=(2, 10))
         layout = self.make_layout()
         self.window = Gui.Window(self.title, layout, finalize=True)

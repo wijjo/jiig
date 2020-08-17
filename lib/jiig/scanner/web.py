@@ -163,7 +163,8 @@ class WScanner:
                        stream=stream,
                        url=url,
                        request=request,
-                       timeout=timeout) as html_stream:
+                       timeout=timeout,
+                       check=True) as html_stream:
             if state is not NoState:
                 self.set_state(state)
             self.begin()

@@ -126,6 +126,82 @@ task names. This provides a very quick and intuitive starting point, but ongoing
 development might be better served by using explicit script and task metadata.
 
 
+## Aliases
+
+Aliases allow users to capture and retrieve commonly-used partial or complete
+tasks, arguments, and options. They are saved for the user as special names that
+can be used instead of normal task commands.
+
+The feature is available through the `alias` task command, and may be inherited
+by any Jiig-based tool.
+
+### Alias names
+
+Alias names, as specified on the command line, always start with '/' or '.'. The
+name prefix determines the effective "scope" of the alias.
+
+### Global aliases
+
+Global aliases start with '/', and may be used anywhere.
+
+#### Global alias example
+
+```
+$ mytool alias set /global mytask -x 1
+Alias "/global" saved.
+
+$ cd /the/location
+
+$ mytool /global
+(output of "mytool mytask -x 1")
+
+$ cd /somewhere/else
+
+$ mytool /myglobal
+(output of "mytool mytask -x 1")
+```
+
+### Local aliases
+
+Local alias names start with '.'. An alias defined with a single dot prefix may
+only be easily used in the location where it was explicitly defined.
+
+Local alias names may also start with '..'. In this case it specifies an alias
+that applies to the the working folder's parent folder.
+
+Note that the saved alias name includes the full path to support scoping.
+
+#### Local alias example
+
+```
+$ cd /the/location
+
+$ mytool alias set ..mylocal mytask -x 1
+Alias "/the/location/mylocal" saved.
+
+$ mytool .mylocal
+(output of "mytool mytask -x 1")
+
+$ cd sub1
+
+$ mytool ..mylocal
+(output of "mytool mytask -x 1")
+
+$ cd /somewhere/else
+
+$ mytool .mylocal
+Alias "/somewhere/else/mylocal" not found.
+```
+
+### Alias internals
+
+Saved alias names include the scope as a fully-resolved path. For example, if
+alias `.c1` is saved from folder `/a/b/c` it is saved with the full alias name
+`/a/b/c/c1`. Global alias names, or any name beginning with `/` are unchanged.
+`.`, `..`, and `~` are merely convenient abbreviations for the full paths that
+are substituted and used internally.
+
+
 ## Future documentation
 
 There is no reference manual or user guide yet. It will definitely happen. For

@@ -14,10 +14,9 @@ Use as the program in the "shebang" line of the main script.
 - Parse the command line.
 - Execute task(s).
 """
-
 import sys
 import os
-from typing import Text, List
+from typing import Text, List, Dict
 
 JIIG_ROOT = os.path.dirname(os.path.realpath(sys.argv[0]))
 JIIG_LIB = os.path.join(JIIG_ROOT, 'lib')
@@ -28,9 +27,8 @@ if JIIG_LIB not in sys.path:
 if JIIG_ROOT in sys.path:
     sys.path.remove(JIIG_ROOT)
 
-from jiig import constants, init_file, parser, registry, task_runner, utility
-# Always pull in the help task.
-from jiig.tasks import help     # noqa
+from jiig import init_file, task_runner, utility
+from jiig.internal import registry, parser, globals, aliases
 
 INIT_PARAM_TYPES = [
     init_file.ParamFolderList('LIB_FOLDERS', default_value=['lib']),
@@ -39,99 +37,196 @@ INIT_PARAM_TYPES = [
 ]
 
 
-def start_tool(script: Text, cli_args: List[Text], params: init_file.ParamData):
+def pre_parse_command_line() -> List[Text]:
+    """
+    Pre-parse the command line to set global options.
 
-    # Add tool library folders to the Python module loading path.
-    if params.LIB_FOLDERS:
-        for tool_lib_folder in reversed(params.LIB_FOLDERS):
+    :return: unparsed trailing command line arguments
+    """
+    # Enable global options based on partial command line pre-parsing.
+    if len(sys.argv) < 2:
+        sys.stderr.write(f'FATAL: jiig-run should not be run directly.{os.linesep}')
+        sys.exit(1)
+    args, trailing_args = parser.pre_parse_command_line(cli_args=sys.argv[2:])
+    if args.VERBOSE:
+        # Dry-run implies verbose.
+        globals.VERBOSE = args.VERBOSE or args.DRY_RUN
+    if args.DEBUG:
+        globals.DEBUG = args.DEBUG
+    if args.DRY_RUN:
+        globals.DRY_RUN = args.DRY_RUN
+    # Drop the '--' that was needed for restarting in the virtual environment.
+    if trailing_args and trailing_args[0] == '--':
+        return trailing_args[1:]
+    return trailing_args
+
+
+def initialize(command_args: List[Text]) -> init_file.ParamData:
+    """
+    Load init file parameters and check if a virtual environment is required.
+
+    Will not return if it needs to restart in the virtual environment.
+
+    :return: init file parameter data
+    """
+
+    # Jiig itself has no init file.
+    tool_root = os.path.dirname(os.path.realpath(sys.argv[1]))
+    if tool_root == JIIG_ROOT:
+        return init_file.ParamData()
+
+    # Load tool init file
+    init_path = os.path.join(tool_root, globals.INIT_FILE)
+    param_loader = init_file.ParamLoader(INIT_PARAM_TYPES)
+    utility.log_message(f'Load configuration file "{init_path}".', verbose=True)
+    param_loader.load_file(init_path)
+    init_params = param_loader.get_data()
+
+    # Prepare the Python module loading path.
+    if init_params.LIB_FOLDERS:
+        for tool_lib_folder in reversed(init_params.LIB_FOLDERS):
             if tool_lib_folder not in sys.path:
                 sys.path.insert(0, tool_lib_folder)
 
-    # Peek at global options to enable debug/verbose modes .
-    global_args = parser.pre_parse_global_args()
-    if global_args.VERBOSE:
-        # Dry-run implies verbose.
-        constants.VERBOSE = global_args.VERBOSE or global_args.DRY_RUN
-    if global_args.DEBUG:
-        constants.DEBUG = global_args.DEBUG
-    if global_args.DRY_RUN:
-        constants.DRY_RUN = global_args.DRY_RUN
+    # May not need a virtual environment.
+    if not init_params.VENV_ROOT:
+        return init_params
 
-    # Load the script and initialize parameters.
+    # May already be inside the virtual environment
+    venv_interpreter = os.path.join(init_params.VENV_ROOT, 'bin', 'python')
+    if sys.executable == venv_interpreter:
+        return init_params
+
+    # May meed to build the virtual environment.
+    # The following call does nothing if it exists.
+    utility.build_virtual_environment(init_params.VENV_ROOT,
+                                      packages=init_params.PIP_PACKAGES,
+                                      rebuild=False,
+                                      quiet=True)
+
+    # Restart inside the virtual environment. Does not return.
+    # '--' prevents the Python program from confusing jiig/tool options with its own.
+    os.execl(venv_interpreter,
+             venv_interpreter,
+             sys.argv[0],
+             sys.argv[1],
+             '--',
+             *command_args)
+
+
+def load_tool(script: Text, init_params: Dict) -> init_file.ParamData:
+    """
+    Load the tool script and post-process global tool options.
+
+    :param script: path to tool script
+    :param init_params: data loaded from init file
+    """
     script_symbols = utility.execute_source(file=script)
-    params_obj = init_file.ParamData(params)
-    params_obj['JIIG_ROOT'] = JIIG_ROOT
-    params_obj['TOOL_NAME'] = registry.ToolOptions.name
-    params_obj['TOOL_DESCRIPTION'] = registry.ToolOptions.description
-    # Fall back to script name as the tool name.
-    if not params_obj.TOOL_NAME:
-        params_obj['TOOL_NAME'] = os.path.basename(script)
-    # Fall back to the module doc string as the description, if available.
-    if not params_obj.TOOL_DESCRIPTION:
+    # If no name was provided use the script base name.
+    if not registry.ToolOptions.name:
+        registry.ToolOptions.name = os.path.basename(script)
+    # If no description was provided try to scrape it from the doc string, if it exists.
+    if not registry.ToolOptions.description:
         doc_string = script_symbols.get('__doc__', '').strip()
         if doc_string:
-            params_obj['TOOL_DESCRIPTION'] = doc_string.splitlines()[0]
+            registry.ToolOptions.description = doc_string.splitlines()[0]
+    if not registry.ToolOptions.description:
+        registry.ToolOptions.description = '(no description provided)'
+    # Load standard modules, if enabled.
+    if not registry.ToolOptions.disable_help:
+        import jiig.tasks.help      # noqa
+    if not registry.ToolOptions.disable_alias:
+        import jiig.tasks.alias     # noqa
+    # Initialize tool parameters.
+    tool_params = init_file.ParamData(init_params)
+    tool_params['JIIG_ROOT'] = JIIG_ROOT
+    tool_params['TOOL_NAME'] = registry.ToolOptions.name
+    tool_params['TOOL_DESCRIPTION'] = registry.ToolOptions.description
+    return tool_params
 
-    # Parse the command line.
-    cli_parser = parser.CommandLineParser(cli_args=cli_args, prog=params_obj.TOOL_NAME)
-    cli_results = cli_parser.parse(description=params_obj.TOOL_DESCRIPTION)
 
-    # Local function for executing a mapped task.
-    def _execute_task(mt: registry.MappedTask):
-        runner = registry.create_runner(
-            task_runner.RunnerData(cli_results.args,
-                                   cli_results.help_formatters,
-                                   PRIMARY_TASK=mt == cli_results.mapped_task,
-                                   **params_obj))
-        mt.task_function(runner)
+def expand_alias(tool_name: Text, command_args: List[Text]) -> List[Text]:
+    """
+    Finalize command line argument list.
 
+    Remove '--' that may have been inserted when restarting in the venv.
+
+    Expanding an alias, if one is the first argument.
+
+    :param tool_name:
+    :param command_args:
+    :return:
+    """
+    if not command_args:
+        return []
+    if not aliases.expand_name(command_args[0]):
+        return command_args
+    alias_manager = aliases.AliasManager(tool_name=tool_name)
+    alias = alias_manager.resolve_alias(command_args[0])
+    if not alias:
+        utility.abort(f'Alias "{command_args[0]}" not found.')
+    return alias.command + command_args[1:]
+
+
+def need_trailing_arguments(command_args: List[Text]) -> bool:
+    """
+    Check if the task command requires a trailing argument capture.
+
+    :param command_args: command line arguments (only the first is used)
+    :return: True if trailing arguments must be captured
+    """
+    if not command_args:
+        return False
+    # Access the mapped task to see if trailing arguments are used.
+    dest_name = utility.make_dest_name(command_args[0])
+    primary_mt = registry.MAPPED_TASKS_BY_DEST_NAME.get(dest_name)
+    return primary_mt and primary_mt.need_trailing_arguments
+
+
+def run_tool_task(cli_results: parser.CommandLineData,
+                  tool_params: init_file.ParamData):
+    """
+    Run the tool task based on the parsed command line.
+
+    :param cli_results: results of parsing the command line
+    :param tool_params: tool parameters based on init file and tool script
+    """
+    # Bundle the data shared with tasks through the task runner.
+    runner_data = task_runner.RunnerData(cli_results.args,
+                                         cli_results.trailing_args,
+                                         cli_results.help_formatters,
+                                         tool_params)
     try:
         # Execute task dependencies first.
         for dependency_task in cli_results.mapped_task.execution_tasks:
-            _execute_task(dependency_task)
+            dependency_task.task_function(registry.create_runner(runner_data))
         # Then execute the primary task.
-        _execute_task(cli_results.mapped_task)
+        cli_results.mapped_task.task_function(registry.create_runner(runner_data))
     except RuntimeError as exc:
-        print(exc)
-        print(cli_results.args)
+        utility.abort(f'{exc.__class__.__name__}("{exc}")',
+                      cli_results.args)
     except KeyboardInterrupt:
         print('')
 
 
 def main():
-    if len(sys.argv) < 2:
-        sys.stderr.write(f'FATAL: jiig-run should not be run directly.{os.linesep}')
-        sys.exit(1)
-
-    # Load tool parameters (empty for Jiig itself).
-    tool_root = os.path.dirname(os.path.realpath(sys.argv[1]))
-    if tool_root == JIIG_ROOT:
-        params = init_file.ParamData()
-    else:
-        init_path = os.path.join(tool_root, constants.INIT_FILE)
-        params = init_file.load_files(INIT_PARAM_TYPES, init_path)
-
-    # Check what interpreter is needed, and see if it's available and running.
-    interpreter = sys.executable
-    run_direct = True
-    if params.VENV_ROOT:
-        venv_interpreter = os.path.join(params.VENV_ROOT, 'bin', 'python')
-        if sys.executable != venv_interpreter:
-            utility.build_virtual_environment(params.VENV_ROOT,
-                                              packages=params.PIP_PACKAGES,
-                                              rebuild=False,
-                                              quiet=True)
-            interpreter = venv_interpreter
-            run_direct = False
-
-    # Invoke directly or after restarting, depending on the current interpreter.
-    if run_direct:
-        # Remove previously-added "--" as needed and start the tool.
-        arg_idx = 3 if len(sys.argv) > 2 and sys.argv[2] == '--' else 2
-        start_tool(sys.argv[1], sys.argv[arg_idx:], params)
-    else:
-        # Re-run with the required interpreter.
-        os.execl(interpreter, interpreter, sys.argv[0], sys.argv[1], '--', *sys.argv[2:])
+    # Get global options and trailing command arguments.
+    preliminary_command_args = pre_parse_command_line()
+    # Initialize the runtime environment. May not return if a venv is required.
+    init_params = initialize(preliminary_command_args)
+    # Load the tool to let it initialize.
+    tool_params = load_tool(sys.argv[1], init_params)
+    # Expand an alias, as needed.
+    final_command_args = expand_alias(tool_params.TOOL_NAME, preliminary_command_args)
+    # Check if trailing arguments should be captured, e.g. for the "alias" task.
+    capture_trailing = need_trailing_arguments(final_command_args)
+    # Parse the command line for real.
+    cli_results = parser.parse_command_line(cli_args=final_command_args,
+                                            name=tool_params.TOOL_NAME,
+                                            description=tool_params.TOOL_DESCRIPTION,
+                                            capture_trailing=capture_trailing)
+    # Run the tool to invoke the specified task.
+    run_tool_task(cli_results, tool_params)
 
 
 if __name__ == '__main__':

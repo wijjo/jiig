@@ -22,16 +22,16 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from glob import glob
 from string import Template
-from typing import Text, List, Dict, Any, Optional, Tuple, IO, Iterator
+from typing import Text, List, Dict, Any, Optional, Tuple, IO, Iterator, Iterable
 from urllib.request import urlopen, Request
 from urllib.error import URLError
 
-from . import constants
+from .internal import globals
 
 
 class Regex:
     remote_path = re.compile(r'^([\w\d.@-]+):([\w\d_-~/]+)$')
-    template_folder_symbol = re.compile(constants.TEMPLATE_FOLDER_SYMBOL_PATTERN)
+    template_folder_symbol = re.compile(globals.TEMPLATE_FOLDER_SYMBOL_PATTERN)
 
 
 class AttrDict(dict):
@@ -53,17 +53,19 @@ def is_remote_path(path: Text) -> bool:
     return bool(Regex.remote_path.match(path))
 
 
-def short_path(path, is_folder=False):
+def short_path(path, is_folder=None, real_path=False, is_local=False):
     # Special case for remote paths.
-    if is_remote_path(path):
+    if not is_local and is_remote_path(path):
         if is_folder:
             return folder_path(path)
         return path
     # Normal handling of local paths.
-    path = os.path.abspath(path)
+    path = os.path.realpath(path) if real_path else os.path.abspath(path)
     if path.endswith(os.path.sep):
         path = path[:-1]
     working_folder = os.getcwd()
+    if real_path:
+        working_folder = os.path.realpath(working_folder)
     if path.startswith(working_folder):
         path = path[len(working_folder) + 1:]
     else:
@@ -72,7 +74,7 @@ def short_path(path, is_folder=False):
             path = os.path.join('..', path[len(parent_folder) + 1:])
     if not path:
         path = '.'
-    if is_folder or os.path.isdir(path):
+    if is_folder or (is_folder is not None and os.path.isdir(path)):
         path = folder_path(path)
     return path
 
@@ -87,9 +89,9 @@ def log_message(text: Any, *args, **kwargs):
     tag = kwargs.pop('tag', None)
     verbose = kwargs.pop('verbose', None)
     debug = kwargs.pop('debug', None)
-    if verbose and not constants.VERBOSE:
+    if verbose and not globals.VERBOSE:
         return
-    if debug and not constants.DEBUG:
+    if debug and not globals.DEBUG:
         return
     lines = []
     if text:
@@ -113,11 +115,11 @@ def log_message(text: Any, *args, **kwargs):
 
 
 def abort(text: Any, *args, **kwargs):
-    """Display, and in the future log, a fatal error message (to stderr) and quit."""
+    """Display, and in the future log, a fatal _error message (to stderr) and quit."""
     skip = kwargs.pop('skip', 0)
     kwargs['tag'] = 'FATAL'
     log_message(text, *args, **kwargs)
-    if constants.DEBUG:
+    if globals.DEBUG:
         print_call_stack(skip=skip + 2)
     sys.exit(255)
 
@@ -129,7 +131,7 @@ def log_warning(text: Any, *args, **kwargs):
 
 
 def log_error(text: Any, *args, **kwargs):
-    """Display, and in the future log, an error message (to stderr)."""
+    """Display, and in the future log, an _error message (to stderr)."""
     kwargs['tag'] = 'ERROR'
     log_message(text, *args, **kwargs)
 
@@ -147,7 +149,7 @@ def execute_source(*,
                    symbols: Dict = None) -> Dict:
     """Execute python source code text, file, or stream"""
     exec_symbols = symbols or {}
-    with open_text(text=text, file=file, stream=stream) as text_stream:
+    with open_text(text=text, file=file, stream=stream, check=True) as text_stream:
         # noinspection PyBroadException
         try:
             exec(text_stream.read(), exec_symbols)
@@ -171,7 +173,7 @@ def print_call_stack(skip: int = 0, limit: int = None):
 
 
 @contextmanager
-def chdir(folder: Optional[Text]):
+def chdir(folder: Optional[Text], quiet: bool = False):
     """
     Change work folder and restore when done.
 
@@ -180,11 +182,11 @@ def chdir(folder: Optional[Text]):
     """
     restore_folder = os.getcwd()
     if folder and os.path.realpath(folder) != restore_folder:
-        log_message('Change working directory.', folder)
+        log_message('Change working directory.', folder, debug=quiet)
         os.chdir(folder)
     yield restore_folder
     if folder and os.path.realpath(folder) != restore_folder:
-        log_message('Restore working directory.', restore_folder)
+        log_message('Restore working directory.', restore_folder, debug=quiet)
         os.chdir(restore_folder)
 
 
@@ -270,7 +272,7 @@ def copy_folder(src_path: Text,
                 quiet: bool = False):
     src_folder_path = short_path(src_path, is_folder=True)
     dst_folder_path = short_path(dst_path, is_folder=True)
-    if not constants.DRY_RUN:
+    if not globals.DRY_RUN:
         check_folder_exists(src_folder_path)
     if not merge:
         delete_folder(dst_path, quiet=quiet)
@@ -308,15 +310,15 @@ def move_file(src_path: Text,
     """Move a file to a fully-specified file path, not a folder."""
     src_path_short = short_path(src_path, is_folder=False)
     dst_path_short = short_path(dst_path, is_folder=False)
-    if not constants.DRY_RUN:
+    if not globals.DRY_RUN:
         check_file_exists(src_path_short)
     if overwrite:
         # If overwriting is allowed a file (only) can be clobbered.
-        if os.path.exists(dst_path) and not constants.DRY_RUN:
+        if os.path.exists(dst_path) and not globals.DRY_RUN:
             check_file_exists(dst_path)
     else:
         # If overwriting is prohibited don't clobber anything.
-        if not constants.DRY_RUN:
+        if not globals.DRY_RUN:
             check_file_not_exists(dst_path_short)
     parent_folder = os.path.dirname(dst_path)
     if not os.path.exists(parent_folder):
@@ -331,12 +333,12 @@ def move_folder(src_path: Text,
     """Move a folder to a fully-specified folder path, not a parent folder."""
     src_path_short = short_path(src_path, is_folder=True)
     dst_path_short = short_path(dst_path, is_folder=True)
-    if not constants.DRY_RUN:
+    if not globals.DRY_RUN:
         check_folder_exists(src_path_short)
     if overwrite:
         delete_folder(dst_path, quiet=quiet)
     else:
-        if not constants.DRY_RUN:
+        if not globals.DRY_RUN:
             check_folder_not_exists(dst_path_short)
     parent_folder = os.path.dirname(dst_path)
     if not os.path.exists(parent_folder):
@@ -353,7 +355,7 @@ def sync_folders(src_folder: Text,
     # Add the trailing slash for rsync. This works for remote paths too.
     src_folder = folder_path(src_folder)
     dst_folder = folder_path(dst_folder)
-    if not constants.DRY_RUN:
+    if not globals.DRY_RUN:
         check_folder_exists(src_folder)
     if not quiet:
         log_message('Folder sync.',
@@ -361,7 +363,7 @@ def sync_folders(src_folder: Text,
                     target=dst_folder,
                     exclude=exclude or [])
     cmd_args = ['rsync']
-    if constants.DRY_RUN:
+    if globals.DRY_RUN:
         cmd_args.append('--dry-run')
     cmd_args.extend(['-a', '--stats', '-h'])
     if check_contents:
@@ -391,7 +393,7 @@ def expand_template(source_path: Text,
     else:
         short_target_path = short_path(target_path)
     symbols = symbols or {}
-    if not constants.DRY_RUN:
+    if not globals.DRY_RUN:
         check_file_exists(source_path)
     if os.path.exists(target_path):
         if not os.path.isfile(target_path):
@@ -404,7 +406,7 @@ def expand_template(source_path: Text,
     log_message('Generate from template.',
                 source=short_source_path,
                 target=short_target_path)
-    if not constants.DRY_RUN:
+    if not globals.DRY_RUN:
         try:
             with open(source_path, encoding='utf-8') as src_file:
                 with open(target_path, 'w', encoding='utf-8') as target_file:
@@ -509,12 +511,12 @@ def expand_template_folder(template_folder: Text,
         for file_name in walk_file_names:
             source_path = os.path.join(walk_source_folder, file_name)
             stripped_file_name, extension = os.path.splitext(file_name)
-            if extension in constants.ALL_TEMPLATE_EXTENSIONS:
-                if extension == constants.TEMPLATE_EXTENSION_DOT:
+            if extension in globals.ALL_TEMPLATE_EXTENSIONS:
+                if extension == globals.TEMPLATE_EXTENSION_DOT:
                     stripped_file_name = '.' + stripped_file_name
                 expanded_file_name = expand_template_path(stripped_file_name, symbols)
                 target_path = os.path.join(walk_target_folder, expanded_file_name)
-                executable = extension == constants.TEMPLATE_EXTENSION_EXE
+                executable = extension == globals.TEMPLATE_EXTENSION_EXE
                 expand_template(source_path,
                                 target_path,
                                 overwrite=overwrite,
@@ -524,6 +526,10 @@ def expand_template_folder(template_folder: Text,
                                 target_relative_to=target_folder)
             else:
                 copy_files(source_path, walk_target_folder)
+
+
+def shell_command_string(command: Text, *args) -> Text:
+    return ' '.join([shlex.quote(arg) for arg in [short_path(command)] + list(args)])
 
 
 def run(cmd_args: List[Text],
@@ -547,8 +553,7 @@ def run(cmd_args: List[Text],
                   ' use "shell", "env", or "working_folder" keywords.',
                   cmd_args=cmd_args)
     # The command string for display or shell execution.
-    cmd_string = ' '.join([shlex.quote(arg)
-                           for arg in [short_path(cmd_args[0])] + cmd_args[1:]])
+    cmd_string = shell_command_string(*cmd_args)
     # Adjust remote command to run through SSH.
     if host:
         cmd_args = ['ssh', host] + cmd_args
@@ -566,7 +571,7 @@ def run(cmd_args: List[Text],
         message_data['verbose'] = True
     log_message('Run command.', cmd_string, **message_data)
     # A dry run can stop here, before taking real action.
-    if constants.DRY_RUN and not run_always:
+    if globals.DRY_RUN and not run_always:
         return None
     # Generate the command run environment.
     run_env = dict(os.environ)
@@ -668,20 +673,29 @@ def update_virtual_environment(venv_folder: Text, packages: List = None):
 
 def make_dest_name(*names: Text) -> Text:
     """Produce a dest name based on a name list."""
-    prefixed_names = [constants.CLI_DEST_NAME_PREFIX] + [name.upper() for name in names]
-    return constants.CLI_DEST_NAME_SEPARATOR.join(prefixed_names)
+    prefixed_names = [globals.CLI_DEST_NAME_PREFIX] + [name.upper() for name in names]
+    return globals.CLI_DEST_NAME_SEPARATOR.join(prefixed_names)
 
 
 def append_dest_name(dest_name: Text, *names: Text) -> Text:
     """Add to an existing dest name."""
-    return constants.CLI_DEST_NAME_SEPARATOR.join(
+    return globals.CLI_DEST_NAME_SEPARATOR.join(
         [dest_name] + [name.upper() for name in names])
 
 
 def make_metavar(*names: Text) -> Text:
     """Produce a metavar name based on a name list."""
-    suffixed_names = [name.upper() for name in names] + [constants.CLI_METAVAR_SUFFIX]
-    return constants.CLI_METAVAR_SEPARATOR.join(suffixed_names)
+    suffixed_names = [name.upper() for name in names] + [globals.CLI_METAVAR_SUFFIX]
+    return globals.CLI_METAVAR_SEPARATOR.join(suffixed_names)
+
+
+def metavar_to_dest_name(metavar: Text) -> Text:
+    if metavar.endswith(globals.CLI_METAVAR_SUFFIX):
+        prepped_name = metavar[:-(len(globals.CLI_METAVAR_SUFFIX) + 1)].lower()
+        names = prepped_name.split(globals.CLI_METAVAR_SEPARATOR)
+        return make_dest_name(*names)
+    log_error(f'metavar_to_dest_name: bad metavar name: {metavar}')
+    return ''
 
 
 def import_module_path(module_name: Text, module_path: Text):
@@ -689,6 +703,7 @@ def import_module_path(module_name: Text, module_path: Text):
     log_message(f'import_module_path({module_name}, {module_path})', debug=True)
     module_spec = importlib.util.spec_from_file_location(module_name, module_path)
     module = importlib.util.module_from_spec(module_spec)
+    # noinspection PyUnresolvedReferences
     module_spec.loader.exec_module(module)
     sys.modules[module_name] = module
     return module
@@ -741,11 +756,11 @@ def import_modules_from_folder(folder: Text,
                 if retry:
                     to_retry.append((module_name, module_path))
                 exceptions.append((module_name, module_path, exc))
-                if constants.DEBUG:
+                if globals.DEBUG:
                     raise
             except Exception as exc:
                 exceptions.append((module_name, module_path, exc))
-                if constants.DEBUG:
+                if globals.DEBUG:
                     raise
         to_import = []
         if to_retry:
@@ -848,6 +863,56 @@ def load_json_file_stack(file_name: Text, folder: Text = None) -> Dict:
     return data
 
 
+# noinspection PyBroadException
+@dataclass
+class _OpenTextResults:
+    stream: IO
+    source_name: Text
+
+
+@contextmanager
+def _open_text(*,
+               text: Text = None,
+               file: Text = None,
+               stream: IO = None,
+               url: Text = None,
+               request: Request = None,
+               timeout: int = None,
+               check: bool = False
+               ) -> Iterator[_OpenTextResults]:
+    if len([arg for arg in (text, file, stream, url, request)
+            if arg is not None]) != 1:
+        # In this case we want a call stack from a real exception.
+        raise RuntimeError(f'Exactly one of the following keywords is required:'
+                           f' text, file, stream, url, or request')
+    type_string = None
+    try:
+        if text is not None:
+            text_value = str(text)
+            type_string = f'text[{len(text_value)}]'
+            yield _OpenTextResults(StringIO(text_value), type_string)
+        elif file is not None:
+            type_string = f'file["{file}"]'
+            with open(file, encoding='utf-8') as file_stream:
+                yield _OpenTextResults(file_stream, type_string)
+        elif stream is not None:
+            type_string = 'stream'
+            yield _OpenTextResults(stream, type_string)
+        elif url is not None:
+            type_string = 'stream'
+            with urlopen(url, timeout=timeout) as url_stream:
+                yield _OpenTextResults(url_stream, type_string)
+        elif request is not None:
+            type_string = str(request)
+            with urlopen(url, timeout=timeout) as request_stream:
+                yield _OpenTextResults(request_stream, type_string)
+    except Exception as exc:
+        if check:
+            abort(f'Failed to open {type_string} in open_text().', exc)
+        raise
+
+
+# noinspection PyBroadException
 @contextmanager
 def open_text(*,
               text: Text = None,
@@ -855,7 +920,9 @@ def open_text(*,
               stream: IO = None,
               url: Text = None,
               request: Request = None,
-              timeout: int = None) -> Iterator[IO]:
+              timeout: int = None,
+              check: bool = False
+              ) -> Iterator[IO]:
     """
     Open a text stream, given a string, file path, stream, URL, or Request object.
 
@@ -865,29 +932,58 @@ def open_text(*,
     :param url: input URL for downloading
     :param request: input Request object for downloading
     :param timeout: timeout in seconds when downloading URL or Request
+    :param check: abort cleanly if True, instead of passing along exceptions
     :return: a yielded stream to use in a `with` block for proper closing
 
     Generates a RuntimeError if one and only one input keyword is not specified.
 
-    Depending on the input type, various kinds of I/O exceptions are possible.
+    Depending on the input type, various kinds of I/O exceptions are possible
+    (if checked is False).
     """
-    if len([arg for arg in (text, file, stream, url, request)
-            if arg is not None]) != 1:
-        raise RuntimeError(f'Exactly one of the following keywords is required:'
-                           f' text, file, stream, url, or request')
-    if text is not None:
-        yield StringIO(text)
-    elif file is not None:
-        with open(file, encoding='utf-8') as file_stream:
-            yield file_stream
-    elif stream is not None:
-        yield stream
-    elif url is not None:
-        with urlopen(url, timeout=timeout) as url_stream:
-            yield url_stream
-    elif request is not None:
-        with urlopen(url, timeout=timeout) as request_stream:
-            yield request_stream
+    with _open_text(text=text,
+                    file=file,
+                    stream=stream,
+                    url=url,
+                    request=request,
+                    timeout=timeout,
+                    check=check
+                    ) as output_data:
+        yield output_data.stream
+
+
+def open_json(*,
+              text: Text = None,
+              file: Text = None,
+              stream: IO = None,
+              url: Text = None,
+              request: Request = None,
+              timeout: int = None,
+              check: bool = False
+              ) -> Any:
+    """
+    Open a text stream, given a string, file path, stream, URL, or Request object.
+
+    :param text: input string
+    :param file: file path
+    :param stream: input stream
+    :param url: input URL for downloading
+    :param request: input Request object for downloading
+    :param timeout: timeout in seconds when downloading URL or Request
+    :param check: abort cleanly if True, instead of passing along exceptions
+    :return: a yielded stream to use in a `with` block for proper closing
+    """
+    with _open_text(text=text,
+                    file=file,
+                    stream=stream,
+                    url=url,
+                    request=request,
+                    timeout=timeout,
+                    check=check) as output_data:
+        try:
+            return json.load(output_data.stream)
+        except json.JSONDecodeError as exc:
+            if check:
+                abort(f'Failed to load JSON from {output_data.source_name}.', exc)
 
 
 def resolve_paths_abs(root: Text, folders: Optional[List[Text]]) -> Iterator[Text]:
@@ -898,3 +994,60 @@ def resolve_paths_abs(root: Text, folders: Optional[List[Text]]) -> Iterator[Tex
                 yield folder
             else:
                 yield os.path.join(root, folder)
+
+
+def format_table(*rows: Iterable[Any],
+                 headers: Iterable[Text] = None,
+                 formats: Iterable[Text] = None,
+                 display_empty: bool = False
+                 ) -> Iterator[Text]:
+    """
+    Generate tabular output from input rows with optional headings.
+
+    :param rows: row data sequences
+    :param headers: column header strings
+    :param formats: column format strings
+    :param display_empty: display headers when there are no rows
+    :return: formatted line generator
+    """
+    widths: List[int] = []
+    format_list = list(formats) if formats is not None else []
+
+    def _get_strings(columns: Iterable[Any], padded: bool = False) -> Iterator[Text]:
+        num_columns = 0
+        for column_idx, column in enumerate(columns):
+            if len(format_list) > column_idx:
+                yield column.format(format_list[column_idx])
+            else:
+                yield str(column)
+            num_columns += 1
+        if padded:
+            for pad_idx in range(len(widths) - num_columns):
+                yield ''
+
+    def _check_widths(columns: Iterable[Any]):
+        for column_idx, column_string in enumerate(columns):
+            column_width = len(column_string)
+            if column_idx == len(widths):
+                widths.append(column_width)
+            elif column_width > widths[column_idx]:
+                widths[column_idx] = column_width
+
+    if headers is not None:
+        _check_widths(headers)
+    row_count = 0
+    for row in rows:
+        _check_widths(_get_strings(row))
+        row_count += 1
+
+    if row_count > 0 or display_empty:
+
+        format_strings = ['{:%d}' % w for w in widths[:-1]]
+        format_strings.append('{}')
+        format_string = '  '.join(format_strings)
+        if headers is not None:
+            yield format_string.format(*_get_strings(headers, padded=True))
+            yield '  '.join(['-' * width for width in widths])
+
+        for row in rows:
+            yield format_string.format(*_get_strings(row, padded=True))

@@ -6,6 +6,9 @@ ${TOOL_NAME} (jiig monolithic tool script).
 
 import jiig
 
+# Add alias and help task sub-commands.
+from jiig.tasks import alias, help
+
 jiig.options(
     name='${TOOL_NAME}',
     description='${TOOL_NAME} description',

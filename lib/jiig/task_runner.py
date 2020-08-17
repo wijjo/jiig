@@ -5,8 +5,9 @@ Object passed to task functions for task execution.
 """
 
 from __future__ import annotations
+
 import os
-from typing import Dict, Text, Any
+from typing import Dict, Text, Any, List
 
 from . import utility
 
@@ -19,8 +20,13 @@ class HelpFormatter:
 
 class RunnerData:
     """Results returned after parsing the command line."""
-    def __init__(self, args: Any, help_formatters: Dict[Text, HelpFormatter], **params):
+    def __init__(self,
+                 args: Any,
+                 trailing_args: List[Text],
+                 help_formatters: Dict[Text, HelpFormatter],
+                 params: Dict):
         self.args = args
+        self.trailing_args = trailing_args
         self.help_formatters = help_formatters
         self.params = params
 
@@ -38,6 +44,7 @@ class TaskRunner:
     def __init__(self, data: RunnerData):
         # Parsers are needed only for help formatting.
         self.args = data.args
+        self.trailing_args = data.trailing_args
         self.params = utility.AttrDict(data.params)
         self.help_formatters = data.help_formatters
 

@@ -1,8 +1,10 @@
 """
-Jiig constants.
+Jiig global constants and data.
 """
+import os
 
 INIT_FILE = 'init.jiig'
+ALIASES_PATH = os.path.expanduser('~/.jiig-aliases')
 TEMPLATE_EXTENSION = '.template'
 TEMPLATE_EXTENSION_EXE = '.template_exe'
 TEMPLATE_EXTENSION_DOT = '.template_dot'

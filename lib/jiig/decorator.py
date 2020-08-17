@@ -5,7 +5,8 @@ Jiig decorators.
 from inspect import isfunction
 from typing import Callable, Text, Dict, Union, Sequence, List, Set
 
-from . import registry, utility
+from . import utility
+from .internal import registry
 
 
 def runner_factory() -> Callable[[registry.RunnerFactoryFunction], registry.RunnerFactoryFunction]:
@@ -22,12 +23,23 @@ def task(name: Text = None,
          help: Text = None,
          options: Dict[Union[Text, Sequence[Text]], Dict] = None,
          arguments: List[Dict] = None,
-         dependencies: List[registry.TaskFunction] = None):
+         dependencies: List[registry.TaskFunction] = None,
+         trailing_arguments: bool = False):
     """
     Decorator for mapped task functions.
 
     Name is None for abstract tasks that are only used to pull in options,
     arguments, or initialization/validation logic in the task function.
+
+    :param name: task name or None to use default
+    :param parent: task function of parent task for sub-command
+    :param help: help string
+    :param options: flag options as dictionary mapping option flags or flag tuples
+                    to add_argument() parameter dictionaries
+    :param arguments: positional arguments as list of add_argument() parameter dicts
+    :param dependencies: task functions of dependency tasks
+    :param trailing_arguments: pass along trailing extra arguments (only valid for
+                               primary top level command)
     """
 
     # Check for missing parentheses. Will not support that kind of decorator,
@@ -154,6 +166,18 @@ def task(name: Text = None,
         if not task_help:
             task_help = '(no help in @task decorator or doc string)'
 
+        # The root task needs to flag if it or any child wants trailing arguments.
+        need_trailing_arguments = False
+        if trailing_arguments:
+            if parent_mapped_task:
+                while True:
+                    if not parent_mapped_task.parent:
+                        parent_mapped_task.need_trailing_arguments = True
+                        break
+                    parent_mapped_task = parent_mapped_task.parent
+            else:
+                need_trailing_arguments = True
+
         # Create the registered MappedTask object.
         mt = registry.MappedTask(task_function=task_function,
                                  name=task_name,
@@ -163,6 +187,8 @@ def task(name: Text = None,
                                  help=task_help,
                                  options=merged_options,
                                  arguments=merged_arguments,
+                                 trailing_arguments=trailing_arguments,
+                                 need_trailing_arguments=need_trailing_arguments,
                                  execution_tasks=merged_execution_tasks)
 
         # Complete the registration, now that there is a new MappedTask.
