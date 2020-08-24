@@ -26,12 +26,12 @@ from typing import Text, List, Dict, Any, Optional, Tuple, IO, Iterator, Iterabl
 from urllib.request import urlopen, Request
 from urllib.error import URLError
 
-from .internal import globals
+from .internal import global_data
 
 
 class Regex:
     remote_path = re.compile(r'^([\w\d.@-]+):([\w\d_-~/]+)$')
-    template_folder_symbol = re.compile(globals.TEMPLATE_FOLDER_SYMBOL_PATTERN)
+    template_folder_symbol = re.compile(global_data.TEMPLATE_FOLDER_SYMBOL_PATTERN)
 
 
 class AttrDict(dict):
@@ -89,9 +89,9 @@ def log_message(text: Any, *args, **kwargs):
     tag = kwargs.pop('tag', None)
     verbose = kwargs.pop('verbose', None)
     debug = kwargs.pop('debug', None)
-    if verbose and not globals.VERBOSE:
+    if verbose and not global_data.VERBOSE:
         return
-    if debug and not globals.DEBUG:
+    if debug and not global_data.DEBUG:
         return
     lines = []
     if text:
@@ -119,7 +119,7 @@ def abort(text: Any, *args, **kwargs):
     skip = kwargs.pop('skip', 0)
     kwargs['tag'] = 'FATAL'
     log_message(text, *args, **kwargs)
-    if globals.DEBUG:
+    if global_data.DEBUG:
         print_call_stack(skip=skip + 2)
     sys.exit(255)
 
@@ -272,7 +272,7 @@ def copy_folder(src_path: Text,
                 quiet: bool = False):
     src_folder_path = short_path(src_path, is_folder=True)
     dst_folder_path = short_path(dst_path, is_folder=True)
-    if not globals.DRY_RUN:
+    if not global_data.DRY_RUN:
         check_folder_exists(src_folder_path)
     if not merge:
         delete_folder(dst_path, quiet=quiet)
@@ -310,15 +310,15 @@ def move_file(src_path: Text,
     """Move a file to a fully-specified file path, not a folder."""
     src_path_short = short_path(src_path, is_folder=False)
     dst_path_short = short_path(dst_path, is_folder=False)
-    if not globals.DRY_RUN:
+    if not global_data.DRY_RUN:
         check_file_exists(src_path_short)
     if overwrite:
         # If overwriting is allowed a file (only) can be clobbered.
-        if os.path.exists(dst_path) and not globals.DRY_RUN:
+        if os.path.exists(dst_path) and not global_data.DRY_RUN:
             check_file_exists(dst_path)
     else:
         # If overwriting is prohibited don't clobber anything.
-        if not globals.DRY_RUN:
+        if not global_data.DRY_RUN:
             check_file_not_exists(dst_path_short)
     parent_folder = os.path.dirname(dst_path)
     if not os.path.exists(parent_folder):
@@ -333,12 +333,12 @@ def move_folder(src_path: Text,
     """Move a folder to a fully-specified folder path, not a parent folder."""
     src_path_short = short_path(src_path, is_folder=True)
     dst_path_short = short_path(dst_path, is_folder=True)
-    if not globals.DRY_RUN:
+    if not global_data.DRY_RUN:
         check_folder_exists(src_path_short)
     if overwrite:
         delete_folder(dst_path, quiet=quiet)
     else:
-        if not globals.DRY_RUN:
+        if not global_data.DRY_RUN:
             check_folder_not_exists(dst_path_short)
     parent_folder = os.path.dirname(dst_path)
     if not os.path.exists(parent_folder):
@@ -355,7 +355,7 @@ def sync_folders(src_folder: Text,
     # Add the trailing slash for rsync. This works for remote paths too.
     src_folder = folder_path(src_folder)
     dst_folder = folder_path(dst_folder)
-    if not globals.DRY_RUN:
+    if not global_data.DRY_RUN:
         check_folder_exists(src_folder)
     if not quiet:
         log_message('Folder sync.',
@@ -363,7 +363,7 @@ def sync_folders(src_folder: Text,
                     target=dst_folder,
                     exclude=exclude or [])
     cmd_args = ['rsync']
-    if globals.DRY_RUN:
+    if global_data.DRY_RUN:
         cmd_args.append('--dry-run')
     cmd_args.extend(['-a', '--stats', '-h'])
     if check_contents:
@@ -393,7 +393,7 @@ def expand_template(source_path: Text,
     else:
         short_target_path = short_path(target_path)
     symbols = symbols or {}
-    if not globals.DRY_RUN:
+    if not global_data.DRY_RUN:
         check_file_exists(source_path)
     if os.path.exists(target_path):
         if not os.path.isfile(target_path):
@@ -406,7 +406,7 @@ def expand_template(source_path: Text,
     log_message('Generate from template.',
                 source=short_source_path,
                 target=short_target_path)
-    if not globals.DRY_RUN:
+    if not global_data.DRY_RUN:
         try:
             with open(source_path, encoding='utf-8') as src_file:
                 with open(target_path, 'w', encoding='utf-8') as target_file:
@@ -511,12 +511,12 @@ def expand_template_folder(template_folder: Text,
         for file_name in walk_file_names:
             source_path = os.path.join(walk_source_folder, file_name)
             stripped_file_name, extension = os.path.splitext(file_name)
-            if extension in globals.ALL_TEMPLATE_EXTENSIONS:
-                if extension == globals.TEMPLATE_EXTENSION_DOT:
+            if extension in global_data.ALL_TEMPLATE_EXTENSIONS:
+                if extension == global_data.TEMPLATE_EXTENSION_DOT:
                     stripped_file_name = '.' + stripped_file_name
                 expanded_file_name = expand_template_path(stripped_file_name, symbols)
                 target_path = os.path.join(walk_target_folder, expanded_file_name)
-                executable = extension == globals.TEMPLATE_EXTENSION_EXE
+                executable = extension == global_data.TEMPLATE_EXTENSION_EXE
                 expand_template(source_path,
                                 target_path,
                                 overwrite=overwrite,
@@ -571,7 +571,7 @@ def run(cmd_args: List[Text],
         message_data['verbose'] = True
     log_message('Run command.', cmd_string, **message_data)
     # A dry run can stop here, before taking real action.
-    if globals.DRY_RUN and not run_always:
+    if global_data.DRY_RUN and not run_always:
         return None
     # Generate the command run environment.
     run_env = dict(os.environ)
@@ -673,26 +673,26 @@ def update_virtual_environment(venv_folder: Text, packages: List = None):
 
 def make_dest_name(*names: Text) -> Text:
     """Produce a dest name based on a name list."""
-    prefixed_names = [globals.CLI_DEST_NAME_PREFIX] + [name.upper() for name in names]
-    return globals.CLI_DEST_NAME_SEPARATOR.join(prefixed_names)
+    prefixed_names = [global_data.CLI_DEST_NAME_PREFIX] + [name.upper() for name in names]
+    return global_data.CLI_DEST_NAME_SEPARATOR.join(prefixed_names)
 
 
 def append_dest_name(dest_name: Text, *names: Text) -> Text:
     """Add to an existing dest name."""
-    return globals.CLI_DEST_NAME_SEPARATOR.join(
+    return global_data.CLI_DEST_NAME_SEPARATOR.join(
         [dest_name] + [name.upper() for name in names])
 
 
 def make_metavar(*names: Text) -> Text:
     """Produce a metavar name based on a name list."""
-    suffixed_names = [name.upper() for name in names] + [globals.CLI_METAVAR_SUFFIX]
-    return globals.CLI_METAVAR_SEPARATOR.join(suffixed_names)
+    suffixed_names = [name.upper() for name in names] + [global_data.CLI_METAVAR_SUFFIX]
+    return global_data.CLI_METAVAR_SEPARATOR.join(suffixed_names)
 
 
 def metavar_to_dest_name(metavar: Text) -> Text:
-    if metavar.endswith(globals.CLI_METAVAR_SUFFIX):
-        prepped_name = metavar[:-(len(globals.CLI_METAVAR_SUFFIX) + 1)].lower()
-        names = prepped_name.split(globals.CLI_METAVAR_SEPARATOR)
+    if metavar.endswith(global_data.CLI_METAVAR_SUFFIX):
+        prepped_name = metavar[:-(len(global_data.CLI_METAVAR_SUFFIX) + 1)].lower()
+        names = prepped_name.split(global_data.CLI_METAVAR_SEPARATOR)
         return make_dest_name(*names)
     log_error(f'metavar_to_dest_name: bad metavar name: {metavar}')
     return ''
@@ -756,11 +756,11 @@ def import_modules_from_folder(folder: Text,
                 if retry:
                     to_retry.append((module_name, module_path))
                 exceptions.append((module_name, module_path, exc))
-                if globals.DEBUG:
+                if global_data.DEBUG:
                     raise
             except Exception as exc:
                 exceptions.append((module_name, module_path, exc))
-                if globals.DEBUG:
+                if global_data.DEBUG:
                     raise
         to_import = []
         if to_retry:

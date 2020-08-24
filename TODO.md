@@ -30,3 +30,10 @@ in a history listing. Additional options and arguments can appear after the
 ## Output capture
 
 Add a global option, e.g. `-c` to capture output in a file.
+
+## Global options
+
+Add ability to save and use global tool options to be able to control features
+like history and output capture. Tools should be able to add their own options
+and hide some Jiig ones, e.g. if it doesn't want to support history or output
+capture for security reasons.

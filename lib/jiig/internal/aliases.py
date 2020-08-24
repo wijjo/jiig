@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from typing import Text, List, Optional, Iterator, Any, Iterable, Dict
 
 from jiig import utility
-from . import globals, registry
+from . import global_data, registry
 
 
 # JSON schema:
@@ -227,8 +227,8 @@ class AliasManager:
         """Load and validate the aliases file."""
         self.disable_saving = False
         self.modified = False
-        if os.path.exists(globals.ALIASES_PATH):
-            raw_catalog = utility.open_json(file=globals.ALIASES_PATH, check=True)
+        if os.path.exists(global_data.ALIASES_PATH):
+            raw_catalog = utility.open_json(file=global_data.ALIASES_PATH, check=True)
             scrubber = _AliasCatalogScrubber(raw_catalog)
             self.catalog = scrubber.scrubbed_data
             if scrubber.errors > 0:
@@ -241,15 +241,15 @@ class AliasManager:
         """Save the aliases file."""
         if self.disable_saving:
             utility.log_error(
-                f'Not saving aliases to "{globals.ALIASES_PATH}".',
+                f'Not saving aliases to "{global_data.ALIASES_PATH}".',
                 f'Please correct previously-reported errors or delete the file.')
             return
         try:
-            with open(globals.ALIASES_PATH, 'w', encoding='utf-8') as aliases_file:
+            with open(global_data.ALIASES_PATH, 'w', encoding='utf-8') as aliases_file:
                 json.dump(self.sorted_catalog, aliases_file, indent=2)
             self.modified = False
         except Exception as exc:
-            utility.abort(f'Failed to write aliases file "{globals.ALIASES_PATH}".', exc)
+            utility.abort(f'Failed to write aliases file "{global_data.ALIASES_PATH}".', exc)
 
     def create_alias(self,
                      alias_name: Text,

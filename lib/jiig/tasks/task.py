@@ -2,7 +2,7 @@ import os
 
 from jiig import task, TaskRunner
 from jiig.utility import log_heading, log_message, abort, expand_template
-from jiig.internal import globals
+from jiig.internal import global_data
 
 
 @task('task', help='manage task modules')
@@ -29,8 +29,8 @@ def task_task_create(runner: TaskRunner):
     log_heading(1, 'Create task module(s)')
     output_folder = runner.params.OUTPUT_FOLDER or os.getcwd()
     template_path = os.path.join(runner.params.JIIG_ROOT,
-                                 globals.TEMPLATES_FOLDER,
-                                 globals.TASK_TEMPLATE)
+                                 global_data.TEMPLATES_FOLDER,
+                                 global_data.TASK_TEMPLATE)
     for task_name in runner.args.NEW_TASK_NAME:
         module_name = f'{task_name}.py'
         module_path = os.path.join(output_folder, module_name)

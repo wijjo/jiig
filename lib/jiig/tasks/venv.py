@@ -11,8 +11,9 @@ from jiig import utility
     'venv',
     help='manage the tool virtual environment',
 )
-def task_venv(_runner: TaskRunner):
-    pass
+def task_venv(runner: TaskRunner):
+    if not runner.params.VENV_ROOT:
+        utility.abort(f'VENV_ROOT is not set in init.jiig.')
 
 
 @task(

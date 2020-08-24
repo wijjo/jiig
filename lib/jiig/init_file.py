@@ -2,7 +2,7 @@ import os
 from typing import Text, Any, Dict, Optional, Union, List, Tuple
 
 from . import utility
-from .internal import globals
+from .internal import global_data
 
 
 class NoDefault:
@@ -34,7 +34,7 @@ class Param:
 
         :param message: error message
         """
-        utility.abort(f'{globals.INIT_FILE}: {self.name}: {message}')
+        utility.abort(f'{global_data.INIT_FILE}: {self.name}: {message}')
 
     def merge_payload_value(self, payload: ParamPayload, value: Any):
         """
@@ -77,8 +77,8 @@ class ParamString(Param):
 
 class ParamFolder(ParamString):
 
-    def __init__(self, name: Text):
-        super().__init__(name, default_value='')
+    def __init__(self, name: Text, default_value: Text = None):
+        super().__init__(name, default_value=default_value)
 
     def merge_payload_value(self, payload: ParamPayload, value: Text):
         super().merge_payload_value(payload, value)

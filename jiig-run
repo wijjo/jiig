@@ -28,11 +28,11 @@ if JIIG_ROOT in sys.path:
     sys.path.remove(JIIG_ROOT)
 
 from jiig import init_file, task_runner, utility
-from jiig.internal import registry, parser, globals, aliases
+from jiig.internal import registry, parser, global_data, aliases
 
 INIT_PARAM_TYPES = [
     init_file.ParamFolderList('LIB_FOLDERS', default_value=['lib']),
-    init_file.ParamFolder('VENV_ROOT'),
+    init_file.ParamFolder('VENV_ROOT', default_value='venv'),
     init_file.ParamList('PIP_PACKAGES', unique=True, default_value=[]),
 ]
 
@@ -50,11 +50,11 @@ def pre_parse_command_line() -> List[Text]:
     args, trailing_args = parser.pre_parse_command_line(cli_args=sys.argv[2:])
     if args.VERBOSE:
         # Dry-run implies verbose.
-        globals.VERBOSE = args.VERBOSE or args.DRY_RUN
+        global_data.VERBOSE = args.VERBOSE or args.DRY_RUN
     if args.DEBUG:
-        globals.DEBUG = args.DEBUG
+        global_data.DEBUG = args.DEBUG
     if args.DRY_RUN:
-        globals.DRY_RUN = args.DRY_RUN
+        global_data.DRY_RUN = args.DRY_RUN
     # Drop the '--' that was needed for restarting in the virtual environment.
     if trailing_args and trailing_args[0] == '--':
         return trailing_args[1:]
@@ -69,14 +69,9 @@ def initialize(command_args: List[Text]) -> init_file.ParamData:
 
     :return: init file parameter data
     """
-
-    # Jiig itself has no init file.
-    tool_root = os.path.dirname(os.path.realpath(sys.argv[1]))
-    if tool_root == JIIG_ROOT:
-        return init_file.ParamData()
-
     # Load tool init file
-    init_path = os.path.join(tool_root, globals.INIT_FILE)
+    tool_root = os.path.dirname(os.path.realpath(sys.argv[1]))
+    init_path = os.path.join(tool_root, global_data.INIT_FILE)
     param_loader = init_file.ParamLoader(INIT_PARAM_TYPES)
     utility.log_message(f'Load configuration file "{init_path}".', verbose=True)
     param_loader.load_file(init_path)
