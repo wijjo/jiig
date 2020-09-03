@@ -200,7 +200,7 @@ def _create_primary_parser(*args, **kwargs) -> ArgumentParser:
                             help='enable debug mode')
     if not registry.ToolOptions.disable_dry_run:
         parser.add_argument('-n', dest='DRY_RUN', action='store_true',
-                            help='display actions without executing them')
+                            help='display actions without executing (dry run)')
     if not registry.ToolOptions.disable_verbose:
         parser.add_argument('-v', dest='VERBOSE', action='store_true',
                             help='display additional (verbose) messages')

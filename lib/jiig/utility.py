@@ -7,6 +7,8 @@ jiig script may import this module when running under the system interpreter,
 before re-invoking itself in the virtual environment.
 
 TODO: Split this file by subject, e.g. filesystem, strings, data structures. It's getting too big!
+
+TODO: Add docstrings to everything.
 """
 import sys
 import os
@@ -25,6 +27,7 @@ from string import Template
 from typing import Text, List, Dict, Any, Optional, Tuple, IO, Iterator, Iterable
 from urllib.request import urlopen, Request
 from urllib.error import URLError
+from thirdparty.gitignore_parser.gitignore_parser import parse_gitignore, prepare_ignore_patterns
 
 from .internal import global_data
 
@@ -1051,3 +1054,77 @@ def format_table(*rows: Iterable[Any],
 
         for row in rows:
             yield format_string.format(*_get_strings(row, padded=True))
+
+
+class FileFilter:
+    def __init__(self, source_folder: Text):
+        self.source_folder = source_folder
+
+    def accept(self, path: Text) -> bool:
+        raise NotImplementedError
+
+
+class ExcludesFilter(FileFilter):
+    def __init__(self, source_folder: Text, excludes: List[Text]):
+        if excludes:
+            self.matcher = prepare_ignore_patterns(excludes, source_folder)
+        else:
+            self.matcher = None
+        super().__init__(source_folder)
+
+    def accept(self, path: Text) -> bool:
+        if not self.matcher:
+            return True
+        return not self.matcher(path)
+
+
+class GitignoreFilter(FileFilter):
+    def __init__(self,  source_folder: Text):
+        super().__init__(source_folder)
+        gitignore_path = os.path.join(self.source_folder, '.gitignore')
+        if os.path.isfile(gitignore_path):
+            self.matcher = parse_gitignore(gitignore_path)
+        else:
+            self.matcher = None
+
+    def accept(self, path: Text) -> bool:
+        if not self.matcher:
+            return True
+        return not self.matcher(path)
+
+
+def iterate_files(source_folder: Text) -> Iterator[Text]:
+    discard_length = len(source_folder)
+    if not source_folder.endswith(os.path.sep):
+        discard_length += 1
+    for dir_path, _sub_dir_paths, file_names in os.walk(source_folder):
+        relative_dir_name = dir_path[discard_length:]
+        for file_name in file_names:
+            yield os.path.join(relative_dir_name, file_name)
+
+
+def iterate_git_pending(source_folder: Text) -> Iterator[Text]:
+    with chdir(source_folder, quiet=True):
+        git_proc = run(['git', 'status', '-s', '-uno'], capture=True)
+        for line in git_proc.stdout.split(os.linesep):
+            path = line[3:]
+            if os.path.isfile(path):
+                yield path
+
+
+def iterate_filtered_files(source_folder: Text,
+                           excludes: List[Text] = None,
+                           pending: bool = False,
+                           gitignore: bool = False):
+    if pending:
+        file_iterator_function = iterate_git_pending
+    else:
+        file_iterator_function = iterate_files
+    file_filters: List[FileFilter] = []
+    if excludes:
+        file_filters.append(ExcludesFilter(source_folder, excludes))
+    if gitignore:
+        file_filters.append(GitignoreFilter(source_folder))
+    for path in file_iterator_function(source_folder):
+        if all((file_filter.accept(path) for file_filter in file_filters)):
+            yield path

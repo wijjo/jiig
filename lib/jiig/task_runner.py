@@ -10,6 +10,7 @@ import os
 from typing import Dict, Text, Any, List
 
 from . import utility
+from jiig.internal import global_data
 
 
 class HelpFormatter:
@@ -29,6 +30,10 @@ class RunnerData:
         self.trailing_args = trailing_args
         self.help_formatters = help_formatters
         self.params = params
+        # Make global flags available to applications.
+        self.debug = global_data.DEBUG
+        self.dry_run = global_data.DRY_RUN
+        self.verbose = global_data.VERBOSE
 
 
 class TaskRunner:
@@ -47,6 +52,9 @@ class TaskRunner:
         self.trailing_args = data.trailing_args
         self.params = utility.AttrDict(data.params)
         self.help_formatters = data.help_formatters
+        self.debug = data.debug
+        self.dry_run = data.dry_run
+        self.verbose = data.verbose
 
     # === Public methods.
 
