@@ -12,6 +12,7 @@ TODO: Add docstrings to everything.
 """
 import sys
 import os
+import stat
 from io import StringIO
 
 import importlib.util
@@ -1128,3 +1129,12 @@ def iterate_filtered_files(source_folder: Text,
     for path in file_iterator_function(source_folder):
         if all((file_filter.accept(path) for file_filter in file_filters)):
             yield path
+
+
+def find_system_program(name: Text) -> Optional[Text]:
+    """Return path of system program if found or None if not."""
+    for folder in os.environ['PATH'].split(os.pathsep):
+        path = os.path.join(folder, name)
+        if os.path.isfile(path) and (os.stat(path).st_mode & stat.S_IEXEC):
+            return path
+    return None
