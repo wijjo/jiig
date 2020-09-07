@@ -1,43 +1,62 @@
 # Jiig
 
 Jiig is a framework and tool that makes it easier to create multi-command shell
-tools. Jiig tool interfaces function similar to the `git` command. See the
-features below for more details.
+tools. Jiig tool interfaces resemble the `git` command in having multi-level
+sub-commands, options, and arguments, along with integrated help.
 
-`Tzar` (https://github.com/wijjo/tzar) is an early example of a Jiig tool.
+`Tzar` (https://github.com/wijjo/tzar) is an early example of a Jiig-based tool
+that is written by the same author.
 
 ## Features
 
-### Multi-command
+### Simple and flexible command line interface
 
-All functionality is accessed through single or multi-level sub-commands.
+All functionality is accessible through a command line interface (abbreviated
+"CLI") that supports a hierarchy of sub-commands, called "tasks" in Jiig
+terminology, along with their options and arguments.
 
-### Simple execution model
+Help is provided by a standard "-h/--help" option at all task levels, plus a
+multi-level "help" sub-command.
 
-Jiig scripts use `jiig-run` for the "shebang" line instead of Python. This
-provides the needed hook to set up and use a virtual environment, prepare the
-library load path, execute the tool script to load decorated task functions and
-modules, build the argparse-based command line interface, and then to parse and
-run the command line.
+Complex full or partial command lines may be saved and retrieved through an
+"alias" facility and sub-command that can be inherited by any tool.
 
-### Declarative structure
+### Easy declarative `argparse` CLI definition
 
-CLI command names, text, options, and arguments are specified in `@task`
-decorators attached to implementation functions in task modules. There is no
-central code that needs to be updated for new sub-task commands.
+The command line interface (CLI) is automatically generated based on task
+function `@task` decorators. The `@task` meta-data parameters feed into the
+construction of an `argparse` CLI argument parser, including the integrated
+help and alias facilities.
 
-Tasks are registered by declaring them in the main script or by loading modules
-that contain decorated functions.
+### Modular structure
 
-### Simple configuration
+Since `@task` declarations live near the corresponding implementation code, new
+tasks can be added as self-contained modules. The only additional step required
+to wire the new task into the CLI is to import the module, which typically
+happens in the main script.
 
-An optional `init.jiig` file can configure the following information for one or
+### Simple main script and execution model
+
+Jiig main scripts use `jiig-run` for the "shebang" line that defines the shell
+executable program for the script. It does not run Python directly.
+
+The indirect execution structure allows `jiig-run` to set up and use a virtual
+environment, if the tool is configured for one. It also prepares the library
+load path before executing the tool script.
+
+The tool main script imports task modules, which pulls in decorated task
+functions and modules and provides the meta-data for building the argparse-based
+command line interface.
+
+### Tool configuration
+
+An optional `init.jiig` file configures the following information for one or
 more Jiig tools in a folder.
 
 * LIB_FOLDERS: Library folders for access to additional modules.
 * VENV_ROOT: Virtual environment root folder, if a virtual environment is
-  needed. Jiig will automatically build the environment with dependencies. 
-* PIP_PACKAGES: Pip package names for installing in the virtual environment. 
+  needed. Jiig will automatically build the environment with dependencies.
+* PIP_PACKAGES: Pip package names for installing in the virtual environment.
 
 Paths should be relative, allowing the file to be part of a source repository.
 
@@ -45,17 +64,10 @@ If there is no `init.jiig` configuration file, it runs without a virtual
 environment, and with a library path that provides access to both Python
 Standard Library and Jiig modules.
 
-### Auto-generated `argparse` CLI
-
-As mentioned, the command line interface (CLI) is automatically generated based
-on task function `@task` decorators. The supplied meta-data feeds into the
-construction of an `argparse` CLI argument parser, including sub-parsers for 
-task commands, a help system, options, and arguments.
-
 ### Dependencies and the virtual environment
 
 Jiig itself has no external dependencies beyond Python (version 3.x).
- 
+
 Jiig-based tools depend on `jiig` and `jiig-run` being available in the path.
 
 Tool-specific dependencies can be handled by a virtual environment by defining a
@@ -76,7 +88,7 @@ The `task` sub-command can generate a basic task module.
 
 ### Simple Jiig script code
 
-The code generation is probably superfluous, because there is very little code
+The code generation is pretty superfluous, because there is very little code
 needed for a basic Jiig script. Here is a minimal example.
 
 ```

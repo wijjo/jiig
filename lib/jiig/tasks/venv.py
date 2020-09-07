@@ -1,10 +1,13 @@
 """
 Jiig virtual environment management.
 """
+
 import os
 
 from jiig import task, TaskRunner
-from jiig import utility
+from jiig.utility.console import abort, log_heading, log_message
+from jiig.utility.process import run
+from jiig.utility.python import build_virtual_environment, update_virtual_environment
 
 
 @task(
@@ -13,7 +16,7 @@ from jiig import utility
 )
 def task_venv(runner: TaskRunner):
     if not runner.params.VENV_ROOT:
-        utility.abort(f'VENV_ROOT is not set in init.jiig.')
+        abort(f'VENV_ROOT is not set in init.jiig.')
 
 
 @task(
@@ -27,11 +30,11 @@ def task_venv(runner: TaskRunner):
 )
 def task_venv_build(runner: TaskRunner):
     if runner.params.PRIMARY_TASK:
-        utility.log_heading(1, 'Build virtual environment')
-    utility.build_virtual_environment(runner.params.VENV_ROOT,
-                                      packages=runner.params.PIP_PACKAGES,
-                                      rebuild=runner.args.REBUILD_VENV,
-                                      quiet=not runner.params.PRIMARY_TASK)
+        log_heading(1, 'Build virtual environment')
+    build_virtual_environment(runner.params.VENV_ROOT,
+                              packages=runner.params.PIP_PACKAGES,
+                              rebuild=runner.args.REBUILD_VENV,
+                              quiet=not runner.params.PRIMARY_TASK)
 
 
 @task(
@@ -41,9 +44,9 @@ def task_venv_build(runner: TaskRunner):
 )
 def task_venv_build(runner: TaskRunner):
     if runner.params.PRIMARY_TASK:
-        utility.log_heading(1, 'Update virtual environment')
-    utility.update_virtual_environment(runner.params.VENV_ROOT,
-                                       packages=runner.params.PIP_PACKAGES)
+        log_heading(1, 'Update virtual environment')
+    update_virtual_environment(runner.params.VENV_ROOT,
+                               packages=runner.params.PIP_PACKAGES)
 
 
 @task(
@@ -55,14 +58,14 @@ def task_ipython(runner: TaskRunner):
     ipython_path = runner.expand_path_template('{VENV_ROOT}/bin/ipython')
     if not os.path.exists(ipython_path):
         pip_path = runner.expand_path_template('{VENV_ROOT}/bin/pip')
-        utility.log_message('Install iPython in virtual environment.')
-        utility.run([pip_path, 'install', 'ipython'])
+        log_message('Install iPython in virtual environment.')
+        run([pip_path, 'install', 'ipython'])
     try:
         os.execl(ipython_path, ipython_path)
     except Exception as exc:
-        utility.abort(f'Failed to execute "ipython" command.',
-                      command_path=ipython_path,
-                      exception=exc)
+        abort(f'Failed to execute "ipython" command.',
+              command_path=ipython_path,
+              exception=exc)
 
 
 @task(

@@ -9,7 +9,7 @@ Python and a path that finds the Jiig library.
 All the body of this script has to do is load task modules so that they get
 registered for when the CLI is built.
 """
-print('jiig')
+
 import jiig
 
 jiig.options(description='Jiig tool manager.')

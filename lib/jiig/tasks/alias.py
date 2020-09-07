@@ -5,7 +5,8 @@ from typing import Text, Iterator, Iterable
 
 from jiig import task, TaskRunner
 from jiig.internal.aliases import AliasManager, Alias
-from jiig.utility import format_table, log_message, log_error
+from jiig.utility.general import format_table
+from jiig.utility.console import log_message, log_error
 
 
 @task('alias', help='manage command aliases')

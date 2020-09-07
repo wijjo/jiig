@@ -13,7 +13,11 @@ import os
 from dataclasses import dataclass
 from typing import Text, List, Optional, Iterator, Any, Iterable, Dict
 
-from jiig import utility
+from jiig.utility.cli import make_dest_name
+from jiig.utility.console import abort, log_error, log_message, log_warning
+from jiig.utility.process import shell_command_string
+from jiig.utility.stream import open_json
+
 from . import global_data, registry
 
 
@@ -77,7 +81,7 @@ class _AliasCatalogScrubber:
 
     def _error(self, message: Text):
         if not self.quiet:
-            utility.log_error(message)
+            log_error(message)
         self.errors += 1
 
 
@@ -92,7 +96,7 @@ class Alias:
 
     @property
     def command_string(self) -> Text:
-        return utility.shell_command_string(*self.command)
+        return shell_command_string(*self.command)
 
     @property
     def short_name(self) -> Text:
@@ -214,7 +218,7 @@ class AliasManager:
         """
         full_name = expand_name(alias_name)
         if not full_name:
-            utility.abort(f'Bad alias name "{alias_name}".')
+            abort(f'Bad alias name "{alias_name}".')
         tool_alias_map = self.catalog.get(self.tool_name)
         if not tool_alias_map:
             return None
@@ -228,7 +232,7 @@ class AliasManager:
         self.disable_saving = False
         self.modified = False
         if os.path.exists(global_data.ALIASES_PATH):
-            raw_catalog = utility.open_json(file=global_data.ALIASES_PATH, check=True)
+            raw_catalog = open_json(file=global_data.ALIASES_PATH, check=True)
             scrubber = _AliasCatalogScrubber(raw_catalog)
             self.catalog = scrubber.scrubbed_data
             if scrubber.errors > 0:
@@ -240,16 +244,15 @@ class AliasManager:
     def save(self):
         """Save the aliases file."""
         if self.disable_saving:
-            utility.log_error(
-                f'Not saving aliases to "{global_data.ALIASES_PATH}".',
-                f'Please correct previously-reported errors or delete the file.')
+            log_error(f'Not saving aliases to "{global_data.ALIASES_PATH}".',
+                      f'Please correct previously-reported errors or delete the file.')
             return
         try:
             with open(global_data.ALIASES_PATH, 'w', encoding='utf-8') as aliases_file:
                 json.dump(self.sorted_catalog, aliases_file, indent=2)
             self.modified = False
         except Exception as exc:
-            utility.abort(f'Failed to write aliases file "{global_data.ALIASES_PATH}".', exc)
+            abort(f'Failed to write aliases file "{global_data.ALIASES_PATH}".', exc)
 
     def create_alias(self,
                      alias_name: Text,
@@ -264,24 +267,24 @@ class AliasManager:
         """
         full_name = expand_name(alias_name)
         if not full_name:
-            utility.abort(f'Bad alias name "{alias_name}" for create.')
+            abort(f'Bad alias name "{alias_name}" for create.')
         if not list(command):
-            utility.abort(f'New alias "{alias_name}" command is empty.')
+            abort(f'New alias "{alias_name}" command is empty.')
         tool_alias_map = self.catalog.get(self.tool_name)
         if tool_alias_map and full_name in tool_alias_map:
-            utility.abort(f'New alias "{alias_name}" already exists.')
+            abort(f'New alias "{alias_name}" already exists.')
         # Can't easily check the entire aliased command, so just check the task name.
         task_name = list(command)[0]
-        dest_name = utility.make_dest_name(task_name)
+        dest_name = make_dest_name(task_name)
         if dest_name not in registry.MAPPED_TASKS_BY_DEST_NAME:
-            utility.abort(f'Unknown task "{task_name}" for alias.')
+            abort(f'Unknown task "{task_name}" for alias.')
         if tool_alias_map is None:
             tool_alias_map = {}
             self.catalog[self.tool_name] = tool_alias_map
         description = description if description is not None else '(no description)'
         alias_data = dict(description=description, command=command)
         tool_alias_map[full_name] = alias_data
-        utility.log_message(f'Alias "{alias_name}" created.')
+        log_message(f'Alias "{alias_name}" created.')
         self.sorted = False
         self.modified = True
 
@@ -298,15 +301,15 @@ class AliasManager:
         """
         full_name = expand_name(alias_name)
         if not full_name:
-            utility.abort(f'Bad alias name "{alias_name}" for update.')
+            abort(f'Bad alias name "{alias_name}" for update.')
         if command is not None and not list(command):
-            utility.abort(f'Alias "{alias_name}" command is empty.')
+            abort(f'Alias "{alias_name}" command is empty.')
         tool_alias_map = self.catalog.get(self.tool_name)
         if not tool_alias_map:
-            utility.abort(f'No aliases exist.')
+            abort(f'No aliases exist.')
         existing_alias_data = tool_alias_map.get(full_name)
         if not existing_alias_data:
-            utility.abort(f'Alias "{alias_name}" does not exist.')
+            abort(f'Alias "{alias_name}" does not exist.')
         updated = False
         if command is not None:
             existing_alias_data['command'] = command
@@ -315,9 +318,9 @@ class AliasManager:
             existing_alias_data['description'] = description
             updated = True
         if not updated:
-            utility.log_warning(f'No alias "{alias_name}" information supplied for update.')
+            log_warning(f'No alias "{alias_name}" information supplied for update.')
             return
-        utility.log_message(f'Alias "{alias_name}" updated.')
+        log_message(f'Alias "{alias_name}" updated.')
         self.modified = True
 
     def delete_alias(self, alias_name: Text):
@@ -328,14 +331,14 @@ class AliasManager:
         """
         full_name = expand_name(alias_name)
         if not full_name:
-            utility.abort(f'Bad alias name "{alias_name}" for delete.')
+            abort(f'Bad alias name "{alias_name}" for delete.')
         tool_alias_map = self.catalog.get(self.tool_name)
         if not tool_alias_map:
-            utility.abort('Tool has no aliases.')
+            abort('Tool has no aliases.')
         if full_name not in tool_alias_map:
-            utility.abort(f'Alias "{alias_name}" not found for deletion.')
+            abort(f'Alias "{alias_name}" not found for deletion.')
         del tool_alias_map[full_name]
-        utility.log_message(f'Alias "{alias_name}" deleted.')
+        log_message(f'Alias "{alias_name}" deleted.')
         self.modified = True
 
     def rename_alias(self, alias_name: Text, alias_name_new: Text):
@@ -350,21 +353,21 @@ class AliasManager:
         full_name = expand_name(alias_name)
         full_name_new = expand_name(alias_name_new)
         if not full_name:
-            utility.abort(f'Bad alias name "{alias_name}" for rename.')
+            abort(f'Bad alias name "{alias_name}" for rename.')
         if not full_name_new:
-            utility.abort(f'Bad target alias name "{alias_name_new}" for rename.')
+            abort(f'Bad target alias name "{alias_name_new}" for rename.')
         tool_alias_map = self.catalog.get(self.tool_name)
         if not tool_alias_map:
-            utility.abort('Tool has no aliases.')
+            abort('Tool has no aliases.')
         existing_alias_data = tool_alias_map.get(full_name)
         if not existing_alias_data:
-            utility.abort(f'Alias "{alias_name}" does not exist.')
+            abort(f'Alias "{alias_name}" does not exist.')
         existing_alias_data_new = tool_alias_map.get(full_name_new)
         if existing_alias_data_new:
-            utility.abort(f'Alias "{alias_name_new}" already exists.')
+            abort(f'Alias "{alias_name_new}" already exists.')
         tool_alias_map[alias_name_new] = tool_alias_map[alias_name]
         del tool_alias_map[alias_name]
-        utility.log_message(f'Alias "{alias_name}" renamed to "{alias_name_new}".')
+        log_message(f'Alias "{alias_name}" renamed to "{alias_name_new}".')
         self.sorted = False
         self.modified = True
 

@@ -12,8 +12,9 @@ from typing import Optional, List, Text, Dict, Sequence, Tuple
 
 from jiig.internal import registry, global_data
 from jiig.task_runner import HelpFormatter
-from jiig.utility import append_dest_name, make_dest_name, log_message, abort, format_call_string,\
-    metavar_to_dest_name
+from jiig.utility.cli import append_dest_name, make_dest_name, metavar_to_dest_name
+from jiig.utility.console import abort, log_message
+from jiig.utility.python import format_call_string
 
 # Expose Namespace, since it's pretty generic, so that other modules don't need
 # to know about argparse.

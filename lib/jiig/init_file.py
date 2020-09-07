@@ -1,8 +1,9 @@
 import os
 from typing import Text, Any, Dict, Optional, Union, List, Tuple
 
-from . import utility
-from .internal import global_data
+from jiig.internal import global_data
+from jiig.utility.console import abort
+from jiig.utility.filesystem import chdir
 
 
 class NoDefault:
@@ -34,7 +35,7 @@ class Param:
 
         :param message: error message
         """
-        utility.abort(f'{global_data.INIT_FILE}: {self.name}: {message}')
+        abort(f'{global_data.INIT_FILE}: {self.name}: {message}')
 
     def merge_payload_value(self, payload: ParamPayload, value: Any):
         """
@@ -205,15 +206,15 @@ class ParamLoader:
         if not os.path.isfile(path):
             return
         # Change the work folder to properly handle relative paths.
-        with utility.chdir(os.path.dirname(path), quiet=True):
+        with chdir(os.path.dirname(path), quiet=True):
             symbols = {}
             try:
                 with open(os.path.basename(path), encoding='utf-8') as init_file:
                     init_text = init_file.read()
             except (IOError, OSError) as exc:
-                utility.abort('Unable to read configuration file.',
-                              file=os.path.basename(path),
-                              exception=exc)
+                abort('Unable to read configuration file.',
+                      file=os.path.basename(path),
+                      exception=exc)
             exec(init_text, symbols)
             for name, value in symbols.items():
                 if name and name[0].isupper():

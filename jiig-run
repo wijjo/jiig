@@ -27,8 +27,11 @@ if JIIG_LIB not in sys.path:
 if JIIG_ROOT in sys.path:
     sys.path.remove(JIIG_ROOT)
 
-from jiig import init_file, task_runner, utility                    # noqa
+from jiig import init_file, task_runner
 from jiig.internal import registry, parser, global_data, aliases    # noqa
+from jiig.utility.cli import make_dest_name
+from jiig.utility.console import abort, log_message
+from jiig.utility.python import build_virtual_environment, execute_source
 
 INIT_PARAM_TYPES = [
     init_file.ParamFolderList('LIB_FOLDERS', default_value=['lib']),
@@ -77,7 +80,7 @@ def initialize(script_path: Text,
     tool_root = os.path.dirname(os.path.realpath(tool_path))
     init_path = os.path.join(tool_root, global_data.INIT_FILE)
     param_loader = init_file.ParamLoader(INIT_PARAM_TYPES)
-    utility.log_message(f'Load configuration file "{init_path}".', verbose=True)
+    log_message(f'Load configuration file "{init_path}".', verbose=True)
     param_loader.load_file(init_path)
     init_params = param_loader.get_data()
 
@@ -98,10 +101,10 @@ def initialize(script_path: Text,
 
     # May meed to build the virtual environment.
     # The following call does nothing if it exists.
-    utility.build_virtual_environment(init_params.VENV_ROOT,
-                                      packages=init_params.PIP_PACKAGES,
-                                      rebuild=False,
-                                      quiet=True)
+    build_virtual_environment(init_params.VENV_ROOT,
+                              packages=init_params.PIP_PACKAGES,
+                              rebuild=False,
+                              quiet=True)
 
     # Restart inside the virtual environment. Does not return.
     # '--' prevents the Python program from confusing jiig/tool options with its own.
@@ -120,7 +123,7 @@ def load_tool(script_path: Text, init_params: Dict) -> init_file.ParamData:
     :param script_path: path to tool script
     :param init_params: data loaded from init file
     """
-    script_symbols = utility.execute_source(file=script_path)
+    script_symbols = execute_source(file=script_path)
     # If no name was provided use the script base name.
     if not registry.ToolOptions.name:
         registry.ToolOptions.name = os.path.basename(script_path)
@@ -163,7 +166,7 @@ def expand_alias(tool_name: Text, command_args: List[Text]) -> List[Text]:
     alias_manager = aliases.AliasManager(tool_name=tool_name)
     alias = alias_manager.resolve_alias(command_args[0])
     if not alias:
-        utility.abort(f'Alias "{command_args[0]}" not found.')
+        abort(f'Alias "{command_args[0]}" not found.')
     return alias.command + command_args[1:]
 
 
@@ -177,7 +180,7 @@ def need_trailing_arguments(command_args: List[Text]) -> bool:
     if not command_args:
         return False
     # Access the mapped task to see if trailing arguments are used.
-    dest_name = utility.make_dest_name(command_args[0])
+    dest_name = make_dest_name(command_args[0])
     primary_mt = registry.MAPPED_TASKS_BY_DEST_NAME.get(dest_name)
     return primary_mt and primary_mt.need_trailing_arguments
 
@@ -202,8 +205,7 @@ def run_tool_task(cli_results: parser.CommandLineData,
         # Then execute the primary task.
         cli_results.mapped_task.task_function(registry.create_runner(runner_data))
     except RuntimeError as exc:
-        utility.abort(f'{exc.__class__.__name__}("{exc}")',
-                      cli_results.args)
+        abort(f'{exc.__class__.__name__}("{exc}")', cli_results.args)
     except KeyboardInterrupt:
         print('')
 

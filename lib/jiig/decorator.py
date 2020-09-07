@@ -5,8 +5,9 @@ Jiig decorators.
 from inspect import isfunction
 from typing import Callable, Text, Dict, Union, Sequence, List, Set
 
-from . import utility
-from .internal import registry
+from jiig.internal import registry
+from jiig.utility.cli import make_dest_name, make_metavar
+from jiig.utility.console import abort
 
 
 def runner_factory() -> Callable[[registry.RunnerFactoryFunction], registry.RunnerFactoryFunction]:
@@ -51,8 +52,8 @@ def task(name: Text = None,
             and options is None
             and arguments is None
             and dependencies is None):
-        utility.abort(f'@task decorator for function "{name.__name__}" must'
-                      f' have parentheses, even if empty')
+        abort(f'@task decorator for function "{name.__name__}" must'
+              f' have parentheses, even if empty')
 
     # Called after the outer function returns to provide the task function.
     def inner(task_function: registry.TaskFunction) -> registry.TaskFunction:
@@ -60,10 +61,10 @@ def task(name: Text = None,
         if parent:
             parent_mapped_task = registry.MAPPED_TASKS_BY_ID.get(id(parent))
             if not parent_mapped_task:
-                utility.abort(f'Unmapped parent task: {parent.__name__}')
+                abort(f'Unmapped parent task: {parent.__name__}')
             if not parent_mapped_task.name:
-                utility.abort(f'Parent task {parent_mapped_task.__class__.__name__}'
-                              f' does not have a name')
+                abort(f'Parent task {parent_mapped_task.__class__.__name__}'
+                      f' does not have a name')
         else:
             parent_mapped_task = None
 
@@ -150,8 +151,8 @@ def task(name: Text = None,
                 names.append(ancestor_mapped_task.name.upper())
                 ancestor_mapped_task = ancestor_mapped_task.parent
             names.append(task_name.upper())
-            dest_name = utility.make_dest_name(*names)
-            metavar = utility.make_metavar(*names)
+            dest_name = make_dest_name(*names)
+            metavar = make_metavar(*names)
         else:
             dest_name = None
             metavar = None

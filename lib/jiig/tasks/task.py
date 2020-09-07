@@ -1,7 +1,8 @@
 import os
 
 from jiig import task, TaskRunner
-from jiig.utility import log_heading, log_message, abort, expand_template
+from jiig.utility.console import log_heading, log_message, abort
+from jiig.utility.filesystem import expand_template
 from jiig.internal import global_data
 
 

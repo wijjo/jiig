@@ -2,8 +2,9 @@ import os
 from typing import Text
 
 from jiig import task, TaskRunner
-from jiig.utility import log_heading, abort, expand_template_folder
 from jiig.internal import global_data
+from jiig.utility.console import log_heading, abort
+from jiig.utility.filesystem import expand_template_folder
 
 
 @task('tool', help='manage tool assets')

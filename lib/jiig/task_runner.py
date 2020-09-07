@@ -9,8 +9,10 @@ from __future__ import annotations
 import os
 from typing import Dict, Text, Any, List
 
-from . import utility
 from jiig.internal import global_data
+from jiig.utility.cli import make_dest_name
+from jiig.utility.console import log_error
+from jiig.utility.general import AttrDict
 
 
 class HelpFormatter:
@@ -50,7 +52,7 @@ class TaskRunner:
         # Parsers are needed only for help formatting.
         self.args = data.args
         self.trailing_args = data.trailing_args
-        self.params = utility.AttrDict(data.params)
+        self.params = AttrDict(data.params)
         self.help_formatters = data.help_formatters
         self.debug = data.debug
         self.dry_run = data.dry_run
@@ -59,10 +61,10 @@ class TaskRunner:
     # === Public methods.
 
     def format_help(self, *task_names: Text):
-        dest_name = utility.make_dest_name(*task_names)
+        dest_name = make_dest_name(*task_names)
         help_formatter = self.help_formatters.get(dest_name, None)
         if not help_formatter:
-            utility.log_error(f'No help available for: {" ".join(task_names)}')
+            log_error(f'No help available for: {" ".join(task_names)}')
             return None
         return help_formatter.format_help()
 
