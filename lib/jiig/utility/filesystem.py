@@ -6,12 +6,13 @@ import stat
 from contextlib import contextmanager
 from glob import glob
 from string import Template
-from typing import Text, List, Optional, Dict, Iterator
+from typing import Text, List, Optional, Dict, Iterator, Any
 
 from thirdparty.gitignore_parser.gitignore_parser import parse_gitignore, prepare_ignore_patterns
 
 from jiig.internal import global_data
 from .console import abort, log_error, log_heading, log_message, log_warning
+from .general import make_list
 from .process import run
 
 REMOTE_PATH_REGEX = re.compile(r'^([\w\d.@-]+):([\w\d_-~/]+)$')
@@ -41,11 +42,11 @@ def short_path(path, is_folder=None, real_path=False, is_local=False):
     working_folder = os.getcwd()
     if real_path:
         working_folder = os.path.realpath(working_folder)
-    if path.startswith(working_folder):
+    if path.startswith(working_folder + os.path.sep):
         path = path[len(working_folder) + 1:]
     else:
         parent_folder = os.path.dirname(working_folder)
-        if path.startswith(parent_folder):
+        if path.startswith(parent_folder + os.path.sep):
             path = os.path.join('..', path[len(parent_folder) + 1:])
     if not path:
         path = '.'
@@ -468,7 +469,8 @@ def iterate_files(source_folder: Text) -> Iterator[Text]:
 
 def iterate_git_pending(source_folder: Text) -> Iterator[Text]:
     with chdir(source_folder, quiet=True):
-        git_proc = run(['git', 'status', '-s', '-uno'], capture=True)
+        git_proc = run(['git', 'status', '-s', '-uno'],
+                       capture=True, run_always=True, quiet=True)
         for line in git_proc.stdout.split(os.linesep):
             path = line[3:]
             if os.path.isfile(path):
@@ -494,9 +496,31 @@ def iterate_filtered_files(source_folder: Text,
 
 
 def find_system_program(name: Text) -> Optional[Text]:
-    """Return path of system program if found or None if not."""
+    """
+    Search system PATH for named program.
+
+    :param name: program name
+    :return: path if found or None
+    """
     for folder in os.environ['PATH'].split(os.pathsep):
         path = os.path.join(folder, name)
         if os.path.isfile(path) and (os.stat(path).st_mode & stat.S_IEXEC):
             return path
+    return None
+
+
+def choose_program_alternative(*programs: Any, required: bool = False) -> List:
+    """
+    Search system PATH for one or more alternative programs, optionally with arguments.
+
+    :param programs: program name(s) or argument lists/tuples
+    :param required: fatal error if True and program was not found
+    :return: first found program as a command argument list
+    """
+    for program in programs:
+        name = program[0] if isinstance(program, (list, tuple)) else str(program)
+        if find_system_program(name):
+            return [str(arg) for arg in make_list(program)]
+    if required:
+        abort('Required program not found.', programs=programs)
     return None

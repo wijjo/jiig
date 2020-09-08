@@ -3,14 +3,34 @@
 import os
 import shlex
 import subprocess
-from typing import Text, List, Dict, Optional, IO
+from typing import Text, List, Dict, Optional
 
 from jiig.internal import global_data
 from .console import abort, log_message
 
+# Operators to leave unchanged when quoting shell arguments.
+SHELL_OPERATORS = ['<', '>', '|', '&&', '||', ';']
+
+
+def shell_quote_arg(arg: Text) -> Text:
+    """
+    Quote a normal shell argument, but leave operators unchanged.
+
+    :param arg: shell argument
+    :return: possibly-quoted argument
+    """
+    return arg if arg in SHELL_OPERATORS else shlex.quote(str(arg))
+
 
 def shell_command_string(command: Text, *args) -> Text:
-    return ' '.join([shlex.quote(arg) for arg in [command] + list(args)])
+    """
+    Format a shell command string with appropriate argument quoting.
+
+    :param command: command (without arguments)
+    :param args: trailing arguments
+    :return: command as a single string with quoted arguments
+    """
+    return ' '.join([shell_quote_arg(str(arg)) for arg in [command] + list(args)])
 
 
 def run(cmd_args: List[Text],
@@ -24,6 +44,26 @@ def run(cmd_args: List[Text],
         quiet: bool = False,
         capture: bool = False,
         ) -> Optional[subprocess.CompletedProcess]:
+    """
+    Run a shell command.
+
+    Front end to subprocess.run() that adds support for some Jiig-specific
+    options. Uses os.execl() when replacing the process.
+
+    Also supports SSH remote execution.
+
+    :param cmd_args: raw argument list
+    :param unchecked: return when an error occurs instead of aborting if True
+    :param replace_process: replace current process if True
+    :param working_folder: folder to change to before running command
+    :param env: environment variables passed to command process
+    :param host: host for remote execution
+    :param shell: run inside a new shell process if True
+    :param run_always: execute even during a dry run if True
+    :param quiet: suppress normal messages if True
+    :param capture: capture standard output if True
+    :return: CompletedProcess object if the command was executed
+    """
     if not cmd_args:
         abort('Called run() without a command.')
     if not isinstance(cmd_args, (tuple, list)):

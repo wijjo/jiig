@@ -108,6 +108,7 @@ def initialize(script_path: Text,
 
     # Restart inside the virtual environment. Does not return.
     # '--' prevents the Python program from confusing jiig/tool options with its own.
+    log_message('Re-running inside virtual environment...', verbose=True)
     os.execl(venv_interpreter,
              venv_interpreter,
              script_path,

@@ -66,3 +66,17 @@ def format_table(*rows: Iterable[Any],
 
         for row in rows:
             yield format_string.format(*_get_strings(row, padded=True))
+
+
+def make_list(item_or_sequence: Any) -> List:
+    """
+    Coerce a sequence or non-sequence to a list.
+
+    :param item_or_sequence: item to make into a list
+    :return: resulting list
+    """
+    if isinstance(item_or_sequence, list):
+        return item_or_sequence
+    if isinstance(item_or_sequence, tuple):
+        return list(item_or_sequence)
+    return [item_or_sequence]
