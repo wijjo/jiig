@@ -44,3 +44,4 @@ def task_task_create(runner: TaskRunner):
                     template_path=template_path,
                     module_path=module_path)
         expand_template(template_path, module_path, symbols={'TASK_NAME': task_name})
+        log_message(f'Remember to import the new module, e.g. in your main script.')
