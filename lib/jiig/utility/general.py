@@ -1,5 +1,5 @@
 """General utilities."""
-from typing import Iterable, Any, Text, Iterator, List
+from typing import Iterable, Any, Text, Iterator, List, Optional
 
 
 class AttrDict(dict):
@@ -68,15 +68,50 @@ def format_table(*rows: Iterable[Any],
             yield format_string.format(*_get_strings(row, padded=True))
 
 
-def make_list(item_or_sequence: Any) -> List:
+def make_list(value: Any, strings: bool = False) -> Optional[List]:
     """
     Coerce a sequence or non-sequence to a list.
 
-    :param item_or_sequence: item to make into a list
-    :return: resulting list
+    :param value: item to make into a list
+    :param strings: convert to text strings if True
+    :return: resulting list or None if value is None
     """
-    if isinstance(item_or_sequence, list):
-        return item_or_sequence
-    if isinstance(item_or_sequence, tuple):
-        return list(item_or_sequence)
-    return [item_or_sequence]
+    def _fix(items: List) -> List:
+        if not strings:
+            return items
+        return [str(item) for item in items]
+    if isinstance(value, list):
+        return _fix(value)
+    if isinstance(value, tuple):
+        return _fix(list(value))
+    return _fix([value])
+
+
+BINARY_BYTE_COUNT_UNITS = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']
+DECIMAL_BYTE_COUNT_UNITS = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
+
+
+def format_byte_count(byte_count: int,
+                      decimal_places: int = None,
+                      binary_units: bool = False) -> Text:
+    """
+    Format byte count string using BINARY_BYTE_COUNT_UNITS abbreviations
+
+    :param byte_count: number of bytes
+    :param decimal_places: number of decimal places
+    :param binary_units: use KiB, MiB, etc. 1024-based units vs. KB, MB, etc. 1000-based units
+    :return: formatted string with applied unit abbreviation
+    """
+    if binary_units:
+        units = BINARY_BYTE_COUNT_UNITS
+        factor = 1024
+    else:
+        units = DECIMAL_BYTE_COUNT_UNITS
+        factor = 1000
+    adjusted_quantity = float(byte_count)
+    format_string = '{:0.%df}{}' % (decimal_places or 0)
+    for unit_idx in range(len(units) - 1):
+        if adjusted_quantity < factor:
+            return format_string.format(adjusted_quantity, units[unit_idx])
+        adjusted_quantity /= factor
+    return format_string.format(adjusted_quantity, units[-1])
