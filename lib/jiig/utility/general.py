@@ -87,8 +87,8 @@ def make_list(value: Any, strings: bool = False) -> Optional[List]:
     return _fix([value])
 
 
-BINARY_BYTE_COUNT_UNITS = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']
-DECIMAL_BYTE_COUNT_UNITS = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
+BINARY_BYTE_COUNT_UNITS = ['KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']
+DECIMAL_BYTE_COUNT_UNITS = ['KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
 
 
 def format_byte_count(byte_count: int,
@@ -109,9 +109,15 @@ def format_byte_count(byte_count: int,
         units = DECIMAL_BYTE_COUNT_UNITS
         factor = 1000
     adjusted_quantity = float(byte_count)
-    format_string = '{:0.%df}{}' % (decimal_places or 0)
-    for unit_idx in range(len(units) - 1):
+    format_string = '{:0.%df}' % (decimal_places or 0)
+    parts = []
+    for unit_idx in range(len(units)):
         if adjusted_quantity < factor:
-            return format_string.format(adjusted_quantity, units[unit_idx])
+            parts.append(format_string.format(adjusted_quantity))
+            if unit_idx > 0:
+                parts.append(units[unit_idx - 1])
+            break
         adjusted_quantity /= factor
-    return format_string.format(adjusted_quantity, units[-1])
+    else:
+        parts.extend([format_string.format(adjusted_quantity), units[-1]])
+    return ' '.join(parts)
