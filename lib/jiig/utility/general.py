@@ -1,6 +1,8 @@
 """General utilities."""
 from typing import Iterable, Any, Text, Iterator, List, Optional
 
+from .console import log_error
+
 
 class AttrDict(dict):
 
@@ -91,33 +93,42 @@ BINARY_BYTE_COUNT_UNITS = ['KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB
 DECIMAL_BYTE_COUNT_UNITS = ['KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
 
 
-def format_byte_count(byte_count: int,
-                      decimal_places: int = None,
-                      binary_units: bool = False) -> Text:
-    """
-    Format byte count string using BINARY_BYTE_COUNT_UNITS abbreviations
-
-    :param byte_count: number of bytes
-    :param decimal_places: number of decimal places
-    :param binary_units: use KiB, MiB, etc. 1024-based units vs. KB, MB, etc. 1000-based units
-    :return: formatted string with applied unit abbreviation
-    """
-    if binary_units:
-        units = BINARY_BYTE_COUNT_UNITS
-        factor = 1024
-    else:
-        units = DECIMAL_BYTE_COUNT_UNITS
-        factor = 1000
+def _format_byte_count(byte_count: int,
+                       factor: int,
+                       units: List[Text],
+                       decimal_places: Optional[int]) -> Text:
     adjusted_quantity = float(byte_count)
-    format_string = '{:0.%df}' % (decimal_places or 0)
-    parts = []
+    unit_format = '{value:0.%df}{unit}' % (decimal_places or 1)
     for unit_idx in range(len(units)):
         if adjusted_quantity < factor:
-            parts.append(format_string.format(adjusted_quantity))
-            if unit_idx > 0:
-                parts.append(units[unit_idx - 1])
-            break
+            if unit_idx == 0:
+                return str(byte_count)
+            return unit_format.format(value=adjusted_quantity, unit=units[unit_idx - 1])
         adjusted_quantity /= factor
-    else:
-        parts.extend([format_string.format(adjusted_quantity), units[-1]])
-    return ' '.join(parts)
+    return unit_format.format(value=adjusted_quantity, unit=units[-1])
+
+
+def format_byte_count(byte_count: int,
+                      unit_format: Text = None,
+                      decimal_places: int = None
+                      ) -> Text:
+    """
+    Format byte count string using unit abbreviations.
+
+    Either decimal_units or binary_units must be true, or it just formats it as
+    a simple integer, and decimal_places is ignored.
+
+    KB, MB, etc. are 1000-based units. KiB, MiB, etc. are 1024-based units.
+
+    :param byte_count: number of bytes
+    :param decimal_places: number of decimal places (default=1 if unit_format specified)
+    :param unit_format: 'd' for KB/MB/..., 'b' for KiB/MiB/..., or bytes if None
+    :return: formatted string with applied unit abbreviation
+    """
+    if unit_format is not None:
+        if unit_format.lower() == 'b':
+            return _format_byte_count(byte_count, 1024, BINARY_BYTE_COUNT_UNITS, decimal_places)
+        if unit_format.lower() == 'd':
+            return _format_byte_count(byte_count, 1000, DECIMAL_BYTE_COUNT_UNITS, decimal_places)
+        log_error(f'Bad format_byte_count() unit_format ({unit_format}).')
+    return str(byte_count)
