@@ -29,7 +29,16 @@ in a history listing. Additional options and arguments can appear after the
 
 ## Output capture
 
+### Capture output to a file.
+
 Add a global option, e.g. `-c` to capture output in a file.
+
+### Capture results to the clipboard.
+
+Add a global option, e.g. '-C' to copy results to the clipboard. Perhaps add a
+boolean keyword, e.g. "result", to log_message that flags a logged value as a
+result. If the option is set to populate the clipboard accumulated results can
+be copied with linefeed separators before successfully exiting.
 
 ## Global options
 

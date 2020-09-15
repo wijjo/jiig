@@ -197,10 +197,10 @@ class CommandLineData:
 def _create_primary_parser(*args, **kwargs) -> ArgumentParser:
     parser = ArgumentParser(*args, **kwargs)
     if not registry.ToolOptions.disable_debug:
-        parser.add_argument('-d', dest='DEBUG', action='store_true',
+        parser.add_argument('--debug', dest='DEBUG', action='store_true',
                             help='enable debug mode')
     if not registry.ToolOptions.disable_dry_run:
-        parser.add_argument('-n', dest='DRY_RUN', action='store_true',
+        parser.add_argument('--dry-run', dest='DRY_RUN', action='store_true',
                             help='display actions without executing (dry run)')
     if not registry.ToolOptions.disable_verbose:
         parser.add_argument('-v', dest='VERBOSE', action='store_true',
