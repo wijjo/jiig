@@ -3,11 +3,11 @@ Jiig decorators.
 """
 
 from inspect import isfunction
-from typing import Callable, Text, Dict, Union, Sequence, List, Set
+from typing import Callable, Text, Dict, Union, Sequence, List, Set, Tuple, Optional
 
 from jiig.internal import registry
 from jiig.utility.cli import make_dest_name, make_metavar
-from jiig.utility.console import abort
+from jiig.utility.console import abort, log_error
 
 
 def runner_factory() -> Callable[[registry.RunnerFactoryFunction], registry.RunnerFactoryFunction]:
@@ -25,7 +25,9 @@ def task(name: Text = None,
          options: Dict[Union[Text, Sequence[Text]], Dict] = None,
          arguments: List[Dict] = None,
          dependencies: List[registry.TaskFunction] = None,
-         trailing_arguments: bool = False):
+         trailing_arguments: bool = False,
+         common_options: Sequence[Text] = None,
+         common_arguments: Sequence[Text] = None):
     """
     Decorator for mapped task functions.
 
@@ -41,6 +43,8 @@ def task(name: Text = None,
     :param dependencies: task functions of dependency tasks
     :param trailing_arguments: pass along trailing extra arguments (only valid for
                                primary top level command)
+    :param common_options: common options that may be shared between tasks
+    :param common_arguments: common arguments that may be shared between tasks
     """
 
     # Check for missing parentheses. Will not support that kind of decorator,
@@ -54,6 +58,47 @@ def task(name: Text = None,
             and dependencies is None):
         abort(f'@task decorator for function "{name.__name__}" must'
               f' have parentheses, even if empty')
+
+    # Split a common option/argument specifier into dest name and optional
+    # `nargs` specifier.
+    def split_spec(spec: Text) -> Tuple[Text, Optional[Text]]:
+        if spec[-1] in ('?', '*', '+'):
+            return spec[:-1], spec[-1]
+        return spec, None
+
+    if common_options:
+        all_options = dict(options) if options else {}
+        for option_spec in common_options:
+            dest, nargs = split_spec(option_spec)
+            key = registry.ToolOptions.common_option_key_by_dest.get(dest)
+            if key is not None:
+                if nargs is None:
+                    all_options[key] = registry.ToolOptions.common_options[key]
+                else:
+                    all_options[key] = dict(registry.ToolOptions.common_options[key],
+                                            nargs=nargs)
+            else:
+                log_error(f'Ignoring unknown Tzar standard option "{dest}".')
+    else:
+        all_options = options
+
+    if common_arguments:
+        all_arguments = list(arguments) if arguments else []
+        for argument_spec in common_arguments:
+            dest, nargs = split_spec(argument_spec)
+            index = registry.ToolOptions.common_argument_index_by_dest.get(dest)
+            if index is not None:
+                if nargs is None:
+                    all_arguments.append(
+                        registry.ToolOptions.common_arguments[index])
+                else:
+                    all_arguments.append(
+                        dict(registry.ToolOptions.common_arguments[index],
+                             nargs=nargs))
+            else:
+                log_error(f'Ignoring unknown Tzar standard argument "{dest}".')
+    else:
+        all_arguments = arguments
 
     # Called after the outer function returns to provide the task function.
     def inner(task_function: registry.TaskFunction) -> registry.TaskFunction:
@@ -136,7 +181,7 @@ def task(name: Text = None,
 
         for execution_task in merged_execution_tasks:
             _merge_opts_and_args(execution_task.options, execution_task.arguments)
-        _merge_opts_and_args(options, arguments)
+        _merge_opts_and_args(all_options, all_arguments)
 
         # Settle on the final task name. Fall back to function name.
         task_name = name

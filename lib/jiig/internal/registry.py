@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 import sys
 from dataclasses import dataclass
-from typing import Dict, Text, Optional, Callable, List, Iterator
+from typing import Dict, Text, Optional, Callable, List, Iterator, Union, Sequence
 
 from jiig import task_runner
 
@@ -100,15 +100,34 @@ class ToolOptions:
     disable_debug = False
     disable_dry_run = False
     disable_verbose = False
+    common_options: Dict[Union[Text, Sequence[Text]], Dict] = None
+    common_arguments: List[Dict] = None
+    common_option_key_by_dest: Dict[Text, Union[Text, Sequence[Text]], Dict] = {}
+    common_argument_index_by_dest: Dict[Text, int] = {}
 
 
-def options(name: Text = None,
-            description: Text = None,
-            disable_alias: bool = None,
-            disable_help: bool = None,
-            disable_debug: bool = None,
-            disable_dry_run: bool = None,
-            disable_verbose: bool = None):
+def tool(name: Text = None,
+         description: Text = None,
+         disable_alias: bool = None,
+         disable_help: bool = None,
+         disable_debug: bool = None,
+         disable_dry_run: bool = None,
+         disable_verbose: bool = None,
+         common_options: Dict[Union[Text, Sequence[Text]], Dict] = None,
+         common_arguments: List[Dict] = None):
+    """
+    Declare tool options and metadata.
+
+    :param name: name of tool
+    :param description: description of tool
+    :param disable_alias: disable aliases if True
+    :param disable_help: disable help task if True
+    :param disable_debug: disable debug option if True
+    :param disable_dry_run: disable dry run option if True
+    :param disable_verbose: disable verbose option if True
+    :param common_options: options that can be shared between tasks
+    :param common_arguments: arguments that can be shared between tasks
+    """
     # Only set values for the keywords that were provided.
     if name is not None:
         ToolOptions.name = name
@@ -124,3 +143,11 @@ def options(name: Text = None,
         ToolOptions.disable_dry_run = disable_dry_run
     if disable_verbose is not None:
         ToolOptions.disable_verbose = disable_verbose
+    if common_options is not None:
+        ToolOptions.common_options = common_options
+        for key, value in common_options.items():
+            ToolOptions.common_option_key_by_dest[value['dest']] = key
+    if common_arguments is not None:
+        ToolOptions.common_arguments = common_arguments
+        for idx, value in enumerate(common_arguments):
+            ToolOptions.common_argument_index_by_dest[value['dest']] = idx

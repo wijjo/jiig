@@ -32,7 +32,7 @@ import re
 from typing import List, Union, Callable, Text, IO, Dict, Any, Iterator, cast
 from urllib.request import Request
 
-from jiig.utility import open_text
+from jiig.utility.stream import open_text
 
 
 class NextLine(Exception):

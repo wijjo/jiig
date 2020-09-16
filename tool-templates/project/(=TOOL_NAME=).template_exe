@@ -6,7 +6,7 @@ ${TOOL_NAME} (jiig tool script).
 
 import jiig
 
-jiig.options(
+jiig.tool(
     name='${TOOL_NAME}',
     description='${TOOL_NAME} description',
 )

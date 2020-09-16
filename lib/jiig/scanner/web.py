@@ -71,7 +71,7 @@ https://docs.python.org/3.8/library/re.html#regular-expression-syntax
 import re
 from urllib.request import Request
 from typing import List, Callable, Text, IO, Dict, Any, Set, Optional, Hashable
-from jiig.utility import open_text
+from jiig.utility.stream import open_text
 
 
 class NoStateCls:

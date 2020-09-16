@@ -509,7 +509,7 @@ def find_system_program(name: Text) -> Optional[Text]:
     return None
 
 
-def choose_program_alternative(*programs: Any, required: bool = False) -> List:
+def choose_program_alternative(*programs: Any, required: bool = False) -> Optional[List]:
     """
     Search system PATH for one or more alternative programs, optionally with arguments.
 

@@ -1,7 +1,8 @@
-import jiig
+from jiig import task, TaskRunner
+from jiig.utility.process import run
 
 
-@jiig.task(
+@task(
     'hello',
     help='display hello message',
     # See ArgumentParser.add_argument() keyword arguments.
@@ -12,11 +13,11 @@ import jiig
         {'dest': 'NAME', 'nargs': '?', 'help': 'optional name'}
     ],
 )
-def task_hello(runner: jiig.TaskRunner):
+def task_hello(runner: TaskRunner):
     greeting = 'Howdy' if runner.args.TEXAS_STYLE else 'Hello'
     if runner.args.NAME:
         greeting = f'{greeting} {runner.args.NAME}'
-    jiig.utility.run(['date'], quiet=True)
+    run(['date'], quiet=True)
     print(f'''{greeting}:
 
 Sample task module: "{__file__}"

@@ -2,25 +2,36 @@
 
 import sys
 import traceback
-from typing import Any, Text
+from typing import Any, Text, Set
 
 from jiig.internal import global_data
+
+MESSAGES_ISSUED_ONCE: Set[Text] = set()
 
 
 def log_message(text: Any, *args, **kwargs):
     """
     Display message line(s) and indented lines for relevant keyword data.
 
-    tag is a special keyword that prefixes all lines in uppercase.
+    Keywords:
+       tag             prefix for all lines displayed in uppercase
+       verbose         True if requires VERBOSE mode
+       debug           True if requires DEBUG mode
+       issue_once_tag  unique tag to prevent issuing the message more than once
     """
 
     tag = kwargs.pop('tag', None)
     verbose = kwargs.pop('verbose', None)
     debug = kwargs.pop('debug', None)
+    issue_once_tag = kwargs.pop('issue_once_tag', None)
     if verbose and not global_data.VERBOSE:
         return
     if debug and not global_data.DEBUG:
         return
+    if issue_once_tag:
+        if issue_once_tag in MESSAGES_ISSUED_ONCE:
+            return
+        MESSAGES_ISSUED_ONCE.add(issue_once_tag)
     lines = []
     if text:
         if isinstance(text, (list, tuple)):

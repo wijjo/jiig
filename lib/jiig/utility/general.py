@@ -96,7 +96,7 @@ DECIMAL_BYTE_COUNT_UNITS = ['KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
 def _format_byte_count(byte_count: int,
                        factor: int,
                        units: List[Text],
-                       decimal_places: Optional[int]) -> Text:
+                       decimal_places: int) -> Text:
     adjusted_quantity = float(byte_count)
     unit_format = '{value:0.%df}{unit}' % (decimal_places or 1)
     for unit_idx in range(len(units)):
@@ -110,7 +110,7 @@ def _format_byte_count(byte_count: int,
 
 def format_byte_count(byte_count: int,
                       unit_format: Text = None,
-                      decimal_places: int = None
+                      decimal_places: int = 1
                       ) -> Text:
     """
     Format byte count string using unit abbreviations.
