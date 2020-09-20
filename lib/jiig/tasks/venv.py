@@ -5,6 +5,7 @@ Jiig virtual environment management.
 import os
 
 from jiig import task, TaskRunner
+from jiig.internal import global_data
 from jiig.utility.console import abort, log_heading, log_message
 from jiig.utility.process import run
 from jiig.utility.python import build_virtual_environment, update_virtual_environment
@@ -61,7 +62,8 @@ def task_ipython(runner: TaskRunner):
         log_message('Install iPython in virtual environment.')
         run([pip_path, 'install', 'ipython'])
     try:
-        os.execl(ipython_path, ipython_path)
+        env = {'PYTHONPATH': os.path.pathsep.join(global_data.LIBRARY_FOLDERS)}
+        os.execle(ipython_path, ipython_path, env)
     except Exception as exc:
         abort(f'Failed to execute "ipython" command.',
               command_path=ipython_path,
@@ -87,4 +89,5 @@ def task_pip(runner: TaskRunner):
 )
 def task_python(runner: TaskRunner):
     python_path = runner.expand_path_template('{VENV_ROOT}/bin/python')
-    os.execl(python_path, python_path, *runner.args.ARGS)
+    env = {'PYTHONPATH': os.path.pathsep.join(global_data.LIBRARY_FOLDERS)}
+    os.execle(python_path, python_path, *runner.args.ARGS, env)

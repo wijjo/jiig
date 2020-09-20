@@ -14,4 +14,4 @@ import jiig
 
 jiig.tool(description='Jiig tool manager.')
 
-from jiig.tasks import task, tool, venv     # noqa
+from jiig.tasks import task, unittest, tool, venv   # noqa

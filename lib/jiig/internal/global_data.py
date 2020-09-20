@@ -2,6 +2,7 @@
 Jiig global constants and data.
 """
 import os
+from typing import List, Text
 
 INIT_FILE = 'init.jiig'
 ALIASES_PATH = os.path.expanduser('~/.jiig-aliases')
@@ -17,6 +18,12 @@ TOOL_TEMPLATES_FOLDER = 'tool-templates'
 TEMPLATES_FOLDER = 'templates'
 TASK_TEMPLATE = 'task.py.template'
 TEMPLATE_FOLDER_SYMBOL_PATTERN = r'\(=(\w+)=\)'
+
+# Folders prepended to sys.path.
+LIBRARY_FOLDERS: List[Text] = []
+
+# Default folders if not configured.
+DEFAULT_TEST_FOLDER = 'test'
 
 # Command line parsing constants.
 CLI_DEST_NAME_PREFIX = 'TASK'

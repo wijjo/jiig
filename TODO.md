@@ -1,4 +1,36 @@
+# Fixes
+
+# Rationalize (and limit) the tasks that are inherited by tools
+
+Jiig should probably handle all tasks not directly related to a tool's problem
+domain.
+
+To allow the `jiig` command to manipulate a tool it needs the ability to access
+a tool's configuration, e.g. `init.jiig` file, and virtual environment. Tool
+manipulation tasks need an option or argument that identifies a tool in a way
+that its files can be located.
+
+Perhaps only `help` should be inherited, in order to keep the tool task list
+"clean". Specifically, tasks like `alias` and `venv` should probably move to the
+`jiig` command and not be inherited.
+
 # Planned Features
+
+## Unit tests
+
+Support running unit tests that inherit the same virtual environment and library
+path seen by the tool.
+
+E.g. make a `test` task in Jiig that can recognize a tool with unit tests based
+on the contents of the working folder.
+
+Create a unit test suite that exercises the Jiig utility library.
+
+Add tests to validate the tool infrastructure using a specially-designed tool
+with an assortment of fake tasks.
+
+Test code generation, virtual environment creation/management, etc..
+
 
 ## Documentation
 

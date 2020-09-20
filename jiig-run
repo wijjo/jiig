@@ -35,6 +35,7 @@ from jiig.utility.python import build_virtual_environment, execute_source
 
 INIT_PARAM_TYPES = [
     init_file.ParamFolderList('LIB_FOLDERS', default_value=['lib']),
+    init_file.ParamFolder('TEST_ROOT', default_value='test'),
     init_file.ParamFolder('VENV_ROOT', default_value='venv'),
     init_file.ParamList('PIP_PACKAGES', unique=True, default_value=[]),
 ]
@@ -85,10 +86,12 @@ def initialize(script_path: Text,
     init_params = param_loader.get_data()
 
     # Prepare the Python module loading path.
+    global_data.LIBRARY_FOLDERS = [JIIG_LIB]
     if init_params.LIB_FOLDERS:
         for tool_lib_folder in reversed(init_params.LIB_FOLDERS):
             if tool_lib_folder not in sys.path:
                 sys.path.insert(0, tool_lib_folder)
+                global_data.LIBRARY_FOLDERS.insert(0, tool_lib_folder)
 
     # May not need a virtual environment.
     if not init_params.VENV_ROOT:
