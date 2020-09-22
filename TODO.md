@@ -18,13 +18,10 @@ Perhaps only `help` should be inherited, in order to keep the tool task list
 
 ## Unit tests
 
-Support running unit tests that inherit the same virtual environment and library
-path seen by the tool.
-
 E.g. make a `test` task in Jiig that can recognize a tool with unit tests based
 on the contents of the working folder.
 
-Create a unit test suite that exercises the Jiig utility library.
+Create more unit tests to exercise the Jiig utility library.
 
 Add tests to validate the tool infrastructure using a specially-designed tool
 with an assortment of fake tasks.
@@ -78,3 +75,13 @@ Add ability to save and use global tool options to be able to control features
 like history and output capture. Tools should be able to add their own options
 and hide some Jiig ones, e.g. if it doesn't want to support history or output
 capture for security reasons.
+
+## Smarter option/argument types
+
+Look into adding custom validation and output data types. E.g. add the ability
+to accept date strings that get validated and converted to a struct_time or time
+stamp integer.
+
+One possibility could be to all registration of new actions, in addition to
+'store_true', etc.. E.g. a 'store_date' action could be registered with a class
+that can parse, validate, and convert date strings.

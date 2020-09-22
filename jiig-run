@@ -148,6 +148,7 @@ def load_tool(script_path: Text, init_params: Dict) -> init_file.ParamData:
     tool_params['JIIG_ROOT'] = JIIG_ROOT
     tool_params['TOOL_NAME'] = registry.ToolOptions.name
     tool_params['TOOL_DESCRIPTION'] = registry.ToolOptions.description
+    tool_params['TOOL_EPILOG'] = registry.ToolOptions.epilog
     return tool_params
 
 
@@ -237,6 +238,7 @@ def main():
     cli_results = parser.parse_command_line(cli_args=final_tool_args,
                                             name=tool_params.TOOL_NAME,
                                             description=tool_params.TOOL_DESCRIPTION,
+                                            epilog=tool_params.TOOL_EPILOG,
                                             capture_trailing=capture_trailing)
     # Run the tool to invoke the specified task.
     run_tool_task(cli_results, tool_params)

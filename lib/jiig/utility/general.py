@@ -1,10 +1,8 @@
 """General utilities."""
 
-import time
-from datetime import datetime, timedelta
-from typing import Iterable, Any, Text, Iterator, List, Optional, Dict
+from typing import Iterable, Any, Text, Iterator, List, Optional
 
-from .console import log_error, log_warning
+from .console import log_error
 
 
 class AttrDict(dict):
@@ -135,108 +133,3 @@ def format_byte_count(byte_count: int,
             return _format_byte_count(byte_count, 1000, DECIMAL_BYTE_COUNT_UNITS, decimal_places)
         log_error(f'Bad format_byte_count() unit_format ({unit_format}).')
     return str(byte_count)
-
-
-# noinspection SpellCheckingInspection
-TIME_DELTA_LETTERS = {
-    'S': 'seconds',
-    'M': 'months',
-    'H': 'hours',
-    'd': 'days',
-    'w': 'weeks',
-    'm': None,      # months
-    'y': None,      # years
-}
-
-
-def apply_time_delta_string(delta_string: Optional[Text],
-                            negative: bool = False,
-                            start_time: time.struct_time = None,
-                            default_letter: Text = None
-                            ) -> time.struct_time:
-    """
-    Parse a time delta and apply to the current time or a specific one.
-
-    Time delta strings are comma-separated individual deltas to apply to a
-    single date/time component.
-
-    Each component delta is an integer followed by an optional letter indicting
-    time period, where the letters have the following assigned meanings. Similar
-    to strftime() formats, time values use uppercase letters and date values use
-    lowercase.
-
-        letter  description
-        ======  ==================================
-        S       seconds
-        M       minutes
-        H       hours
-        d       days
-        w       weeks
-        m       months
-        y       years
-        (none)  based on default_letter or seconds if not specified
-
-    :param delta_string: time delta specification
-    :param negative: apply in a reverse time direction if True
-    :param start_time: start time as time_struct (default: current time)
-    :param default_letter: letter substituted when none provided for value (default: 's')
-    :return: calculated time as time_struct
-    """
-    if default_letter:
-        # noinspection SpellCheckingInspection
-        if default_letter not in TIME_DELTA_LETTERS:
-            log_error(f'Bad default letter for time delta, "{default_letter}".')
-            default_letter = None
-    else:
-        default_letter = 's'
-
-    # Get values by period letter.
-    values: Dict[Text, int] = {}
-    if delta_string:
-        for part in delta_string.split(','):
-            if part:
-                value = None
-                letter = default_letter
-                try:
-                    if part[-1].isdigit():
-                        value = int(part)
-                    elif len(part) > 1:
-                        value = int(part[:-1])
-                        letter = part[-1]
-                except ValueError:
-                    pass
-                if letter in TIME_DELTA_LETTERS:
-                    if value is not None:
-                        if letter in values:
-                            values[letter] += value
-                        else:
-                            values[letter] = value
-                else:
-                    log_warning(f'Ignoring bad time delta specification part "{part}".')
-    if start_time is not None:
-        start_datetime = datetime.fromtimestamp(time.mktime(start_time))
-    else:
-        start_datetime = datetime.now()
-    result_datetime = start_datetime
-
-    # Apply deltas individual from smallest to largest to make it easier to keep
-    # the result normalized.
-    def _value(letter_key: Text) -> int:
-        if negative:
-            return -values.get(letter_key, 0)
-        return values.get(letter_key, 0)
-
-    # No timedelta support for month or year. So handle them separately.
-    new_month_raw = result_datetime.month + _value('m')
-    new_month = (new_month_raw - 1) % 12 + 1
-    months_carry = (new_month_raw - 1) // 12
-    new_year = result_datetime.year + _value('y') + months_carry
-    result_datetime = result_datetime.replace(month=new_month, year=new_year)
-
-    result_datetime += timedelta(seconds=_value('S'),
-                                 minutes=_value('M'),
-                                 hours=_value('H'),
-                                 days=_value('d'),
-                                 weeks=_value('w'))
-
-    return result_datetime.timetuple()

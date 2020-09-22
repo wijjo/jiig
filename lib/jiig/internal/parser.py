@@ -4,6 +4,7 @@ Argument parsing support.
 
 from __future__ import annotations
 import argparse
+import os
 import re
 import sys
 from contextlib import contextmanager
@@ -14,6 +15,7 @@ from jiig.internal import registry, global_data
 from jiig.task_runner import HelpFormatter
 from jiig.utility.cli import append_dest_name, make_dest_name, metavar_to_dest_name
 from jiig.utility.console import abort, log_message
+from jiig.utility.general import make_list
 from jiig.utility.python import format_call_string
 
 # Expose Namespace, since it's pretty generic, so that other modules don't need
@@ -170,11 +172,15 @@ class ArgumentParser(argparse.ArgumentParser):
 
 class ArgparseHelpFormatter(HelpFormatter):
 
-    def __init__(self, parser: ArgumentParser):
+    def __init__(self, parser: ArgumentParser, epilog: Text = None):
         self.parser = parser
+        self.epilog = epilog.strip() if epilog else ''
 
     def format_help(self) -> Text:
-        return self.parser.format_help()
+        body = self.parser.format_help()
+        if self.epilog:
+            return os.linesep.join([body, self.epilog])
+        return body
 
 
 def _get_mapped_tasks() -> List[registry.MappedTask]:
@@ -296,17 +302,40 @@ Known dests: {list(registry.MAPPED_TASKS_BY_DEST_NAME.keys())}
                                   mt: registry.MappedTask,
                                   parser: ArgumentParser,
                                   help_formatters: Dict[Text, HelpFormatter]):
+        # Pull together any epilogs specified for the task and or options/arguments.
+        epilogs: List[Text] = []
+        if mt.epilog:
+            epilogs.append(mt.epilog.strip())
+        # Convert options to list/dict/sort key tuples.
+        option_list: List[Tuple] = []
+        argument_list: List[Dict] = []
+        for flag_or_flags, option_data in mt.options.items():
+            option_dict = dict(option_data)
+            # Remove non-argparse keywords.
+            epilog = option_dict.pop('epilog', None)
+            if epilog:
+                epilogs.append(epilog.strip())
+            # Normalize flags as list and add sort key.
+            flags = make_list(flag_or_flags)
+            sort_key = flags[0][2:] if flags[0].startswith('--') else flags[0][1:]
+            option_list.append((flags, option_dict, sort_key))
+        option_list.sort(key=lambda o: o[2])
+        for argument_data in mt.arguments:
+            argument_dict = dict(argument_data)
+            epilog = argument_dict.pop('epilog', None)
+            if epilog:
+                epilogs.append(epilog.strip())
+            argument_list.append(argument_dict)
+        if epilogs:
+            epilog = os.linesep.join(epilogs)
+        else:
+            epilog = None
         # The task runner must be able to format help text.
-        help_formatters[mt.dest_name] = ArgparseHelpFormatter(parser)
-        if mt.options:
-            for flag_or_flags, option_data in mt.options.items():
-                if isinstance(flag_or_flags, str):
-                    parser.add_argument(flag_or_flags, **option_data)
-                else:
-                    parser.add_argument(*flag_or_flags, **option_data)
-        if mt.arguments:
-            for argument_data in mt.arguments:
-                parser.add_argument(**argument_data)
+        help_formatters[mt.dest_name] = ArgparseHelpFormatter(parser, epilog=epilog)
+        for flags, option_data, _sort_key in option_list:
+            parser.add_argument(*flags, **option_data)
+        for argument_data in argument_list:
+            parser.add_argument(**argument_data)
         if mt.sub_tasks:
             sub_group = parser.add_subparsers(dest=mt.dest_name,
                                               metavar=mt.metavar,
@@ -337,10 +366,11 @@ def pre_parse_command_line(cli_args: List[Text] = None
 def parse_command_line(cli_args: List[Text] = None,
                        name: Text = None,
                        description: Text = None,
+                       epilog: Text = None,
                        capture_trailing: bool = False,
                        ) -> CommandLineData:
     """Set up command line parsers, parse, and return parsed command line data."""
     command_line_parser = _CommandLineParser(cli_args=cli_args,
                                              prog=name,
                                              capture_trailing=capture_trailing)
-    return command_line_parser.parse(description=description)
+    return command_line_parser.parse(description=description, epilog=epilog)

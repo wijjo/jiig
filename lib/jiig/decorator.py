@@ -22,6 +22,7 @@ def runner_factory() -> Callable[[registry.RunnerFactoryFunction], registry.Runn
 def task(name: Text = None,
          parent: registry.TaskFunction = None,
          help: Text = None,
+         epilog: Text = None,
          options: Dict[Union[Text, Sequence[Text]], Dict] = None,
          arguments: List[Dict] = None,
          dependencies: List[registry.TaskFunction] = None,
@@ -37,6 +38,7 @@ def task(name: Text = None,
     :param name: task name or None to use default
     :param parent: task function of parent task for sub-command
     :param help: help string
+    :param epilog: additional help text displayed after the help body
     :param options: flag options as dictionary mapping option flags or flag tuples
                     to add_argument() parameter dictionaries
     :param arguments: positional arguments as list of add_argument() parameter dicts
@@ -86,14 +88,14 @@ def task(name: Text = None,
         all_arguments = list(arguments) if arguments else []
         for argument_spec in common_arguments:
             dest, nargs = split_spec(argument_spec)
-            index = registry.ToolOptions.common_argument_index_by_dest.get(dest)
-            if index is not None:
+            key = registry.ToolOptions.common_option_key_by_dest.get(dest)
+            if key is not None:
                 if nargs is None:
                     all_arguments.append(
-                        registry.ToolOptions.common_arguments[index])
+                        registry.ToolOptions.common_options[key])
                 else:
                     all_arguments.append(
-                        dict(registry.ToolOptions.common_arguments[index],
+                        dict(registry.ToolOptions.common_options[key],
                              nargs=nargs))
             else:
                 log_error(f'Ignoring unknown Tzar standard argument "{dest}".')
@@ -231,6 +233,7 @@ def task(name: Text = None,
                                  dest_name=dest_name,
                                  metavar=metavar,
                                  help=task_help,
+                                 epilog=epilog,
                                  options=merged_options,
                                  arguments=merged_arguments,
                                  trailing_arguments=trailing_arguments,
