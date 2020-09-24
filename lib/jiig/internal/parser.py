@@ -183,8 +183,13 @@ class ArgparseHelpFormatter(HelpFormatter):
     def format_help(self) -> Text:
         blocks = self.parser.format_help().split(os.linesep)
         if self.description:
-            blocks.insert(1, '')
-            blocks.insert(2, self.description)
+            try:
+                first_empty_index = blocks.index('')
+                blocks.insert(first_empty_index, '')
+                blocks.insert(first_empty_index + 1, self.description)
+            except ValueError:
+                # Not expected, but at least don't crash.
+                pass
         if self.epilog:
             blocks.append(self.epilog)
         return os.linesep.join(blocks)
