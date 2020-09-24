@@ -302,10 +302,11 @@ Known dests: {list(registry.MAPPED_TASKS_BY_DEST_NAME.keys())}
                                   mt: registry.MappedTask,
                                   parser: ArgumentParser,
                                   help_formatters: Dict[Text, HelpFormatter]):
-        # Pull together any epilogs specified for the task and or options/arguments.
-        epilogs: List[Text] = []
+        # Pull together any epilogs specified for the task and or
+        # options/arguments as epilog/sort key tuples.
+        epilog_list: List[Tuple[Text, Text]] = []
         if mt.epilog:
-            epilogs.append(mt.epilog.strip())
+            epilog_list.append((mt.epilog.strip(), ''))
         # Convert options to list/dict/sort key tuples.
         option_list: List[Tuple] = []
         argument_list: List[Dict] = []
@@ -313,21 +314,24 @@ Known dests: {list(registry.MAPPED_TASKS_BY_DEST_NAME.keys())}
             option_dict = dict(option_data)
             # Remove non-argparse keywords.
             epilog = option_dict.pop('epilog', None)
-            if epilog:
-                epilogs.append(epilog.strip())
             # Normalize flags as list and add sort key.
             flags = make_list(flag_or_flags)
+            # The sort key is the first option letter or string.
             sort_key = flags[0][2:] if flags[0].startswith('--') else flags[0][1:]
             option_list.append((flags, option_dict, sort_key))
+            if epilog:
+                epilog_list.append((epilog.strip(), sort_key))
+        # Sort option list and epilogs by sort key.
         option_list.sort(key=lambda o: o[2])
+        epilog_list.sort(key=lambda e: e[1])
         for argument_data in mt.arguments:
             argument_dict = dict(argument_data)
             epilog = argument_dict.pop('epilog', None)
             if epilog:
-                epilogs.append(epilog.strip())
+                epilog_list.append((epilog.strip(), ''))
             argument_list.append(argument_dict)
-        if epilogs:
-            epilog = os.linesep.join(epilogs)
+        if epilog_list:
+            epilog = (os.linesep * 2).join([e[0] for e in epilog_list])
         else:
             epilog = None
         # The task runner must be able to format help text.
