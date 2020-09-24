@@ -172,15 +172,22 @@ class ArgumentParser(argparse.ArgumentParser):
 
 class ArgparseHelpFormatter(HelpFormatter):
 
-    def __init__(self, parser: ArgumentParser, epilog: Text = None):
+    def __init__(self,
+                 parser: ArgumentParser,
+                 description: Text = None,
+                 epilog: Text = None):
         self.parser = parser
+        self.description = description
         self.epilog = epilog.strip() if epilog else ''
 
     def format_help(self) -> Text:
-        body = self.parser.format_help()
+        blocks = self.parser.format_help().split(os.linesep)
+        if self.description:
+            blocks.insert(1, '')
+            blocks.insert(2, self.description)
         if self.epilog:
-            return os.linesep.join([body, self.epilog])
-        return body
+            blocks.append(self.epilog)
+        return os.linesep.join(blocks)
 
 
 def _get_mapped_tasks() -> List[registry.MappedTask]:
@@ -258,6 +265,7 @@ class _CommandLineParser:
         help_formatters = {make_dest_name(): ArgparseHelpFormatter(self.parser)}
         top_group = self.parser.add_subparsers(dest=global_data.CLI_DEST_NAME_PREFIX,
                                                metavar=global_data.CLI_DEST_NAME_PREFIX,
+                                               help='DESCRIPTION',
                                                required=True)
         for mt in _get_mapped_tasks():
             sub_parser = top_group.add_parser(mt.name, help=mt.help)
@@ -335,7 +343,9 @@ Known dests: {list(registry.MAPPED_TASKS_BY_DEST_NAME.keys())}
         else:
             epilog = None
         # The task runner must be able to format help text.
-        help_formatters[mt.dest_name] = ArgparseHelpFormatter(parser, epilog=epilog)
+        help_formatters[mt.dest_name] \
+            = ArgparseHelpFormatter(
+            parser, description=f'Task: {mt.help}.', epilog=epilog)
         for flags, option_data, _sort_key in option_list:
             parser.add_argument(*flags, **option_data)
         for argument_data in argument_list:
