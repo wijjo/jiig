@@ -7,15 +7,9 @@ from typing import Optional, Text, Dict
 
 from jiig.utility.console import log_error, log_warning
 
-TIME_DELTA_LETTERS = {
-    'S': 'seconds',
-    'M': 'months',
-    'H': 'hours',
-    'd': 'days',
-    'w': 'weeks',
-    'm': None,      # months
-    'y': None,      # years
-}
+DATE_DELTA_LETTERS = 'ymwd'
+TIME_DELTA_LETTERS = 'HMS'
+DATE_TIME_DELTA_LETTERS = DATE_DELTA_LETTERS + TIME_DELTA_LETTERS
 
 
 @dataclass
@@ -31,7 +25,9 @@ class DateTimeDelta:
 
 def parse_date_time_delta(delta_string: Optional[Text],
                           negative: bool = False,
-                          default_letter: Text = None
+                          default_letter: Text = None,
+                          date_only: bool = False,
+                          time_only: bool = False,
                           ) -> DateTimeDelta:
     """
     Parse a time delta and convert to a DateTimeDelta object.
@@ -58,12 +54,28 @@ def parse_date_time_delta(delta_string: Optional[Text],
     :param delta_string: time delta specification
     :param negative: apply in a reverse time direction if True
     :param default_letter: letter substituted when none provided for value (default: 's')
+    :param date_only: only accept date (ymwd) values
+    :param time_only: only accept time (HMS) values
     :return: DateTimeDelta object
     """
+    if date_only:
+        if time_only:
+            valid_letters = ''
+            label = ''
+        else:
+            valid_letters = DATE_DELTA_LETTERS
+            label = ' date'
+    elif time_only:
+        valid_letters = TIME_DELTA_LETTERS
+        label = ' time'
+    else:
+        valid_letters = DATE_TIME_DELTA_LETTERS
+        label = ' date/time'
     if default_letter:
         # noinspection SpellCheckingInspection
-        if default_letter not in TIME_DELTA_LETTERS:
-            log_error(f'Bad default letter for time delta, "{default_letter}".')
+        if default_letter not in valid_letters:
+            log_error(f'Bad{label} default_letter "{default_letter}" '
+                      f'passed to parse_date_time_delta().')
             default_letter = None
     else:
         default_letter = 's'
@@ -82,14 +94,14 @@ def parse_date_time_delta(delta_string: Optional[Text],
                         letter = part[-1]
                 except ValueError:
                     pass
-                if letter in TIME_DELTA_LETTERS:
+                if letter in DATE_TIME_DELTA_LETTERS:
                     if value is not None:
                         if letter in values:
                             values[letter] += value
                         else:
                             values[letter] = value
                 else:
-                    log_warning(f'Ignoring bad time delta specification part "{part}".')
+                    log_warning(f'Ignoring bad{label} delta specification part "{part}".')
     multiplier = -1 if negative else 1
     return DateTimeDelta(years=values.get('y', 0) * multiplier,
                          months=values.get('m', 0) * multiplier,
@@ -103,7 +115,9 @@ def parse_date_time_delta(delta_string: Optional[Text],
 def apply_date_time_delta_string(delta_string: Optional[Text],
                                  negative: bool = False,
                                  start_time: time.struct_time = None,
-                                 default_letter: Text = None
+                                 default_letter: Text = None,
+                                 date_only: bool = False,
+                                 time_only: bool = False,
                                  ) -> time.struct_time:
     """
     Parse a time delta and apply to the current time or a specific one.
@@ -114,11 +128,15 @@ def apply_date_time_delta_string(delta_string: Optional[Text],
     :param negative: apply in a reverse time direction if True
     :param start_time: start time as time_struct (default: current time)
     :param default_letter: letter substituted when none provided for value (default: 's')
+    :param date_only: only accept date (ymwd) values
+    :param time_only: only accept time (HMS) values
     :return: calculated time as time_struct
     """
     delta = parse_date_time_delta(delta_string,
                                   negative=negative,
-                                  default_letter=default_letter)
+                                  default_letter=default_letter,
+                                  date_only=date_only,
+                                  time_only=time_only)
     return apply_date_time_delta(delta, start_time=start_time)
 
 
