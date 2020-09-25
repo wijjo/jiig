@@ -94,14 +94,15 @@ def parse_date_time_delta(delta_string: Optional[Text],
                         letter = part[-1]
                 except ValueError:
                     pass
-                if letter in DATE_TIME_DELTA_LETTERS:
+                if letter in valid_letters:
                     if value is not None:
                         if letter in values:
                             values[letter] += value
                         else:
                             values[letter] = value
                 else:
-                    log_warning(f'Ignoring bad{label} delta specification part "{part}".')
+                    log_warning(f'Bad{label} delta specification "{part}"'
+                                f' (uses "{valid_letters}" units).')
     multiplier = -1 if negative else 1
     return DateTimeDelta(years=values.get('y', 0) * multiplier,
                          months=values.get('m', 0) * multiplier,
@@ -231,3 +232,19 @@ def parse_date_time(date_time_string: Optional[Text],
         if parsed_date is None:
             parsed_date = datetime.date.today()
     return datetime.datetime.combine(parsed_date, parsed_time).timetuple()
+
+
+def parse_time_interval(interval_string: Optional[Text]) -> Optional[int]:
+    """
+    Parse time interval with same syntax as parse_date_time_delta() accepts.
+
+    :param interval_string: HMS time interval string (handles None)
+    :return: delta in seconds as integer
+    """
+    if not interval_string:
+        return None
+    delta = parse_date_time_delta(interval_string, time_only=True)
+    print(f'interval_string: "{interval_string}"  delta: ({delta.hours}, {delta.minutes}, {delta.seconds})')
+    if delta is None:
+        return None
+    return (delta.hours * 3600) + (delta.minutes * 60) + delta.seconds
