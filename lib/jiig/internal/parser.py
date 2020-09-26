@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import Optional, List, Text, Dict, Sequence, Tuple
 
 from jiig.internal import registry, global_data
-from jiig.task_runner import HelpFormatter
+from jiig.task_runner import AbstractHelpFormatter
 from jiig.utility.cli import append_dest_name, make_dest_name, metavar_to_dest_name
 from jiig.utility.console import abort, log_message
 from jiig.utility.general import make_list
@@ -26,6 +26,8 @@ Namespace = argparse.Namespace
 REQUIRED_SUB_TASK_RE = re.compile(fr'^(.* required: )' 
                                   fr'({global_data.CLI_DEST_NAME_PREFIX}'
                                   fr'|[A-Z_]+_{global_data.CLI_METAVAR_SUFFIX})$')
+HELP_BLOCK_HEADER_RE = re.compile(r'^(\w+) arguments:$')
+POSITIONAL_ARGUMENTS_MARKER = '{TASKS}'
 
 
 class ArgumentParserError(Exception):
@@ -170,29 +172,66 @@ class ArgumentParser(argparse.ArgumentParser):
             cls.raise_exceptions = False
 
 
-class ArgparseHelpFormatter(HelpFormatter):
+class BaseHelpFormatter(AbstractHelpFormatter):
 
     def __init__(self,
                  parser: ArgumentParser,
+                 positionals_header: Text,
                  description: Text = None,
                  epilog: Text = None):
         self.parser = parser
+        self.positionals_header = positionals_header
         self.description = description
         self.epilog = epilog.strip() if epilog else ''
 
     def format_help(self) -> Text:
-        blocks = self.parser.format_help().split(os.linesep)
-        if self.description:
-            try:
-                first_empty_index = blocks.index('')
-                blocks.insert(first_empty_index, '')
-                blocks.insert(first_empty_index + 1, self.description)
-            except ValueError:
-                # Not expected, but at least don't crash.
-                pass
+        raise NotImplementedError
+
+    def format_help_screen(self) -> Text:
+        block_name = ''
+        output_lines: List[Text] = []
+        for line_idx, line in enumerate(self.parser.format_help().split(os.linesep)):
+            if line.startswith('usage:'):
+                line = f'Usage: {line[7:]}'.replace(POSITIONAL_ARGUMENTS_MARKER,
+                                                    self.positionals_header)
+            if self.description and line_idx == 1:
+                output_lines.extend(['', self.description])
+            block_header_match = HELP_BLOCK_HEADER_RE.match(line)
+            if block_header_match:
+                # Start a block.
+                block_name = block_header_match.group(1)
+                if block_name == 'positional':
+                    output_lines.append(f'{self.positionals_header}:')
+                elif block_name == 'optional':
+                    output_lines.append('Options:')
+                else:
+                    output_lines.append(line)
+                continue
+            # Continue active block
+            if block_name == 'positional':
+                if line.strip() != POSITIONAL_ARGUMENTS_MARKER:
+                    if line.startswith('    '):
+                        line = line[2:]
+                    output_lines.append(line)
+            elif block_name == 'optional':
+                output_lines.append(line)
+            else:
+                output_lines.append(line)
         if self.epilog:
-            blocks.append(self.epilog)
-        return os.linesep.join(blocks)
+            output_lines.append(self.epilog)
+        return os.linesep.join(output_lines)
+
+
+class ToolHelpFormatter(BaseHelpFormatter):
+
+    def format_help(self) -> Text:
+        return super().format_help_screen()
+
+
+class TaskHelpFormatter(BaseHelpFormatter):
+
+    def format_help(self) -> Text:
+        return super().format_help_screen()
 
 
 def _get_mapped_tasks() -> List[registry.MappedTask]:
@@ -209,7 +248,7 @@ class CommandLineData:
     # Chosen mapped task, based on primary command name.
     mapped_task: registry.MappedTask
     # Help formatter map used by `help` command.
-    help_formatters: Dict[Text, HelpFormatter]
+    help_formatters: Dict[Text, AbstractHelpFormatter]
 
 
 def _create_primary_parser(*args, **kwargs) -> ArgumentParser:
@@ -267,10 +306,10 @@ class _CommandLineParser:
         self.parser = _create_primary_parser(*args, **kwargs, prog=self.prog)
 
         # Recursively build the parser tree under the primary sub-parser group.
-        help_formatters = {make_dest_name(): ArgparseHelpFormatter(self.parser)}
+        top_formatter = ToolHelpFormatter(self.parser, 'TASK')
+        help_formatters = {make_dest_name(): top_formatter}
         top_group = self.parser.add_subparsers(dest=global_data.CLI_DEST_NAME_PREFIX,
-                                               metavar=global_data.CLI_DEST_NAME_PREFIX,
-                                               help='DESCRIPTION',
+                                               metavar=POSITIONAL_ARGUMENTS_MARKER,
                                                required=True)
         for mt in _get_mapped_tasks():
             sub_parser = top_group.add_parser(mt.name, help=mt.help)
@@ -314,7 +353,7 @@ Known dests: {list(registry.MAPPED_TASKS_BY_DEST_NAME.keys())}
     def _prepare_parser_recursive(self,
                                   mt: registry.MappedTask,
                                   parser: ArgumentParser,
-                                  help_formatters: Dict[Text, HelpFormatter]):
+                                  help_formatters: Dict[Text, AbstractHelpFormatter]):
         # Pull together any epilogs specified for the task and or
         # options/arguments as epilog/sort key tuples.
         epilog_list: List[Tuple[Text, Text]] = []
@@ -348,16 +387,16 @@ Known dests: {list(registry.MAPPED_TASKS_BY_DEST_NAME.keys())}
         else:
             epilog = None
         # The task runner must be able to format help text.
-        help_formatters[mt.dest_name] \
-            = ArgparseHelpFormatter(
-            parser, description=f'Task: {mt.help}.', epilog=epilog)
+        header = 'SUB_TASK' if mt.sub_tasks else 'Arguments'
+        help_formatters[mt.dest_name] = TaskHelpFormatter(
+            parser, header, description=f'Task: {mt.help}.', epilog=epilog)
         for flags, option_data, _sort_key in option_list:
             parser.add_argument(*flags, **option_data)
         for argument_data in argument_list:
             parser.add_argument(**argument_data)
         if mt.sub_tasks:
             sub_group = parser.add_subparsers(dest=mt.dest_name,
-                                              metavar=mt.metavar,
+                                              metavar=POSITIONAL_ARGUMENTS_MARKER,
                                               required=True)
             for sub_task in mt.sub_tasks:
                 sub_parser = sub_group.add_parser(sub_task.name, help=sub_task.help)
