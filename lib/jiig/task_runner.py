@@ -17,7 +17,7 @@ from jiig.utility.general import AttrDict
 
 class AbstractHelpFormatter:
     """Abstract help formatter."""
-    def format_help(self) -> Text:
+    def format_help(self, show_all_tasks: bool = False) -> Text:
         raise NotImplementedError
 
 

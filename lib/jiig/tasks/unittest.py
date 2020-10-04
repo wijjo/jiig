@@ -22,7 +22,7 @@ from jiig.utility.python import import_module_path
             'help': 'unit test module name(s) to load and run (default: all)'
         },
     ],
-)
+    hidden_task=True)
 def task_unittest(runner: TaskRunner):
     test_root = runner.params.TEST_ROOT or DEFAULT_TEST_FOLDER
     check_folder_exists(test_root)

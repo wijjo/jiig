@@ -6,7 +6,9 @@ from jiig.utility.filesystem import expand_template
 from jiig.internal import global_data
 
 
-@task('task', help='manage task modules')
+@task('task',
+      help='manage task modules',
+      hidden_task=True)
 def task_task(runner: TaskRunner):
     if os.getcwd() == runner.params.CORE_ROOT:
         abort('Please run this command from an application folder.')

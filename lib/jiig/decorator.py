@@ -28,7 +28,9 @@ def task(name: Text = None,
          dependencies: List[registry.TaskFunction] = None,
          trailing_arguments: bool = False,
          common_options: Sequence[Text] = None,
-         common_arguments: Sequence[Text] = None):
+         common_arguments: Sequence[Text] = None,
+         hidden_task: bool = False,
+         auxiliary_task: bool = False):
     """
     Decorator for mapped task functions.
 
@@ -47,6 +49,8 @@ def task(name: Text = None,
                                primary top level command)
     :param common_options: common options that may be shared between tasks
     :param common_arguments: common arguments that may be shared between tasks
+    :param hidden_task: normally-hidden tool-management task if True
+    :param auxiliary_task: used when commands like help should be listed separately
     """
 
     # Check for missing parentheses. Will not support that kind of decorator,
@@ -238,12 +242,18 @@ def task(name: Text = None,
                                  arguments=merged_arguments,
                                  trailing_arguments=trailing_arguments,
                                  need_trailing_arguments=need_trailing_arguments,
-                                 execution_tasks=merged_execution_tasks)
+                                 execution_tasks=merged_execution_tasks,
+                                 hidden_task=hidden_task,
+                                 auxiliary_task=auxiliary_task)
 
         # Complete the registration, now that there is a new MappedTask.
         registry.MAPPED_TASKS_BY_ID[id(task_function)] = mt
         if dest_name:
             registry.MAPPED_TASKS_BY_DEST_NAME[dest_name] = mt
+        if hidden_task:
+            registry.HIDDEN_TASK_NAMES.add(name)
+        if auxiliary_task:
+            registry.AUXILIARY_TASK_NAMES.add(name)
 
         # Add to sub_tasks list of parent, if there is a parent.
         if parent_mapped_task:

@@ -9,7 +9,7 @@ import re
 import sys
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Optional, List, Text, Dict, Sequence, Tuple
+from typing import Optional, List, Text, Dict, Sequence, Tuple, Iterator
 
 from jiig.internal import registry, global_data
 from jiig.task_runner import AbstractHelpFormatter
@@ -184,12 +184,39 @@ class BaseHelpFormatter(AbstractHelpFormatter):
         self.description = description
         self.epilog = epilog.strip() if epilog else ''
 
-    def format_help(self) -> Text:
+    def format_help(self, show_all_tasks: bool = False) -> Text:
         raise NotImplementedError
+
+    class DelayedHelpLinePrinter:
+        def __init__(self):
+            self.auxiliary_lines: List[Text] = []
+            self.hidden_lines: List[Text] = []
+
+        def add_auxiliary(self, line: Text):
+            self.auxiliary_lines.append(line)
+
+        def add_hidden(self, line: Text):
+            self.hidden_lines.append(line)
+
+        @classmethod
+        def _flush_lines(cls, lines: List[Text]) -> Iterator[Text]:
+            if lines:
+                yield ''
+                for line in lines:
+                    yield line
+
+        def flush(self) -> Iterator[Text]:
+            for line in self._flush_lines(self.auxiliary_lines):
+                yield line
+            for line in self._flush_lines(self.hidden_lines):
+                yield line
+            self.auxiliary_lines = []
+            self.hidden_lines = []
 
     def format_help_screen(self) -> Text:
         block_name = ''
         output_lines: List[Text] = []
+        delayed_printer = self.DelayedHelpLinePrinter()
         for line_idx, line in enumerate(self.parser.format_help().split(os.linesep)):
             if line.startswith('usage:'):
                 line = f'Usage: {line[7:]}'.replace(POSITIONAL_ARGUMENTS_MARKER,
@@ -209,16 +236,29 @@ class BaseHelpFormatter(AbstractHelpFormatter):
                 continue
             # Continue active block
             if block_name == 'positional':
-                if line.strip() != POSITIONAL_ARGUMENTS_MARKER:
-                    if line.startswith('    '):
-                        line = line[2:]
+                stripped_line = line.strip()
+                if stripped_line:
+                    if stripped_line != POSITIONAL_ARGUMENTS_MARKER:
+                        if line.startswith('    '):
+                            positional_line = line[2:]
+                            task_name = stripped_line.split(maxsplit=1)[0]
+                            if task_name in registry.AUXILIARY_TASK_NAMES:
+                                delayed_printer.add_auxiliary(positional_line)
+                            elif task_name in registry.HIDDEN_TASK_NAMES:
+                                delayed_printer.add_hidden(positional_line)
+                            else:
+                                output_lines.append(positional_line)
+                else:
+                    output_lines.extend(delayed_printer.flush())
                     output_lines.append(line)
-            elif block_name == 'optional':
+                continue
+            if block_name == 'optional':
                 output_lines.append(line)
-            else:
-                output_lines.append(line)
+                continue
+            output_lines.append(line)
         if self.epilog:
             output_lines.append(self.epilog)
+        output_lines.extend(delayed_printer.flush())
         return os.linesep.join(output_lines)
 
 
@@ -230,8 +270,8 @@ class ToolHelpFormatter(BaseHelpFormatter):
 
 class TaskHelpFormatter(BaseHelpFormatter):
 
-    def format_help(self) -> Text:
-        return super().format_help_screen()
+    def format_help(self, show_all_tasks: bool = False) -> Text:
+        return super().format_help_screen(show_all_tasks=show_all_tasks)
 
 
 def _get_mapped_tasks() -> List[registry.MappedTask]:

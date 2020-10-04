@@ -42,7 +42,7 @@ def task_venv_build(runner: TaskRunner):
     'update',
     parent=task_venv,
     help='update the tool virtual environment',
-)
+    hidden_task=True)
 def task_venv_build(runner: TaskRunner):
     if runner.params.PRIMARY_TASK:
         log_heading(1, 'Update virtual environment')

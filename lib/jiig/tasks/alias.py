@@ -9,7 +9,9 @@ from jiig.utility.general import format_table
 from jiig.utility.console import log_message, log_error
 
 
-@task('alias', help='manage command aliases')
+@task('alias',
+      help='manage command aliases',
+      auxiliary_task=True)
 def task_alias(_runner: TaskRunner):
     pass
 

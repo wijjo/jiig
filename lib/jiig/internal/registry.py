@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 import sys
 from dataclasses import dataclass
-from typing import Dict, Text, Optional, Callable, List, Iterator, Union, Sequence
+from typing import Dict, Text, Optional, Callable, List, Iterator, Union, Sequence, Set
 
 from jiig import task_runner
 
@@ -46,10 +46,14 @@ class MappedTask:
     options: Dict[Union[Text, Sequence[Text]], Dict]
     arguments: List[Dict]
     execution_tasks: List[MappedTask]
-    # This is True on the actual task that needs trailing arguments.
+    # True on the actual task that needs trailing arguments.
     trailing_arguments: bool = False
-    # This is True on a root task that has a child that wants trailing arguments.
+    # True on a root task that has a child that wants trailing arguments.
     need_trailing_arguments: bool = False
+    # True for a tool-management task the should normally not be visible.
+    hidden_task: bool = False
+    # True for a task, like help, that should be listed separate from tool tasks.
+    auxiliary_task: bool = False
     # Sub-tasks added when discovered child tasks reference this as the parent.
     sub_tasks: List[MappedTask] = None
 
@@ -82,6 +86,10 @@ MAPPED_TASKS: List[MappedTask] = []
 MAPPED_TASKS_BY_ID: Dict[int, MappedTask] = {}
 # To help map task name in command line arguments to MappedTask by argparse destination names.
 MAPPED_TASKS_BY_DEST_NAME: Dict[Text, MappedTask] = {}
+# Names of tasks that are listed separately from tool tasks.
+AUXILIARY_TASK_NAMES: Set[Text] = set()
+# Names of tasks that are only shown when the ALL_TASKS option is used for help.
+HIDDEN_TASK_NAMES: Set[Text] = set()
 
 
 def get_primary_task_names() -> Iterator[Text]:

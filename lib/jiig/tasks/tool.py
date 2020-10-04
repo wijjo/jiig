@@ -7,7 +7,9 @@ from jiig.utility.console import log_heading, abort
 from jiig.utility.filesystem import expand_template_folder
 
 
-@task('tool', help='manage tool assets')
+@task('tool',
+      help='manage tool assets',
+      hidden_task=True)
 def task_tool(runner: TaskRunner):
     if os.getcwd() == runner.params.CORE_ROOT:
         abort('Please run this command from an application folder.')
