@@ -17,7 +17,7 @@ from jiig.utility.general import AttrDict
 
 class AbstractHelpFormatter:
     """Abstract help formatter."""
-    def format_help(self, show_all_tasks: bool = False) -> Text:
+    def format_help(self, show_hidden: bool = False) -> Text:
         raise NotImplementedError
 
 
@@ -60,13 +60,13 @@ class TaskRunner:
 
     # === Public methods.
 
-    def format_help(self, *task_names: Text):
+    def format_help(self, *task_names: Text, show_hidden: bool = False):
         dest_name = make_dest_name(*task_names)
         help_formatter = self.help_formatters.get(dest_name, None)
         if not help_formatter:
             log_error(f'No help available for: {" ".join(task_names)}')
             return None
-        return help_formatter.format_help()
+        return help_formatter.format_help(show_hidden=show_hidden)
 
     def expand_string(self, text: Text, **more_params) -> Text:
         """Expands string template against symbols from self.params and more_params."""

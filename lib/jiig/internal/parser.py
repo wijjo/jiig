@@ -184,7 +184,7 @@ class BaseHelpFormatter(AbstractHelpFormatter):
         self.description = description
         self.epilog = epilog.strip() if epilog else ''
 
-    def format_help(self, show_all_tasks: bool = False) -> Text:
+    def format_help(self, show_hidden: bool = False) -> Text:
         raise NotImplementedError
 
     class DelayedHelpLinePrinter:
@@ -213,7 +213,7 @@ class BaseHelpFormatter(AbstractHelpFormatter):
             self.auxiliary_lines = []
             self.hidden_lines = []
 
-    def format_help_screen(self) -> Text:
+    def format_help_screen(self, show_hidden: bool = False) -> Text:
         block_name = ''
         output_lines: List[Text] = []
         delayed_printer = self.DelayedHelpLinePrinter()
@@ -245,7 +245,8 @@ class BaseHelpFormatter(AbstractHelpFormatter):
                             if task_name in registry.AUXILIARY_TASK_NAMES:
                                 delayed_printer.add_auxiliary(positional_line)
                             elif task_name in registry.HIDDEN_TASK_NAMES:
-                                delayed_printer.add_hidden(positional_line)
+                                if show_hidden:
+                                    delayed_printer.add_hidden(positional_line)
                             else:
                                 output_lines.append(positional_line)
                 else:
@@ -264,14 +265,14 @@ class BaseHelpFormatter(AbstractHelpFormatter):
 
 class ToolHelpFormatter(BaseHelpFormatter):
 
-    def format_help(self) -> Text:
-        return super().format_help_screen()
+    def format_help(self, show_hidden: bool = False) -> Text:
+        return super().format_help_screen(show_hidden=show_hidden)
 
 
 class TaskHelpFormatter(BaseHelpFormatter):
 
-    def format_help(self, show_all_tasks: bool = False) -> Text:
-        return super().format_help_screen(show_all_tasks=show_all_tasks)
+    def format_help(self, show_hidden: bool = False) -> Text:
+        return super().format_help_screen(show_hidden=show_hidden)
 
 
 def _get_mapped_tasks() -> List[registry.MappedTask]:
