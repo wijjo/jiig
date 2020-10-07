@@ -15,7 +15,7 @@ from jiig.utility.console import log_error
 from jiig.utility.general import AttrDict
 
 
-class AbstractHelpFormatter:
+class RunnerHelpFormatter:
     """Abstract help formatter."""
     def format_help(self, show_hidden: bool = False) -> Text:
         raise NotImplementedError
@@ -26,7 +26,7 @@ class RunnerData:
     def __init__(self,
                  args: Any,
                  trailing_args: List[Text],
-                 help_formatters: Dict[Text, AbstractHelpFormatter],
+                 help_formatters: Dict[Text, RunnerHelpFormatter],
                  params: Dict):
         self.args = args
         self.trailing_args = trailing_args

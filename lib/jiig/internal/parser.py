@@ -9,13 +9,13 @@ import re
 import sys
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Optional, List, Text, Dict, Sequence, Tuple, Iterator
+from typing import Optional, List, Text, Dict, Sequence, Tuple
 
+import jiig.internal.mapped_task
 from jiig.internal import registry, global_data
-from jiig.task_runner import AbstractHelpFormatter
-from jiig.utility.cli import append_dest_name, make_dest_name, metavar_to_dest_name
+from jiig.internal.help_formatter import HelpFormatter
+from jiig.utility.cli import append_dest_name, make_dest_name
 from jiig.utility.console import abort, log_message
-from jiig.utility.general import make_list
 from jiig.utility.python import format_call_string
 
 # Expose Namespace, since it's pretty generic, so that other modules don't need
@@ -72,6 +72,9 @@ class ArgumentParser(argparse.ArgumentParser):
         :param args: argparse.ArgumentParser.add_argument() positional arguments
         :param kwargs: argparse.ArgumentParser.add_argument() keyword arguments
         """
+        # Remove any keywords that argparse does not handle.
+        if 'epilog' in kwargs:
+            del kwargs['epilog']
         if global_data.DEBUG:
             self._dump('add_argument', *args, **kwargs)
         try:
@@ -133,25 +136,21 @@ class ArgumentParser(argparse.ArgumentParser):
         """
         if self.raise_exceptions:
             raise ArgumentParserError(message)
-        super().error(self._customize_error_message(message))
-
-    @staticmethod
-    def _customize_error_message(message: Text) -> Text:
-        # Make other appropriate _error messages include the valid sub-task names.
-        req_sub_task_match = REQUIRED_SUB_TASK_RE.match(message)
-        if req_sub_task_match:
-            names = None
-            if req_sub_task_match.group(2) == global_data.CLI_DEST_NAME_PREFIX:
-                names = sorted(registry.get_primary_task_names())
+        message = message.replace(POSITIONAL_ARGUMENTS_MARKER, 'TASK')
+        if REQUIRED_SUB_TASK_RE.match(message):
+            prog_words = self.prog.split()
+            if len(prog_words) == 1:
+                label = 'TASK'
+                help_command = f'{prog_words[0]} help'
             else:
-                dest_name = metavar_to_dest_name(req_sub_task_match.group(2))
-                mt = registry.MAPPED_TASKS_BY_DEST_NAME.get(dest_name)
-                if mt:
-                    names = sorted(mt.sub_task_names())
-            if names:
-                name_list = ', '.join([f"'{name}'" for name in names])
-                return f'{message} (choose from {name_list})'
-        return message
+                label = 'SUB_TASK'
+                help_command = f'{" ".join(prog_words[:-1])} help {prog_words[-1]}'
+            sys.stderr.write(f'"{self.prog}" requires a {label} argument.')
+            sys.stderr.write(os.linesep)
+            sys.stderr.write(f'See "{help_command}" for more information.')
+            sys.stderr.write(os.linesep)
+            sys.exit(0)
+        super().error(message)
 
     @staticmethod
     def _dump(method_name, *args, **kwargs):
@@ -172,110 +171,7 @@ class ArgumentParser(argparse.ArgumentParser):
             cls.raise_exceptions = False
 
 
-class BaseHelpFormatter(AbstractHelpFormatter):
-
-    def __init__(self,
-                 parser: ArgumentParser,
-                 positionals_header: Text,
-                 description: Text = None,
-                 epilog: Text = None):
-        self.parser = parser
-        self.positionals_header = positionals_header
-        self.description = description
-        self.epilog = epilog.strip() if epilog else ''
-
-    def format_help(self, show_hidden: bool = False) -> Text:
-        raise NotImplementedError
-
-    class DelayedHelpLinePrinter:
-        def __init__(self):
-            self.auxiliary_lines: List[Text] = []
-            self.hidden_lines: List[Text] = []
-
-        def add_auxiliary(self, line: Text):
-            self.auxiliary_lines.append(line)
-
-        def add_hidden(self, line: Text):
-            self.hidden_lines.append(line)
-
-        @classmethod
-        def _flush_lines(cls, lines: List[Text]) -> Iterator[Text]:
-            if lines:
-                yield ''
-                for line in lines:
-                    yield line
-
-        def flush(self) -> Iterator[Text]:
-            for line in self._flush_lines(self.auxiliary_lines):
-                yield line
-            for line in self._flush_lines(self.hidden_lines):
-                yield line
-            self.auxiliary_lines = []
-            self.hidden_lines = []
-
-    def format_help_screen(self, show_hidden: bool = False) -> Text:
-        block_name = ''
-        output_lines: List[Text] = []
-        delayed_printer = self.DelayedHelpLinePrinter()
-        for line_idx, line in enumerate(self.parser.format_help().split(os.linesep)):
-            if line.startswith('usage:'):
-                line = f'Usage: {line[7:]}'.replace(POSITIONAL_ARGUMENTS_MARKER,
-                                                    self.positionals_header)
-            if self.description and line_idx == 1:
-                output_lines.extend(['', self.description])
-            block_header_match = HELP_BLOCK_HEADER_RE.match(line)
-            if block_header_match:
-                # Start a block.
-                block_name = block_header_match.group(1)
-                if block_name == 'positional':
-                    output_lines.append(f'{self.positionals_header}:')
-                elif block_name == 'optional':
-                    output_lines.append('Options:')
-                else:
-                    output_lines.append(line)
-                continue
-            # Continue active block
-            if block_name == 'positional':
-                stripped_line = line.strip()
-                if stripped_line:
-                    if stripped_line != POSITIONAL_ARGUMENTS_MARKER:
-                        if line.startswith('    '):
-                            positional_line = line[2:]
-                            task_name = stripped_line.split(maxsplit=1)[0]
-                            if task_name in registry.AUXILIARY_TASK_NAMES:
-                                delayed_printer.add_auxiliary(positional_line)
-                            elif task_name in registry.HIDDEN_TASK_NAMES:
-                                if show_hidden:
-                                    delayed_printer.add_hidden(positional_line)
-                            else:
-                                output_lines.append(positional_line)
-                else:
-                    output_lines.extend(delayed_printer.flush())
-                    output_lines.append(line)
-                continue
-            if block_name == 'optional':
-                output_lines.append(line)
-                continue
-            output_lines.append(line)
-        if self.epilog:
-            output_lines.append(self.epilog)
-        output_lines.extend(delayed_printer.flush())
-        return os.linesep.join(output_lines)
-
-
-class ToolHelpFormatter(BaseHelpFormatter):
-
-    def format_help(self, show_hidden: bool = False) -> Text:
-        return super().format_help_screen(show_hidden=show_hidden)
-
-
-class TaskHelpFormatter(BaseHelpFormatter):
-
-    def format_help(self, show_hidden: bool = False) -> Text:
-        return super().format_help_screen(show_hidden=show_hidden)
-
-
-def _get_mapped_tasks() -> List[registry.MappedTask]:
+def _get_mapped_tasks() -> List[jiig.internal.mapped_task.MappedTask]:
     return sorted(filter(lambda m: m.name, registry.MAPPED_TASKS), key=lambda m: m.name)
 
 
@@ -287,9 +183,9 @@ class CommandLineData:
     # Trailing argument list, if captured. Used by `alias` command.
     trailing_args: List[Text]
     # Chosen mapped task, based on primary command name.
-    mapped_task: registry.MappedTask
+    mapped_task: jiig.internal.mapped_task.MappedTask
     # Help formatter map used by `help` command.
-    help_formatters: Dict[Text, AbstractHelpFormatter]
+    help_formatters: Dict[Text, HelpFormatter]
 
 
 def _create_primary_parser(*args, **kwargs) -> ArgumentParser:
@@ -325,6 +221,7 @@ class _CommandLineParser:
                  capture_trailing: bool = False):
         """
         Command line parser manager constructor.
+
         :param cli_args: command line argument list override
         :param prog: program name override
         :param capture_trailing: allow and capture trailing arguments if True
@@ -338,23 +235,31 @@ class _CommandLineParser:
 
     def parse(self, *args, **kwargs) -> CommandLineData:
         """
+        Parse the command line.
 
         :param args: positional arguments to pass along to ArgumentParser constructor
         :param kwargs:  keyword arguments to pass along to ArgumentParser constructor
         :return: parse results for command line
         """
         # Create top parser with global debug/verbose/dry-run options.
-        self.parser = _create_primary_parser(*args, **kwargs, prog=self.prog)
+        self.parser = _create_primary_parser(*args, **kwargs,
+                                             prog=self.prog,
+                                             add_help=False)
 
         # Recursively build the parser tree under the primary sub-parser group.
-        top_formatter = ToolHelpFormatter(self.parser, 'TASK')
+        top_formatter = HelpFormatter(None)
         help_formatters = {make_dest_name(): top_formatter}
         top_group = self.parser.add_subparsers(dest=global_data.CLI_DEST_NAME_PREFIX,
                                                metavar=POSITIONAL_ARGUMENTS_MARKER,
                                                required=True)
         for mt in _get_mapped_tasks():
-            sub_parser = top_group.add_parser(mt.name, help=mt.help)
-            self._prepare_parser_recursive(mt, sub_parser, help_formatters)
+            sub_parser = top_group.add_parser(mt.name,
+                                              help=mt.help,
+                                              add_help=False)
+            self._prepare_parser_recursive(mt,
+                                           sub_parser,
+                                           [self.prog],
+                                           help_formatters)
 
         # Parse the command line arguments.
         if self.capture_trailing:
@@ -392,56 +297,28 @@ Known dests: {list(registry.MAPPED_TASKS_BY_DEST_NAME.keys())}
         return CommandLineData(args, trailing_args, mapped_task, help_formatters)
 
     def _prepare_parser_recursive(self,
-                                  mt: registry.MappedTask,
+                                  mt: jiig.internal.mapped_task.MappedTask,
                                   parser: ArgumentParser,
-                                  help_formatters: Dict[Text, AbstractHelpFormatter]):
-        # Pull together any epilogs specified for the task and or
-        # options/arguments as epilog/sort key tuples.
-        epilog_list: List[Tuple[Text, Text]] = []
-        if mt.epilog:
-            epilog_list.append((mt.epilog.strip(), ''))
-        # Convert options to list/dict/sort key tuples.
-        option_list: List[Tuple] = []
-        argument_list: List[Dict] = []
-        for flag_or_flags, option_data in mt.options.items():
-            option_dict = dict(option_data)
-            # Remove non-argparse keywords.
-            epilog = option_dict.pop('epilog', None)
-            # Normalize flags as list and add sort key.
-            flags = make_list(flag_or_flags)
-            # The sort key is the first option letter or string.
-            sort_key = flags[0][2:] if flags[0].startswith('--') else flags[0][1:]
-            option_list.append((flags, option_dict, sort_key))
-            if epilog:
-                epilog_list.append((epilog.strip(), sort_key))
-        # Sort option list and epilogs by sort key.
-        option_list.sort(key=lambda o: o[2])
-        epilog_list.sort(key=lambda e: e[1])
-        for argument_data in mt.arguments:
-            argument_dict = dict(argument_data)
-            epilog = argument_dict.pop('epilog', None)
-            if epilog:
-                epilog_list.append((epilog.strip(), ''))
-            argument_list.append(argument_dict)
-        if epilog_list:
-            epilog = (os.linesep * 2).join([e[0] for e in epilog_list])
-        else:
-            epilog = None
-        # The task runner must be able to format help text.
-        header = 'SUB_TASK' if mt.sub_tasks else 'Arguments'
-        help_formatters[mt.dest_name] = TaskHelpFormatter(
-            parser, header, description=f'Task: {mt.help}.', epilog=epilog)
-        for flags, option_data, _sort_key in option_list:
+                                  command_parts: List[Text],
+                                  help_formatters: Dict[Text, HelpFormatter]):
+        sub_command_parts = command_parts + [mt.name]
+        help_formatters[mt.dest_name] = HelpFormatter(mapped_task=mt)
+        for flags, option_data in mt.options.items():
             parser.add_argument(*flags, **option_data)
-        for argument_data in argument_list:
+        for argument_data in mt.arguments:
             parser.add_argument(**argument_data)
         if mt.sub_tasks:
             sub_group = parser.add_subparsers(dest=mt.dest_name,
                                               metavar=POSITIONAL_ARGUMENTS_MARKER,
                                               required=True)
             for sub_task in mt.sub_tasks:
-                sub_parser = sub_group.add_parser(sub_task.name, help=sub_task.help)
-                self._prepare_parser_recursive(sub_task, sub_parser, help_formatters)
+                sub_parser = sub_group.add_parser(sub_task.name,
+                                                  help=sub_task.help,
+                                                  add_help=False)
+                self._prepare_parser_recursive(sub_task,
+                                               sub_parser,
+                                               sub_command_parts,
+                                               help_formatters)
 
 
 def pre_parse_command_line(cli_args: List[Text] = None

@@ -1,6 +1,6 @@
 """General utilities."""
 
-from typing import Iterable, Any, Text, Iterator, List, Optional
+from typing import Iterable, Any, Text, Iterator, List, Optional, Tuple
 
 from .console import log_error
 
@@ -88,6 +88,25 @@ def make_list(value: Any, strings: bool = False) -> Optional[List]:
     if isinstance(value, tuple):
         return _fix(list(value))
     return _fix([value])
+
+
+def make_tuple(value: Any, strings: bool = False) -> Optional[Tuple]:
+    """
+    Coerce a sequence or non-sequence to a tuple.
+
+    :param value: item to make into a tuple
+    :param strings: convert to text strings if True
+    :return: resulting tuple or None if value is None
+    """
+    def _fix(items: Tuple) -> Tuple:
+        if not strings:
+            return items
+        return tuple(str(item) for item in items)
+    if isinstance(value, tuple):
+        return _fix(value)
+    if isinstance(value, list):
+        return _fix(tuple(value))
+    return _fix(tuple([value]))
 
 
 BINARY_BYTE_COUNT_UNITS = ['KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']

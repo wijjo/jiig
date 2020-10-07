@@ -190,6 +190,12 @@ def need_trailing_arguments(command_args: List[Text]) -> bool:
     return primary_mt and primary_mt.need_trailing_arguments
 
 
+def create_runner(data: task_runner.RunnerData) -> task_runner.TaskRunner:
+    if registry.RUNNER_FACTORY:
+        return registry.RUNNER_FACTORY(data)
+    return task_runner.TaskRunner(data)
+
+
 def run_tool_task(cli_results: parser.CommandLineData,
                   tool_params: init_file.ParamData):
     """
@@ -206,9 +212,9 @@ def run_tool_task(cli_results: parser.CommandLineData,
     try:
         # Execute task dependencies first.
         for dependency_task in cli_results.mapped_task.execution_tasks:
-            dependency_task.task_function(registry.create_runner(runner_data))
+            dependency_task.task_function(create_runner(runner_data))
         # Then execute the primary task.
-        cli_results.mapped_task.task_function(registry.create_runner(runner_data))
+        cli_results.mapped_task.task_function(create_runner(runner_data))
     except RuntimeError as exc:
         abort(f'{exc.__class__.__name__}("{exc}")', cli_results.args)
     except KeyboardInterrupt:
