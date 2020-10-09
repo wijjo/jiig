@@ -4,7 +4,7 @@ import os
 from typing import Text, List, Tuple, Optional, Iterator, Dict
 
 from jiig.task_runner import RunnerHelpFormatter
-from jiig.internal.global_data import ToolOptions
+from jiig.internal import tool_options
 from jiig.internal.mapped_task import MappedTask
 from jiig.internal.registry import get_tool_tasks
 from jiig.utility.general import format_table, make_list
@@ -36,7 +36,7 @@ class HelpFormatter(RunnerHelpFormatter):
                 yield f'  {line}'
 
     def _format_usage(self) -> Iterator[Text]:
-        parts: List[Text] = [ToolOptions.name]
+        parts: List[Text] = [tool_options.name]
         if not self.mapped_task:
             parts.append('TASK ...')
         else:
@@ -66,8 +66,8 @@ class HelpFormatter(RunnerHelpFormatter):
 
     def _format_description(self) -> Iterator[Text]:
         if not self.mapped_task:
-            if ToolOptions.description:
-                yield ToolOptions.description
+            if tool_options.description:
+                yield tool_options.description
         elif self.mapped_task.help:
             yield f'TASK: {self.mapped_task.help}.'
 
@@ -126,8 +126,8 @@ class HelpFormatter(RunnerHelpFormatter):
     def _format_epilog(self) -> Iterator[Text]:
         if self.mapped_task is None:
             # Primary task epilog
-            if ToolOptions.epilog:
-                yield ToolOptions.epilog
+            if tool_options.epilog:
+                yield tool_options.epilog
         else:
             # Task epilog
             if self.mapped_task.epilog:

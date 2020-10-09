@@ -1,7 +1,7 @@
 import os
 from typing import Text, Any, Dict, Optional, Union, List, Tuple
 
-from jiig.internal.global_data import INIT_FILE
+from jiig.internal import global_data
 from jiig.utility.console import abort
 from jiig.utility.filesystem import chdir
 
@@ -35,7 +35,7 @@ class Param:
 
         :param message: error message
         """
-        abort(f'{INIT_FILE}: {self.name}: {message}')
+        abort(f'{global_data.init_file_name}: {self.name}: {message}')
 
     def merge_payload_value(self, payload: ParamPayload, value: Any):
         """

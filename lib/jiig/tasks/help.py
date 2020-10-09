@@ -1,3 +1,5 @@
+"""Help task."""
+
 from jiig import task, TaskRunner
 
 

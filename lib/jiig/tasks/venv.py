@@ -1,6 +1,4 @@
-"""
-Jiig virtual environment management.
-"""
+"""Virtual environment management task."""
 
 import os
 
@@ -63,7 +61,7 @@ def task_ipython(runner: TaskRunner):
         log_message('Install iPython in virtual environment.')
         run([pip_path, 'install', 'ipython'])
     try:
-        env = {'PYTHONPATH': os.path.pathsep.join(global_data.LIBRARY_FOLDERS)}
+        env = {'PYTHONPATH': os.path.pathsep.join(global_data.library_folders)}
         os.execle(ipython_path, ipython_path, env)
     except Exception as exc:
         abort(f'Failed to execute "ipython" command.',
@@ -90,5 +88,5 @@ def task_pip(runner: TaskRunner):
 )
 def task_python(runner: TaskRunner):
     python_path = runner.expand_path_template('{VENV_ROOT}/bin/python')
-    env = {'PYTHONPATH': os.path.pathsep.join(global_data.LIBRARY_FOLDERS)}
+    env = {'PYTHONPATH': os.path.pathsep.join(global_data.library_folders)}
     os.execle(python_path, python_path, *runner.args.ARGS, env)

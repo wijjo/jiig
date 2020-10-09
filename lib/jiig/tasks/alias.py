@@ -1,6 +1,5 @@
-"""
-Alias sub-command tasks.
-"""
+"""Alias sub-command tasks."""
+
 from typing import Text, Iterator, Iterable
 
 from jiig import task, TaskRunner

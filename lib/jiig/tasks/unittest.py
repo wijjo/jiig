@@ -5,7 +5,7 @@ import unittest
 from glob import glob
 
 from jiig import task, TaskRunner
-from jiig.internal.global_data import DEFAULT_TEST_FOLDER
+from jiig.internal import global_data
 from jiig.utility.console import abort, log_error
 from jiig.utility.filesystem import check_folder_exists
 from jiig.utility.python import import_module_path
@@ -24,7 +24,7 @@ from jiig.utility.python import import_module_path
     ],
     hidden_task=True)
 def task_unittest(runner: TaskRunner):
-    test_root = runner.params.TEST_ROOT or DEFAULT_TEST_FOLDER
+    test_root = runner.params.TEST_ROOT or global_data.default_test_folder
     check_folder_exists(test_root)
     module_map = {
         os.path.splitext(os.path.basename(file_path))[0]: file_path

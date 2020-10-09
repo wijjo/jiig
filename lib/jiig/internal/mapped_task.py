@@ -5,7 +5,7 @@ import sys
 from dataclasses import dataclass
 from typing import Optional, Text, List, Iterator
 
-from jiig.internal.types import TaskFunction, OptionDict, ArgumentList
+from jiig.internal import TaskFunction, OptionDict, ArgumentList
 
 
 @dataclass

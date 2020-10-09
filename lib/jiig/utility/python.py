@@ -81,11 +81,11 @@ def import_modules_from_folder(folder: Text,
                 if retry:
                     to_retry.append((module_name, module_path))
                 exceptions.append((module_name, module_path, exc))
-                if global_data.DEBUG:
+                if global_data.debug:
                     raise
             except Exception as exc:
                 exceptions.append((module_name, module_path, exc))
-                if global_data.DEBUG:
+                if global_data.debug:
                     raise
         to_import = []
         if to_retry:

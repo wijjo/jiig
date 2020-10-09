@@ -1,3 +1,5 @@
+"""Tool creation task."""
+
 import os
 from typing import Text
 
@@ -20,7 +22,7 @@ def expand_tool_template(runner: TaskRunner, template_name: Text):
     target_folder = os.path.realpath(runner.args.TOOL_FOLDER)
     symbols['TOOL_NAME'] = runner.args.TOOL_NAME or os.path.basename(target_folder)
     source_folder = os.path.join(runner.params.JIIG_ROOT,
-                                 global_data.TOOL_TEMPLATES_FOLDER,
+                                 global_data.tool_templates_folder,
                                  template_name)
     expand_template_folder(source_folder,
                            target_folder,

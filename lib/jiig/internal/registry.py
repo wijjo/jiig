@@ -1,9 +1,9 @@
 """Task and associated tool data registry."""
 from typing import Text, Optional, List, Dict, Set, Iterator, Sequence
 
-from jiig.internal.global_data import ToolOptions
-from jiig.internal.types import TaskFunction, ArgumentList, OptionDict, OptionRawDict, \
-    RunnerFactoryFunction
+from jiig.internal import tool_options, \
+    ArgumentList, OptionDict, OptionRawDict, OptionDestFlagsDict, \
+    TaskFunction, RunnerFactoryFunction
 from jiig.internal.mapped_task import MappedTask
 from jiig.utility.cli import make_dest_name, make_metavar
 from jiig.utility.console import abort, log_error
@@ -12,7 +12,7 @@ from jiig.utility.general import make_tuple
 # === Registered data
 
 
-class RegisteredData:
+class _RegisteredData:
 
     # Runner factory registered by @runner_factory decorator. Last registered one wins.
     runner_factory: Optional[RunnerFactoryFunction] = None
@@ -37,9 +37,9 @@ def get_tool_tasks(include_hidden: bool = False) -> Iterator[MappedTask]:
     :param include_hidden: include hidden task names if True
     :return: iterable MappedTask objects
     """
-    for mt in RegisteredData.mapped_tasks:
+    for mt in _RegisteredData.mapped_tasks:
         if not mt.parent and mt.name:
-            if include_hidden or mt.name not in RegisteredData.hidden_task_names:
+            if include_hidden or mt.name not in _RegisteredData.hidden_task_names:
                 yield mt
 
 
@@ -67,26 +67,30 @@ def tool(name: Text = None,
     """
     # Only set values for the keywords that were provided.
     if name is not None:
-        ToolOptions.name = name
+        tool_options.set_name(name)
     if description is not None:
-        ToolOptions.description = description
+        tool_options.set_description(description)
     if epilog is not None:
-        ToolOptions.epilog = epilog
+        tool_options.set_epilog(epilog)
     if disable_alias is not None:
-        ToolOptions.disable_alias = disable_alias
+        tool_options.set_disable_alias(disable_alias)
     if disable_help is not None:
-        ToolOptions.disable_help = disable_help
+        tool_options.set_disable_help(disable_help)
     if disable_debug is not None:
-        ToolOptions.disable_debug = disable_debug
+        tool_options.set_disable_debug(disable_debug)
     if disable_dry_run is not None:
-        ToolOptions.disable_dry_run = disable_dry_run
+        tool_options.set_disable_dry_run(disable_dry_run)
     if disable_verbose is not None:
-        ToolOptions.disable_verbose = disable_verbose
+        tool_options.set_disable_verbose(disable_verbose)
     if common_options is not None:
+        options: OptionDict = {}
+        flags_by_dest: OptionDestFlagsDict = {}
         for raw_flags, option_data in common_options.items():
             flag_tuple = make_tuple(raw_flags)
-            ToolOptions.common_options[flag_tuple] = option_data
-            ToolOptions.common_flags_by_dest[option_data['dest']] = flag_tuple
+            options[flag_tuple] = option_data
+            flags_by_dest[option_data['dest']] = flag_tuple
+        tool_options.set_common_options(options)
+        tool_options.set_common_flags_by_dest(flags_by_dest)
 
 
 class _MappedTaskDataGenerator:
@@ -110,7 +114,7 @@ class _MappedTaskDataGenerator:
                         ) -> Optional[MappedTask]:
         if not task_function:
             return None
-        mapped_task = RegisteredData.mapped_tasks_by_id.get(id(task_function))
+        mapped_task = _RegisteredData.mapped_tasks_by_id.get(id(task_function))
         if not mapped_task:
             abort(f'Unmapped task for function: {task_function.__name__}()')
         if not mapped_task.name:
@@ -126,9 +130,9 @@ class _MappedTaskDataGenerator:
     def merge_common_options(self, common_options_in: Optional[Sequence[Text]]):
         if common_options_in:
             for dest in common_options_in:
-                flag_tuple = ToolOptions.common_flags_by_dest.get(dest)
+                flag_tuple = tool_options.common_flags_by_dest.get(dest)
                 if flag_tuple is not None:
-                    option_data = ToolOptions.common_options[flag_tuple]
+                    option_data = tool_options.common_options[flag_tuple]
                     self.options[flag_tuple] = option_data
                 else:
                     log_error(f'Ignoring unknown common option "{dest}".')
@@ -142,9 +146,9 @@ class _MappedTaskDataGenerator:
                 else:
                     nargs = None
                     dest = option_spec
-                flag_tuple = ToolOptions.common_flags_by_dest.get(dest)
+                flag_tuple = tool_options.common_flags_by_dest.get(dest)
                 if flag_tuple is not None:
-                    option_data = ToolOptions.common_options[flag_tuple]
+                    option_data = tool_options.common_options[flag_tuple]
                     if nargs is None:
                         self.arguments.append(option_data)
                     else:
@@ -186,7 +190,7 @@ class _MappedTaskDataGenerator:
                 dependency_function_id = id(dependency_function)
                 if dependency_function_id in self._unique_function_ids:
                     continue
-                dependency_mapped_task = RegisteredData.mapped_tasks_by_id.get(
+                dependency_mapped_task = _RegisteredData.mapped_tasks_by_id.get(
                     dependency_function_id, None)
                 if not dependency_mapped_task:
                     continue
@@ -289,11 +293,11 @@ def register_task(task_function: TaskFunction,
             container_mapped_task = container_mapped_task.parent
 
     # Register new MappedTask into global data structures.
-    RegisteredData.mapped_tasks_by_id[id(mapped_task.task_function)] = mapped_task
+    _RegisteredData.mapped_tasks_by_id[id(mapped_task.task_function)] = mapped_task
     if mapped_task.dest_name:
-        RegisteredData.mapped_tasks_by_dest_name[mapped_task.dest_name] = mapped_task
+        _RegisteredData.mapped_tasks_by_dest_name[mapped_task.dest_name] = mapped_task
     if mapped_task.hidden_task:
-        RegisteredData.hidden_task_names.add(mapped_task.name)
+        _RegisteredData.hidden_task_names.add(mapped_task.name)
 
     # Attach to parent sub-tasks or register globally if there is no parent.
     if mapped_task.parent:
@@ -301,22 +305,22 @@ def register_task(task_function: TaskFunction,
             mapped_task.parent.sub_tasks = []
         mapped_task.parent.sub_tasks.append(mapped_task)
     else:
-        RegisteredData.mapped_tasks.append(mapped_task)
+        _RegisteredData.mapped_tasks.append(mapped_task)
     return mapped_task
 
 
 def register_runner_factory(runner_factory: RunnerFactoryFunction):
-    RegisteredData.runner_factory = runner_factory
+    _RegisteredData.runner_factory = runner_factory
 
 
 def get_runner_factory() -> Optional[RunnerFactoryFunction]:
-    return RegisteredData.runner_factory
+    return _RegisteredData.runner_factory
 
 
 def get_sorted_named_mapped_tasks() -> List[MappedTask]:
-    return sorted(filter(lambda m: m.name, RegisteredData.mapped_tasks),
+    return sorted(filter(lambda m: m.name, _RegisteredData.mapped_tasks),
                   key=lambda m: m.name)
 
 
 def get_mapped_task_by_dest_name(dest_name: Text) -> Optional[MappedTask]:
-    return RegisteredData.mapped_tasks_by_dest_name.get(dest_name)
+    return _RegisteredData.mapped_tasks_by_dest_name.get(dest_name)

@@ -24,9 +24,9 @@ def log_message(text: Any, *args, **kwargs):
     verbose = kwargs.pop('verbose', None)
     debug = kwargs.pop('debug', None)
     issue_once_tag = kwargs.pop('issue_once_tag', None)
-    if verbose and not global_data.VERBOSE:
+    if verbose and not global_data.verbose:
         return
-    if debug and not global_data.DEBUG:
+    if debug and not global_data.debug:
         return
     if issue_once_tag:
         if issue_once_tag in MESSAGES_ISSUED_ONCE:
@@ -64,7 +64,7 @@ def abort(text: Any, *args, **kwargs):
     skip = kwargs.pop('skip', 0)
     kwargs['tag'] = 'FATAL'
     log_message(text, *args, **kwargs)
-    if global_data.DEBUG:
+    if global_data.debug:
         print_call_stack(skip=skip + 2)
     sys.exit(255)
 

@@ -29,8 +29,7 @@ if JIIG_ROOT in sys.path:
 
 from jiig.init_file import ParamData, ParamList, ParamFolder, ParamFolderList, ParamLoader
 from jiig.task_runner import TaskRunner, RunnerData
-from jiig.internal.global_data import ToolOptions, INIT_FILE, \
-    set_debug, set_verbose, set_dry_run, set_library_folders
+from jiig.internal import global_data, tool_options
 from jiig.internal.aliases import AliasManager, expand_alias_name
 from jiig.internal.parser import pre_parse_command_line, parse_command_line, CommandLineData
 from jiig.internal.registry import get_mapped_task_by_dest_name, get_runner_factory
@@ -57,11 +56,11 @@ def pre_parse_arguments(cli_args: List[Text]) -> List[Text]:
     args, trailing_args = pre_parse_command_line(cli_args=cli_args)
     if args.VERBOSE:
         # Dry-run implies verbose.
-        set_verbose(args.VERBOSE or args.DRY_RUN)
+        global_data.set_verbose(args.VERBOSE or args.DRY_RUN)
     if args.DEBUG:
-        set_debug(args.DEBUG)
+        global_data.set_debug(args.DEBUG)
     if args.DRY_RUN:
-        set_dry_run(args.DRY_RUN)
+        global_data.set_dry_run(args.DRY_RUN)
     # Drop the '--' that was needed for restarting in the virtual environment.
     if trailing_args and trailing_args[0] == '--':
         return trailing_args[1:]
@@ -84,7 +83,7 @@ def initialize(script_path: Text,
     """
     # Load tool init file
     tool_root = os.path.dirname(os.path.realpath(tool_path))
-    init_path = os.path.join(tool_root, INIT_FILE)
+    init_path = os.path.join(tool_root, global_data.init_file_name)
     param_loader = ParamLoader(INIT_PARAM_TYPES)
     log_message(f'Load configuration file "{init_path}".', verbose=True)
     param_loader.load_file(init_path)
@@ -97,7 +96,7 @@ def initialize(script_path: Text,
             if tool_lib_folder not in sys.path:
                 sys.path.insert(0, tool_lib_folder)
                 folders.insert(0, tool_lib_folder)
-    set_library_folders(folders)
+    global_data.set_library_folders(folders)
 
     # May not need a virtual environment.
     if not init_params.VENV_ROOT:
@@ -135,26 +134,26 @@ def load_tool(script_path: Text, init_params: Dict) -> ParamData:
     """
     script_symbols = execute_source(file=script_path)
     # If no name was provided use the script base name.
-    if not ToolOptions.name:
-        ToolOptions.name = os.path.basename(script_path)
+    if not tool_options.name:
+        tool_options.set_name(os.path.basename(script_path))
     # If no description was provided try to scrape it from the doc string, if it exists.
-    if not ToolOptions.description:
+    if not tool_options.description:
         doc_string = script_symbols.get('__doc__', '').strip()
         if doc_string:
-            ToolOptions.description = doc_string.splitlines()[0]
-    if not ToolOptions.description:
-        ToolOptions.description = '(no description provided)'
+            tool_options.set_description(doc_string.splitlines()[0])
+    if not tool_options.description:
+        tool_options.set_description('(no description provided)')
     # Load standard modules, if enabled.
-    if not ToolOptions.disable_help:
+    if not tool_options.disable_help:
         import jiig.tasks.help      # noqa
-    if not ToolOptions.disable_alias:
+    if not tool_options.disable_alias:
         import jiig.tasks.alias     # noqa
     # Initialize tool parameters.
     tool_params = ParamData(init_params)
     tool_params['JIIG_ROOT'] = JIIG_ROOT
-    tool_params['TOOL_NAME'] = ToolOptions.name
-    tool_params['TOOL_DESCRIPTION'] = ToolOptions.description
-    tool_params['TOOL_EPILOG'] = ToolOptions.epilog
+    tool_params['TOOL_NAME'] = tool_options.name
+    tool_params['TOOL_DESCRIPTION'] = tool_options.description
+    tool_params['TOOL_EPILOG'] = tool_options.epilog
     return tool_params
 
 

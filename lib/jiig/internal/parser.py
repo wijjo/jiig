@@ -10,8 +10,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Optional, List, Text, Dict, Sequence, Tuple
 
-from jiig.internal.global_data import ToolOptions, \
-    DEBUG, CLI_DEST_NAME_PREFIX, CLI_METAVAR_SUFFIX, CLI_DEST_NAME_SEPARATOR
+from jiig.internal import global_data, tool_options
 from jiig.internal.help_formatter import HelpFormatter
 from jiig.internal.mapped_task import MappedTask
 from jiig.internal.registry import get_sorted_named_mapped_tasks, get_mapped_task_by_dest_name
@@ -25,8 +24,8 @@ Namespace = argparse.Namespace
 
 # Expression for making a friendlier error message for missing sub-task.
 REQUIRED_SUB_TASK_RE = re.compile(fr'^(.* required: )' 
-                                  fr'({CLI_DEST_NAME_PREFIX}'
-                                  fr'|[A-Z_]+_{CLI_METAVAR_SUFFIX})$')
+                                  fr'({global_data.cli_dest_name_prefix}'
+                                  fr'|[A-Z_]+_{global_data.cli_metavar_suffix})$')
 HELP_BLOCK_HEADER_RE = re.compile(r'^(\w+) arguments:$')
 POSITIONAL_ARGUMENTS_MARKER = '{TASKS}'
 
@@ -76,7 +75,7 @@ class ArgumentParser(argparse.ArgumentParser):
         # Remove any keywords that argparse does not handle.
         if 'epilog' in kwargs:
             del kwargs['epilog']
-        if DEBUG:
+        if global_data.debug:
             self._dump('add_argument', *args, **kwargs)
         try:
             return super().add_argument(*args, **kwargs)
@@ -95,7 +94,7 @@ class ArgumentParser(argparse.ArgumentParser):
         :param namespace: incoming namespace
         :param raise_exceptions: raise exceptions if True
         """
-        if DEBUG:
+        if global_data.debug:
             self._dump('parse_args',
                        args=args,
                        namespace=namespace,
@@ -118,7 +117,7 @@ class ArgumentParser(argparse.ArgumentParser):
         :param namespace: incoming namespace
         :param raise_exceptions: raise exceptions if True
         """
-        if DEBUG:
+        if global_data.debug:
             self._dump('parse_known_args',
                        args=args,
                        namespace=namespace,
@@ -155,7 +154,7 @@ class ArgumentParser(argparse.ArgumentParser):
 
     @staticmethod
     def _dump(method_name, *args, **kwargs):
-        if DEBUG:
+        if global_data.debug:
             log_message(f'argparse: {format_call_string(method_name, *args, **kwargs)})')
 
     @staticmethod
@@ -187,13 +186,13 @@ class CommandLineData:
 
 def _create_primary_parser(*args, **kwargs) -> ArgumentParser:
     parser = ArgumentParser(*args, **kwargs)
-    if not ToolOptions.disable_debug:
+    if not tool_options.disable_debug:
         parser.add_argument('--debug', dest='DEBUG', action='store_true',
                             help='enable debug mode')
-    if not ToolOptions.disable_dry_run:
+    if not tool_options.disable_dry_run:
         parser.add_argument('--dry-run', dest='DRY_RUN', action='store_true',
                             help='display actions without executing (dry run)')
-    if not ToolOptions.disable_verbose:
+    if not tool_options.disable_verbose:
         parser.add_argument('-v', dest='VERBOSE', action='store_true',
                             help='display additional (verbose) messages')
     return parser
@@ -201,11 +200,11 @@ def _create_primary_parser(*args, **kwargs) -> ArgumentParser:
 
 def _create_empty_namespace() -> argparse.Namespace:
     data = {}
-    if not ToolOptions.disable_debug:
+    if not tool_options.disable_debug:
         data['DEBUG'] = None
-    if not ToolOptions.disable_dry_run:
+    if not tool_options.disable_dry_run:
         data['DRY_RUN'] = None
-    if not ToolOptions.disable_verbose:
+    if not tool_options.disable_verbose:
         data['VERBOSE'] = None
     return argparse.Namespace(**data)
 
@@ -227,8 +226,8 @@ class _CommandLineParser:
         self.prog = prog
         self.capture_trailing = capture_trailing
         self.parser: Optional[ArgumentParser] = None
-        self.dest_name_preamble = (CLI_DEST_NAME_PREFIX +
-                                   CLI_DEST_NAME_SEPARATOR)
+        self.dest_name_preamble = (global_data.cli_dest_name_prefix +
+                                   global_data.cli_dest_name_separator)
 
     def parse(self, *args, **kwargs) -> CommandLineData:
         """
@@ -246,7 +245,7 @@ class _CommandLineParser:
         # Recursively build the parser tree under the primary sub-parser group.
         top_formatter = HelpFormatter(None)
         help_formatters = {make_dest_name(): top_formatter}
-        top_group = self.parser.add_subparsers(dest=CLI_DEST_NAME_PREFIX,
+        top_group = self.parser.add_subparsers(dest=global_data.cli_dest_name_prefix,
                                                metavar=POSITIONAL_ARGUMENTS_MARKER,
                                                required=True)
         for mt in get_sorted_named_mapped_tasks():
@@ -268,12 +267,12 @@ class _CommandLineParser:
         # Get the most specific task name (longest length TASK.* name).
         task_dest = ''
         for dest in dir(args):
-            if ((dest == CLI_DEST_NAME_PREFIX or
+            if ((dest == global_data.cli_dest_name_prefix or
                  dest.startswith(self.dest_name_preamble)) and
                     len(dest) > len(task_dest)):
                 task_dest = dest
         if not task_dest:
-            raise RuntimeError(f'No {CLI_DEST_NAME_PREFIX}* member'
+            raise RuntimeError(f'No {global_data.cli_dest_name_prefix}* member'
                                f' in command line arguments namespace: {args}')
 
         # Look up the mapped task using <dest>.<uppercase-name>.

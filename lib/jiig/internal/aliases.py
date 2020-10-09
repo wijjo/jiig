@@ -12,7 +12,7 @@ import os
 from dataclasses import dataclass
 from typing import Text, List, Optional, Iterator, Any, Iterable, Dict
 
-from jiig.internal.global_data import ToolOptions, ALIASES_PATH
+from jiig.internal import global_data, tool_options
 from jiig.internal.registry import get_mapped_task_by_dest_name
 from jiig.utility.cli import make_dest_name
 from jiig.utility.console import abort, log_error, log_message, log_warning
@@ -183,7 +183,7 @@ class AliasManager:
     """
 
     def __init__(self, tool_name: Text = None):
-        self.tool_name = tool_name or ToolOptions.name
+        self.tool_name = tool_name or tool_options.name
         self.catalog = {}
         self.modified = False
         self.disable_saving = False
@@ -230,8 +230,8 @@ class AliasManager:
         """Load and validate the aliases file."""
         self.disable_saving = False
         self.modified = False
-        if os.path.exists(ALIASES_PATH):
-            raw_catalog = open_json(file=ALIASES_PATH, check=True)
+        if os.path.exists(global_data.aliases_path):
+            raw_catalog = open_json(file=global_data.aliases_path, check=True)
             scrubber = _AliasCatalogScrubber(raw_catalog)
             self.catalog = scrubber.scrubbed_data
             if scrubber.errors > 0:
@@ -243,15 +243,15 @@ class AliasManager:
     def save(self):
         """Save the aliases file."""
         if self.disable_saving:
-            log_error(f'Not saving aliases to "{ALIASES_PATH}".',
+            log_error(f'Not saving aliases to "{global_data.aliases_path}".',
                       f'Please correct previously-reported errors or delete the file.')
             return
         try:
-            with open(ALIASES_PATH, 'w', encoding='utf-8') as aliases_file:
+            with open(global_data.aliases_path, 'w', encoding='utf-8') as aliases_file:
                 json.dump(self.sorted_catalog, aliases_file, indent=2)
             self.modified = False
         except Exception as exc:
-            abort(f'Failed to write aliases file "{ALIASES_PATH}".', exc)
+            abort(f'Failed to write aliases file "{global_data.aliases_path}".', exc)
 
     def create_alias(self,
                      alias_name: Text,

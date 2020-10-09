@@ -92,7 +92,7 @@ def run(cmd_args: List[Text],
         message_data['verbose'] = True
     log_message('Run command.', cmd_string, **message_data)
     # A dry run can stop here, before taking real action.
-    if global_data.DRY_RUN and not run_always:
+    if global_data.dry_run and not run_always:
         return None
     # Generate the command run environment.
     run_env = dict(os.environ)

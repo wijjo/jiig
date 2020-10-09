@@ -5,8 +5,7 @@ Jiig decorators.
 from inspect import isfunction
 from typing import Callable, Text, Sequence, List
 
-from jiig.internal.types import RunnerFactoryFunction, TaskFunction, OptionRawDict, \
-    ArgumentList
+from jiig.internal import RunnerFactoryFunction, TaskFunction, OptionRawDict, ArgumentList
 from jiig.internal.registry import register_task, register_runner_factory
 from jiig.utility.console import abort
 
