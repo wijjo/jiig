@@ -7,18 +7,17 @@ At a high level, this module saves, loads, and manages aliases. Related to that,
 it converts back and for between short and long alias names to support scoping.
 """
 
-from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass
 from typing import Text, List, Optional, Iterator, Any, Iterable, Dict
 
+from jiig.internal.global_data import ToolOptions, ALIASES_PATH
+from jiig.internal.registry import get_mapped_task_by_dest_name
 from jiig.utility.cli import make_dest_name
 from jiig.utility.console import abort, log_error, log_message, log_warning
 from jiig.utility.process import shell_command_string
 from jiig.utility.stream import open_json
-
-from . import global_data, registry
 
 
 # JSON schema:
@@ -117,7 +116,7 @@ class Alias:
         return os.path.dirname(self.short_name) or None
 
 
-def expand_name(short_name: Text) -> Optional[Text]:
+def expand_alias_name(short_name: Text) -> Optional[Text]:
     """
     Expand scoped alias name.
 
@@ -184,7 +183,7 @@ class AliasManager:
     """
 
     def __init__(self, tool_name: Text = None):
-        self.tool_name = tool_name or registry.ToolOptions.name
+        self.tool_name = tool_name or ToolOptions.name
         self.catalog = {}
         self.modified = False
         self.disable_saving = False
@@ -216,7 +215,7 @@ class AliasManager:
         :param alias_name: alias name, possibly preceded by a path
         :return: alias data if found or None if not
         """
-        full_name = expand_name(alias_name)
+        full_name = expand_alias_name(alias_name)
         if not full_name:
             abort(f'Bad alias name "{alias_name}".')
         tool_alias_map = self.catalog.get(self.tool_name)
@@ -231,8 +230,8 @@ class AliasManager:
         """Load and validate the aliases file."""
         self.disable_saving = False
         self.modified = False
-        if os.path.exists(global_data.ALIASES_PATH):
-            raw_catalog = open_json(file=global_data.ALIASES_PATH, check=True)
+        if os.path.exists(ALIASES_PATH):
+            raw_catalog = open_json(file=ALIASES_PATH, check=True)
             scrubber = _AliasCatalogScrubber(raw_catalog)
             self.catalog = scrubber.scrubbed_data
             if scrubber.errors > 0:
@@ -244,15 +243,15 @@ class AliasManager:
     def save(self):
         """Save the aliases file."""
         if self.disable_saving:
-            log_error(f'Not saving aliases to "{global_data.ALIASES_PATH}".',
+            log_error(f'Not saving aliases to "{ALIASES_PATH}".',
                       f'Please correct previously-reported errors or delete the file.')
             return
         try:
-            with open(global_data.ALIASES_PATH, 'w', encoding='utf-8') as aliases_file:
+            with open(ALIASES_PATH, 'w', encoding='utf-8') as aliases_file:
                 json.dump(self.sorted_catalog, aliases_file, indent=2)
             self.modified = False
         except Exception as exc:
-            abort(f'Failed to write aliases file "{global_data.ALIASES_PATH}".', exc)
+            abort(f'Failed to write aliases file "{ALIASES_PATH}".', exc)
 
     def create_alias(self,
                      alias_name: Text,
@@ -265,7 +264,7 @@ class AliasManager:
         :param command: command arguments for alias (required)
         :param description: description of alias, e.g. for help screen
         """
-        full_name = expand_name(alias_name)
+        full_name = expand_alias_name(alias_name)
         if not full_name:
             abort(f'Bad alias name "{alias_name}" for create.')
         if not list(command):
@@ -276,7 +275,7 @@ class AliasManager:
         # Can't easily check the entire aliased command, so just check the task name.
         task_name = list(command)[0]
         dest_name = make_dest_name(task_name)
-        if dest_name not in registry.MAPPED_TASKS_BY_DEST_NAME:
+        if not get_mapped_task_by_dest_name(dest_name):
             abort(f'Unknown task "{task_name}" for alias.')
         if tool_alias_map is None:
             tool_alias_map = {}
@@ -299,7 +298,7 @@ class AliasManager:
         :param command: command arguments for alias (may omit to not update it)
         :param description: description of alias (may omit to not update it)
         """
-        full_name = expand_name(alias_name)
+        full_name = expand_alias_name(alias_name)
         if not full_name:
             abort(f'Bad alias name "{alias_name}" for update.')
         if command is not None and not list(command):
@@ -329,7 +328,7 @@ class AliasManager:
 
         :param alias_name: name of alias to delete
         """
-        full_name = expand_name(alias_name)
+        full_name = expand_alias_name(alias_name)
         if not full_name:
             abort(f'Bad alias name "{alias_name}" for delete.')
         tool_alias_map = self.catalog.get(self.tool_name)
@@ -350,8 +349,8 @@ class AliasManager:
         :param alias_name: name of alias to rename
         :param alias_name_new: new target alias name
         """
-        full_name = expand_name(alias_name)
-        full_name_new = expand_name(alias_name_new)
+        full_name = expand_alias_name(alias_name)
+        full_name_new = expand_alias_name(alias_name_new)
         if not full_name:
             abort(f'Bad alias name "{alias_name}" for rename.')
         if not full_name_new:
@@ -396,7 +395,7 @@ class AliasManager:
         self.catalog = sorted_catalog
         self.sorted = True
 
-    def __enter__(self) -> AliasManager:
+    def __enter__(self) -> 'AliasManager':
         """Support construction in a `with` block."""
         return self
 

@@ -3,15 +3,16 @@
 import os
 from typing import Text, List, Tuple, Optional, Iterator, Dict
 
-import jiig.internal.mapped_task
-from jiig.internal import registry
 from jiig.task_runner import RunnerHelpFormatter
+from jiig.internal.global_data import ToolOptions
+from jiig.internal.mapped_task import MappedTask
+from jiig.internal.registry import get_tool_tasks
 from jiig.utility.general import format_table, make_list
 
 
 class HelpFormatter(RunnerHelpFormatter):
 
-    def __init__(self, mapped_task: jiig.internal.mapped_task.MappedTask = None):
+    def __init__(self, mapped_task: MappedTask = None):
         self.mapped_task = mapped_task
 
     class HelpTableBuilder:
@@ -35,7 +36,7 @@ class HelpFormatter(RunnerHelpFormatter):
                 yield f'  {line}'
 
     def _format_usage(self) -> Iterator[Text]:
-        parts: List[Text] = [registry.ToolOptions.name]
+        parts: List[Text] = [ToolOptions.name]
         if not self.mapped_task:
             parts.append('TASK ...')
         else:
@@ -65,8 +66,8 @@ class HelpFormatter(RunnerHelpFormatter):
 
     def _format_description(self) -> Iterator[Text]:
         if not self.mapped_task:
-            if registry.ToolOptions.description:
-                yield registry.ToolOptions.description
+            if ToolOptions.description:
+                yield ToolOptions.description
         elif self.mapped_task.help:
             yield f'TASK: {self.mapped_task.help}.'
 
@@ -74,7 +75,8 @@ class HelpFormatter(RunnerHelpFormatter):
         # Task list(s)
         if not self.mapped_task:
             # Root task.
-            sub_tasks = sorted(registry.get_tool_tasks(), key=lambda t: t.name)
+            sub_tasks = sorted(get_tool_tasks(include_hidden=show_hidden),
+                               key=lambda t: t.name)
             tasks_label = 'TASK'
         else:
             tasks_label = 'SUB_TASK'
@@ -124,8 +126,8 @@ class HelpFormatter(RunnerHelpFormatter):
     def _format_epilog(self) -> Iterator[Text]:
         if self.mapped_task is None:
             # Primary task epilog
-            if registry.ToolOptions.epilog:
-                yield registry.ToolOptions.epilog
+            if ToolOptions.epilog:
+                yield ToolOptions.epilog
         else:
             # Task epilog
             if self.mapped_task.epilog:
@@ -157,7 +159,7 @@ class HelpFormatter(RunnerHelpFormatter):
 
         _add_block(*self._format_usage())
         _add_block(*self._format_description())
-        _add_block(*self._format_tables())
+        _add_block(*self._format_tables(show_hidden=show_hidden))
         _add_block(*self._format_epilog())
 
         return os.linesep.join(chunks)

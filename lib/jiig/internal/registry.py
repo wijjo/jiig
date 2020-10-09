@@ -1,37 +1,33 @@
 """Task and associated tool data registry."""
+from typing import Text, Optional, List, Dict, Set, Iterator, Sequence
 
-from typing import Dict, Text, Optional, Callable, List, Iterator, Sequence, Set
-
-from jiig.internal.mapped_task import MappedTask, TaskFunction, \
-    OptionDict, ArgumentList, OptionDestFlagsDict, OptionRawDict
-from jiig.task_runner import RunnerData, TaskRunner
+from jiig.internal.global_data import ToolOptions
+from jiig.internal.types import TaskFunction, ArgumentList, OptionDict, OptionRawDict, \
+    RunnerFactoryFunction
+from jiig.internal.mapped_task import MappedTask
 from jiig.utility.cli import make_dest_name, make_metavar
 from jiig.utility.console import abort, log_error
 from jiig.utility.general import make_tuple
 
-
-# === Types
-
-RunnerFactoryFunction = Callable[[RunnerData], TaskRunner]
-
-# === Runner factory
-
-# Runner factory registered by @runner_factory decorator. Last registered one wins.
-RUNNER_FACTORY: Optional[RunnerFactoryFunction] = None
+# === Registered data
 
 
-# === Task registry
+class RegisteredData:
 
+    # Runner factory registered by @runner_factory decorator. Last registered one wins.
+    runner_factory: Optional[RunnerFactoryFunction] = None
 
-MAPPED_TASKS: List[MappedTask] = []
-# For quick lookups of parent and dependency tasks while processing @task decorator calls.
-MAPPED_TASKS_BY_ID: Dict[int, MappedTask] = {}
-# To help map task name in command line arguments to MappedTask by argparse destination names.
-MAPPED_TASKS_BY_DEST_NAME: Dict[Text, MappedTask] = {}
-# Names of tasks that are listed separately from tool tasks.
-AUXILIARY_TASK_NAMES: Set[Text] = set()
-# Names of tasks that are only shown when the ALL_TASKS option is used for help.
-HIDDEN_TASK_NAMES: Set[Text] = set()
+    # All registered mapped tasks.
+    mapped_tasks: List[MappedTask] = []
+
+    # To help map task name in command line arguments to MappedTask by argparse destination names.
+    mapped_tasks_by_dest_name: Dict[Text, MappedTask] = {}
+
+    # For quick lookups of parent and dependency tasks while processing @task decorator calls.
+    mapped_tasks_by_id: Dict[int, MappedTask] = {}
+
+    # Names of tasks that are only shown when the ALL_TASKS option is used for help.
+    hidden_task_names: Set[Text] = set()
 
 
 def get_tool_tasks(include_hidden: bool = False) -> Iterator[MappedTask]:
@@ -41,26 +37,10 @@ def get_tool_tasks(include_hidden: bool = False) -> Iterator[MappedTask]:
     :param include_hidden: include hidden task names if True
     :return: iterable MappedTask objects
     """
-    for mt in MAPPED_TASKS:
+    for mt in RegisteredData.mapped_tasks:
         if not mt.parent and mt.name:
-            if include_hidden or mt.name not in HIDDEN_TASK_NAMES:
+            if include_hidden or mt.name not in RegisteredData.hidden_task_names:
                 yield mt
-
-
-# === Options
-
-class ToolOptions:
-    name = None
-    description = None
-    epilog = None
-    disable_alias = False
-    disable_help = False
-    disable_debug = False
-    disable_dry_run = False
-    disable_verbose = False
-    common_arguments: ArgumentList = None
-    common_options: OptionDict = {}
-    common_flags_by_dest: OptionDestFlagsDict = {}
 
 
 def tool(name: Text = None,
@@ -109,173 +89,138 @@ def tool(name: Text = None,
             ToolOptions.common_flags_by_dest[option_data['dest']] = flag_tuple
 
 
-class OptionArgumentPreparer:
-
-    def __init__(self, task_function: TaskFunction):
+class _MappedTaskDataGenerator:
+    def __init__(self, task_function: Optional[TaskFunction]):
         self.task_function = task_function
+        self.options: OptionDict = {}
         self.arguments: ArgumentList = []
-        self.parent_mapped_task = None
-        self.unsorted_options: OptionDict = {}
         self.execution_tasks: List[MappedTask] = []
-        self.unique_dest_names: Set[Text] = set()
-        self.unique_function_ids: Set[int] = set()
-        self.trailing_arguments = False
-        self.finalized = False
-        self.name: Optional[Text] = None
-        self.help_text: Optional[Text] = None
-        self.epilog: Optional[Text] = None
+        self.parent_mapped_task: Optional[MappedTask] = None
+        # Data to be finalized before creating the mapped task.
+        self.task_name: Optional[Text] = None
         self.dest_name: Optional[Text] = None
         self.metavar: Optional[Text] = None
-        self.hidden_task = False
-        self.auxiliary_task = False
-        self.sorted_options: Optional[OptionDict] = None
+        self.help_text: Optional[Text] = None
+        # Data used during merge processing.
+        self._unique_dest_names: Set[Text] = set()
+        self._unique_function_ids: Set[int] = set()
 
-    def merge_raw_options(self, raw_options: OptionRawDict):
-        for raw_flags, option_data in raw_options.items():
-            flag_tuple = make_tuple(raw_flags)
-            self.unsorted_options[flag_tuple] = option_data
+    @staticmethod
+    def get_mapped_task(task_function: Optional[TaskFunction]
+                        ) -> Optional[MappedTask]:
+        if not task_function:
+            return None
+        mapped_task = RegisteredData.mapped_tasks_by_id.get(id(task_function))
+        if not mapped_task:
+            abort(f'Unmapped task for function: {task_function.__name__}()')
+        if not mapped_task.name:
+            abort(f'Mapped task {mapped_task.__class__.__name__} has no name')
+        return mapped_task
 
-    def merge_common_options(self, common_options: Sequence[Text]):
-        for dest in common_options:
-            flag_tuple = ToolOptions.common_flags_by_dest.get(dest)
-            if flag_tuple is not None:
-                option_data = ToolOptions.common_options[flag_tuple]
-                self.unsorted_options[flag_tuple] = option_data
-            else:
-                log_error(f'Ignoring unknown common option "{dest}".')
+    def merge_raw_options(self, raw_options_in: Optional[OptionRawDict]):
+        if raw_options_in:
+            for raw_flags, option_data in raw_options_in.items():
+                flag_tuple = make_tuple(raw_flags)
+                self.options[flag_tuple] = option_data
 
-    def merge_common_arguments(self, common_arguments: Sequence[Text]):
-        for option_spec in common_arguments:
-            if option_spec[-1] in ('?', '*', '+'):
-                nargs = option_spec[-1]
-                dest = option_spec[:-1]
-            else:
-                nargs = None
-                dest = option_spec
-            flag_tuple = ToolOptions.common_flags_by_dest.get(dest)
-            if flag_tuple is not None:
-                option_data = ToolOptions.common_options[flag_tuple]
-                if nargs is None:
-                    self.arguments.append(option_data)
+    def merge_common_options(self, common_options_in: Optional[Sequence[Text]]):
+        if common_options_in:
+            for dest in common_options_in:
+                flag_tuple = ToolOptions.common_flags_by_dest.get(dest)
+                if flag_tuple is not None:
+                    option_data = ToolOptions.common_options[flag_tuple]
+                    self.options[flag_tuple] = option_data
                 else:
-                    self.arguments.append(dict(option_data, nargs=nargs))
-            else:
-                log_error(f'Ignoring unknown common argument "{dest}".')
+                    log_error(f'Ignoring unknown common option "{dest}".')
 
-    def merge_options(self, options: OptionDict):
-        for flag_tuple, option_data in options.items():
+    def merge_common_arguments(self, common_arguments_in: Optional[Sequence[Text]]):
+        if common_arguments_in:
+            for option_spec in common_arguments_in:
+                if option_spec[-1] in ('?', '*', '+'):
+                    nargs = option_spec[-1]
+                    dest = option_spec[:-1]
+                else:
+                    nargs = None
+                    dest = option_spec
+                flag_tuple = ToolOptions.common_flags_by_dest.get(dest)
+                if flag_tuple is not None:
+                    option_data = ToolOptions.common_options[flag_tuple]
+                    if nargs is None:
+                        self.arguments.append(option_data)
+                    else:
+                        self.arguments.append(dict(option_data, nargs=nargs))
+                else:
+                    log_error(f'Ignoring unknown common argument "{dest}".')
+
+    def merge_options(self, options_in: OptionDict):
+        for flag_tuple, option_data in options_in.items():
             option_dest_name = option_data.get('dest', None)
             if option_dest_name:
-                if option_dest_name not in self.unique_dest_names:
-                    self.unsorted_options[flag_tuple] = option_data
-                    self.unique_dest_names.add(option_dest_name)
+                if option_dest_name not in self._unique_dest_names:
+                    self.options[flag_tuple] = option_data
+                    self._unique_dest_names.add(option_dest_name)
 
-    def merge_arguments(self, arguments: ArgumentList):
-        for argument_data in arguments:
-            argument_dest_name = argument_data.get('dest', None)
-            if argument_dest_name:
-                if argument_dest_name not in self.unique_dest_names:
-                    self.arguments.append(argument_data)
-                    self.unique_dest_names.add(argument_dest_name)
+    def merge_arguments(self, arguments_in: Optional[ArgumentList]):
+        if arguments_in:
+            for argument_data in arguments_in:
+                argument_dest_name = argument_data.get('dest', None)
+                if argument_dest_name:
+                    if argument_dest_name not in self._unique_dest_names:
+                        self.arguments.append(argument_data)
+                        self._unique_dest_names.add(argument_dest_name)
 
-    def merge_parent(self, parent: TaskFunction):
-        self.parent_mapped_task = MAPPED_TASKS_BY_ID.get(id(parent))
-        if not self.parent_mapped_task:
-            abort(f'Unmapped parent task: {parent.__name__}')
-        if not self.parent_mapped_task.name:
-            abort(f'Parent task {self.parent_mapped_task.__class__.__name__}'
-                  f' does not have a name')
-        if self.parent_mapped_task.execution_tasks:
-            for parent_execution_task in self.parent_mapped_task.execution_tasks:
-                self.execution_tasks.append(parent_execution_task)
-                self.unique_function_ids.add(id(parent_execution_task.task_function))
-        self.execution_tasks.append(self.parent_mapped_task)
-        self.unique_function_ids.add(id(self.parent_mapped_task.task_function))
+    def merge_parent(self, parent_task_function: TaskFunction):
+        self.parent_mapped_task = self.get_mapped_task(parent_task_function)
+        if self.parent_mapped_task:
+            if self.parent_mapped_task.execution_tasks:
+                for parent_execution_task in self.parent_mapped_task.execution_tasks:
+                    self.execution_tasks.append(parent_execution_task)
+                    self._unique_function_ids.add(id(parent_execution_task.task_function))
+            self.execution_tasks.append(self.parent_mapped_task)
+            self._unique_function_ids.add(id(self.parent_mapped_task.task_function))
 
-    def merge_dependencies(self, dependencies: List[TaskFunction]):
-        # Recursion is not needed since related tasks were already rolled up.
-        for dependency_function in dependencies:
-            dependency_function_id = id(dependency_function)
-            if dependency_function_id in self.unique_function_ids:
-                continue
-            dependency_mapped_task = MAPPED_TASKS_BY_ID.get(dependency_function_id, None)
-            if not dependency_mapped_task:
-                continue
-            # Execution tasks property yields child tasks and the parent task.
-            for dependency_execution_task in dependency_mapped_task.execution_tasks:
-                dependency_execution_function_id = id(dependency_execution_task.task_function)
-                if dependency_execution_function_id in self.unique_function_ids:
+    def merge_dependencies(self, dependencies: Optional[List[TaskFunction]]):
+        if dependencies:
+            # Recursion is not needed since related tasks were already rolled up.
+            for dependency_function in dependencies:
+                dependency_function_id = id(dependency_function)
+                if dependency_function_id in self._unique_function_ids:
                     continue
-                self.execution_tasks.append(dependency_execution_task)
-                self.unique_function_ids.add(dependency_execution_function_id)
-            self.execution_tasks.append(dependency_mapped_task)
-            self.unique_function_ids.add(dependency_function_id)
+                dependency_mapped_task = RegisteredData.mapped_tasks_by_id.get(
+                    dependency_function_id, None)
+                if not dependency_mapped_task:
+                    continue
+                # Execution tasks property yields child tasks and the parent task.
+                for dependency_execution_task in dependency_mapped_task.execution_tasks:
+                    dependency_execution_function_id = id(dependency_execution_task.task_function)
+                    if dependency_execution_function_id in self._unique_function_ids:
+                        continue
+                    self.execution_tasks.append(dependency_execution_task)
+                    self._unique_function_ids.add(dependency_execution_function_id)
+                self.execution_tasks.append(dependency_mapped_task)
+                self._unique_function_ids.add(dependency_function_id)
 
-    def set_name(self, name: Text):
-        self.name = name
-
-    def set_help(self, help_text: Text):
-        self.help_text = help_text
-
-    def set_epilog(self, epilog: Text):
-        self.epilog = epilog
-
-    def set_trailing_arguments(self, trailing_arguments: bool):
-        self.trailing_arguments = trailing_arguments
-
-    def set_hidden_task(self, hidden_task: bool):
-        self.hidden_task = hidden_task
-
-    def set_auxiliary_task(self, auxiliary_task: bool):
-        self.auxiliary_task = auxiliary_task
-
-    def create_mapped_task(self) -> MappedTask:
-        if not self.finalized:
-            self._finalize_related_tasks()
-            self._finalize_names()
-            self._finalize_help()
-            self._finalize_trailing_arguments()
-            self._finalize_options()
-            self.finalized = True
-        return MappedTask(task_function=self.task_function,
-                          name=self.name,
-                          parent=self.parent_mapped_task,
-                          dest_name=self.dest_name,
-                          metavar=self.metavar,
-                          help=self.help_text,
-                          epilog=self.epilog,
-                          options=self.sorted_options,
-                          arguments=self.arguments,
-                          trailing_arguments=self.trailing_arguments,
-                          need_trailing_arguments=self.trailing_arguments,
-                          execution_tasks=self.execution_tasks,
-                          hidden_task=self.hidden_task,
-                          auxiliary_task=self.auxiliary_task)
-
-    def _finalize_names(self):
-        if not self.name:
+    def generate_names(self, name: Optional[Text]):
+        if name:
+            self.task_name = name
+        else:
             if self.task_function.__name__.startswith('_'):
                 abort(f'Private @task function "{self.task_function.__name__}()"'
                       f' has no name attribute.')
-            self.name = self.task_function.__name__
+            self.task_name = self.task_function.__name__
         names = []
-        ancestor_mapped_task = self.parent_mapped_task
-        while ancestor_mapped_task:
-            names.append(ancestor_mapped_task.name.upper())
-            ancestor_mapped_task = ancestor_mapped_task.parent
-        names.append(self.name.upper())
+        container_mapped_task = self.parent_mapped_task
+        while container_mapped_task:
+            names.append(container_mapped_task.name.upper())
+            container_mapped_task = container_mapped_task.parent
+        names.append(self.task_name.upper())
         self.dest_name = make_dest_name(*names)
         self.metavar = make_metavar(*names)
 
-    def _finalize_related_tasks(self):
-        for execution_task in self.execution_tasks:
-            if execution_task.options:
-                self.merge_options(execution_task.options)
-            if execution_task.arguments:
-                self.merge_arguments(execution_task.arguments)
-
-    def _finalize_help(self):
-        if not self.help_text:
+    def generate_help_text(self, help_text: Optional[Text]):
+        if help_text:
+            self.help_text = help_text
+        else:
             if self.task_function.__doc__:
                 doc_string = self.task_function.__doc__.strip()
                 if doc_string:
@@ -283,21 +228,13 @@ class OptionArgumentPreparer:
             if not self.help_text:
                 self.help_text = '(no help in @task decorator or doc string)'
 
-    def _finalize_trailing_arguments(self):
-        if self.trailing_arguments and self.parent_mapped_task:
-            parent_mapped_task = self.parent_mapped_task
-            while True:
-                if not parent_mapped_task.parent:
-                    parent_mapped_task.need_trailing_arguments = True
-                    break
-                parent_mapped_task = parent_mapped_task.parent
-
-    def _finalize_options(self):
-        option_pairs = [
-            (o_flags, o_data)
-            for o_flags, o_data in self.unsorted_options.items()
-        ]
-        self.sorted_options = dict(sorted(option_pairs, key=lambda o: o[0]))
+    def finalize(self):
+        for execution_task in self.execution_tasks:
+            if execution_task.options:
+                self.merge_options(execution_task.options)
+            if execution_task.arguments:
+                self.merge_arguments(execution_task.arguments)
+        self.options = dict(sorted(list(self.options.items()), key=lambda o: o[0]))
 
 
 # noinspection PyShadowingBuiltins
@@ -314,49 +251,72 @@ def register_task(task_function: TaskFunction,
                   common_arguments: Sequence[Text] = None,
                   hidden_task: bool = False,
                   auxiliary_task: bool = False):
-    # Prepare data for the mapped task.
-    preparer = OptionArgumentPreparer(task_function)
-    if name:
-        preparer.set_name(name)
-    if help:
-        preparer.set_help(help)
-    if epilog:
-        preparer.set_epilog(epilog)
+
+    # Merge and generate all the data needed for creating a mapped task.
+    mt_data = _MappedTaskDataGenerator(task_function)
+    mt_data.merge_raw_options(options)
+    mt_data.merge_common_options(common_options)
+    mt_data.merge_arguments(arguments)
+    mt_data.merge_common_arguments(common_arguments)
+    mt_data.merge_parent(parent)
+    mt_data.merge_dependencies(dependencies)
+    mt_data.generate_names(name)
+    mt_data.generate_help_text(help)
+    mt_data.finalize()
+
+    # Create new mapped task using input and prepared data.
+    mapped_task = MappedTask(task_function=task_function,
+                             name=mt_data.task_name,
+                             parent=mt_data.parent_mapped_task,
+                             dest_name=mt_data.dest_name,
+                             metavar=mt_data.metavar,
+                             help=mt_data.help_text,
+                             epilog=epilog,
+                             options=mt_data.options,
+                             arguments=mt_data.arguments,
+                             trailing_arguments=trailing_arguments,
+                             need_trailing_arguments=trailing_arguments,
+                             execution_tasks=mt_data.execution_tasks,
+                             hidden_task=hidden_task,
+                             auxiliary_task=auxiliary_task)
+
+    # Copy the trailing arguments flag to the top level task
     if trailing_arguments:
-        preparer.set_trailing_arguments(trailing_arguments)
-    if options:
-        preparer.merge_raw_options(options)
-    if common_options:
-        preparer.merge_common_options(common_options)
-    if arguments:
-        preparer.merge_arguments(arguments)
-    if common_arguments:
-        preparer.merge_common_arguments(common_arguments)
-    if parent:
-        preparer.merge_parent(parent)
-    if dependencies:
-        preparer.merge_dependencies(dependencies)
-    if hidden_task:
-        preparer.set_hidden_task(True)
-    if auxiliary_task:
-        preparer.set_auxiliary_task(True)
+        container_mapped_task = mapped_task.parent
+        while container_mapped_task:
+            if not container_mapped_task.parent:
+                container_mapped_task.need_trailing_arguments = True
+            container_mapped_task = container_mapped_task.parent
 
-    # Create the new mapped task.
-    mapped_task = preparer.create_mapped_task()
+    # Register new MappedTask into global data structures.
+    RegisteredData.mapped_tasks_by_id[id(mapped_task.task_function)] = mapped_task
+    if mapped_task.dest_name:
+        RegisteredData.mapped_tasks_by_dest_name[mapped_task.dest_name] = mapped_task
+    if mapped_task.hidden_task:
+        RegisteredData.hidden_task_names.add(mapped_task.name)
 
-    # Complete the registration, now that there is a new MappedTask.
-    MAPPED_TASKS_BY_ID[id(task_function)] = mapped_task
-    if preparer.dest_name:
-        MAPPED_TASKS_BY_DEST_NAME[preparer.dest_name] = mapped_task
-    if hidden_task:
-        HIDDEN_TASK_NAMES.add(name)
-    if auxiliary_task:
-        AUXILIARY_TASK_NAMES.add(name)
-
-    # Add to sub_tasks list of parent, if there is a parent.
-    if preparer.parent_mapped_task:
-        if preparer.parent_mapped_task.sub_tasks is None:
-            preparer.parent_mapped_task.sub_tasks = []
-        preparer.parent_mapped_task.sub_tasks.append(mapped_task)
+    # Attach to parent sub-tasks or register globally if there is no parent.
+    if mapped_task.parent:
+        if mapped_task.parent.sub_tasks is None:
+            mapped_task.parent.sub_tasks = []
+        mapped_task.parent.sub_tasks.append(mapped_task)
     else:
-        MAPPED_TASKS.append(mapped_task)
+        RegisteredData.mapped_tasks.append(mapped_task)
+    return mapped_task
+
+
+def register_runner_factory(runner_factory: RunnerFactoryFunction):
+    RegisteredData.runner_factory = runner_factory
+
+
+def get_runner_factory() -> Optional[RunnerFactoryFunction]:
+    return RegisteredData.runner_factory
+
+
+def get_sorted_named_mapped_tasks() -> List[MappedTask]:
+    return sorted(filter(lambda m: m.name, RegisteredData.mapped_tasks),
+                  key=lambda m: m.name)
+
+
+def get_mapped_task_by_dest_name(dest_name: Text) -> Optional[MappedTask]:
+    return RegisteredData.mapped_tasks_by_dest_name.get(dest_name)

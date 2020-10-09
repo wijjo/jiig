@@ -4,12 +4,10 @@ Task runner.
 Object passed to task functions for task execution.
 """
 
-from __future__ import annotations
-
 import os
 from typing import Dict, Text, Any, List
 
-from jiig.internal import global_data
+from jiig.internal.global_data import DEBUG, VERBOSE, DRY_RUN
 from jiig.utility.cli import make_dest_name
 from jiig.utility.console import log_error
 from jiig.utility.general import AttrDict
@@ -33,9 +31,9 @@ class RunnerData:
         self.help_formatters = help_formatters
         self.params = params
         # Make global flags available to applications.
-        self.debug = global_data.DEBUG
-        self.dry_run = global_data.DRY_RUN
-        self.verbose = global_data.VERBOSE
+        self.debug = DEBUG
+        self.dry_run = DRY_RUN
+        self.verbose = VERBOSE
 
 
 class TaskRunner:

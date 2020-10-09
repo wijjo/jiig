@@ -4,6 +4,8 @@ Jiig global constants and data.
 import os
 from typing import List, Text
 
+from jiig.internal.types import ArgumentList, OptionDict, OptionDestFlagsDict
+
 INIT_FILE = 'init.jiig'
 ALIASES_PATH = os.path.expanduser('~/.jiig-aliases')
 TEMPLATE_EXTENSION = '.template'
@@ -35,3 +37,37 @@ CLI_METAVAR_SEPARATOR = '_'
 DEBUG = False
 VERBOSE = False
 DRY_RUN = False
+
+
+def set_debug(value: bool):
+    global DEBUG
+    DEBUG = value
+
+
+def set_verbose(value: bool):
+    global VERBOSE
+    VERBOSE = value
+
+
+def set_dry_run(value: bool):
+    global DRY_RUN
+    DRY_RUN = value
+
+
+def set_library_folders(folders: List[Text]):
+    global LIBRARY_FOLDERS
+    LIBRARY_FOLDERS = folders
+
+
+class ToolOptions:
+    name = None
+    description = None
+    epilog = None
+    disable_alias = False
+    disable_help = False
+    disable_debug = False
+    disable_dry_run = False
+    disable_verbose = False
+    common_arguments: ArgumentList = None
+    common_options: OptionDict = {}
+    common_flags_by_dest: OptionDestFlagsDict = {}

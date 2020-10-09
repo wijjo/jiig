@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import annotations
 import os
 import shlex
 import subprocess
 import sys
 from dataclasses import dataclass
-from typing import Text, Optional, List, Callable, Any, NoReturn, Dict, ForwardRef
+from typing import Text, Optional, List, Callable, Any, NoReturn, Dict
 
 import PySimpleGUI as Gui
 
@@ -29,7 +28,7 @@ class ActionButtonSpec:
     default: bool
 
 
-HandlerFunction = Callable[[ForwardRef('AdminPanel'), Any], NoReturn]
+HandlerFunction = Callable[['AdminPanel', Any], NoReturn]
 
 
 # noinspection PyUnresolvedReferences,PyUnresolvedReferences,PyUnresolvedReferences,PyUnresolvedReferences

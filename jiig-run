@@ -27,17 +27,22 @@ if JIIG_LIB not in sys.path:
 if JIIG_ROOT in sys.path:
     sys.path.remove(JIIG_ROOT)
 
-from jiig import init_file, task_runner
-from jiig.internal import registry, parser, global_data, aliases    # noqa
+from jiig.init_file import ParamData, ParamList, ParamFolder, ParamFolderList, ParamLoader
+from jiig.task_runner import TaskRunner, RunnerData
+from jiig.internal.global_data import ToolOptions, INIT_FILE, \
+    set_debug, set_verbose, set_dry_run, set_library_folders
+from jiig.internal.aliases import AliasManager, expand_alias_name
+from jiig.internal.parser import pre_parse_command_line, parse_command_line, CommandLineData
+from jiig.internal.registry import get_mapped_task_by_dest_name, get_runner_factory
 from jiig.utility.cli import make_dest_name
 from jiig.utility.console import abort, log_message
 from jiig.utility.python import build_virtual_environment, execute_source
 
 INIT_PARAM_TYPES = [
-    init_file.ParamFolderList('LIB_FOLDERS', default_value=['lib']),
-    init_file.ParamFolder('TEST_ROOT', default_value='test'),
-    init_file.ParamFolder('VENV_ROOT', default_value='venv'),
-    init_file.ParamList('PIP_PACKAGES', unique=True, default_value=[]),
+    ParamFolderList('LIB_FOLDERS', default_value=['lib']),
+    ParamFolder('TEST_ROOT', default_value='test'),
+    ParamFolder('VENV_ROOT', default_value='venv'),
+    ParamList('PIP_PACKAGES', unique=True, default_value=[]),
 ]
 
 
@@ -49,14 +54,14 @@ def pre_parse_arguments(cli_args: List[Text]) -> List[Text]:
     :return: unparsed trailing command line arguments
     """
     # Enable global options based on partial command line pre-parsing.
-    args, trailing_args = parser.pre_parse_command_line(cli_args=cli_args)
+    args, trailing_args = pre_parse_command_line(cli_args=cli_args)
     if args.VERBOSE:
         # Dry-run implies verbose.
-        global_data.VERBOSE = args.VERBOSE or args.DRY_RUN
+        set_verbose(args.VERBOSE or args.DRY_RUN)
     if args.DEBUG:
-        global_data.DEBUG = args.DEBUG
+        set_debug(args.DEBUG)
     if args.DRY_RUN:
-        global_data.DRY_RUN = args.DRY_RUN
+        set_dry_run(args.DRY_RUN)
     # Drop the '--' that was needed for restarting in the virtual environment.
     if trailing_args and trailing_args[0] == '--':
         return trailing_args[1:]
@@ -66,7 +71,7 @@ def pre_parse_arguments(cli_args: List[Text]) -> List[Text]:
 def initialize(script_path: Text,
                tool_path: Text,
                cli_args: List[Text]
-               ) -> init_file.ParamData:
+               ) -> ParamData:
     """
     Load init file parameters and check if a virtual environment is required.
 
@@ -79,19 +84,20 @@ def initialize(script_path: Text,
     """
     # Load tool init file
     tool_root = os.path.dirname(os.path.realpath(tool_path))
-    init_path = os.path.join(tool_root, global_data.INIT_FILE)
-    param_loader = init_file.ParamLoader(INIT_PARAM_TYPES)
+    init_path = os.path.join(tool_root, INIT_FILE)
+    param_loader = ParamLoader(INIT_PARAM_TYPES)
     log_message(f'Load configuration file "{init_path}".', verbose=True)
     param_loader.load_file(init_path)
     init_params = param_loader.get_data()
 
     # Prepare the Python module loading path.
-    global_data.LIBRARY_FOLDERS = [JIIG_LIB]
+    folders = [JIIG_LIB]
     if init_params.LIB_FOLDERS:
         for tool_lib_folder in reversed(init_params.LIB_FOLDERS):
             if tool_lib_folder not in sys.path:
                 sys.path.insert(0, tool_lib_folder)
-                global_data.LIBRARY_FOLDERS.insert(0, tool_lib_folder)
+                folders.insert(0, tool_lib_folder)
+    set_library_folders(folders)
 
     # May not need a virtual environment.
     if not init_params.VENV_ROOT:
@@ -120,7 +126,7 @@ def initialize(script_path: Text,
              *cli_args)
 
 
-def load_tool(script_path: Text, init_params: Dict) -> init_file.ParamData:
+def load_tool(script_path: Text, init_params: Dict) -> ParamData:
     """
     Load the tool script and post-process global tool options.
 
@@ -129,26 +135,26 @@ def load_tool(script_path: Text, init_params: Dict) -> init_file.ParamData:
     """
     script_symbols = execute_source(file=script_path)
     # If no name was provided use the script base name.
-    if not registry.ToolOptions.name:
-        registry.ToolOptions.name = os.path.basename(script_path)
+    if not ToolOptions.name:
+        ToolOptions.name = os.path.basename(script_path)
     # If no description was provided try to scrape it from the doc string, if it exists.
-    if not registry.ToolOptions.description:
+    if not ToolOptions.description:
         doc_string = script_symbols.get('__doc__', '').strip()
         if doc_string:
-            registry.ToolOptions.description = doc_string.splitlines()[0]
-    if not registry.ToolOptions.description:
-        registry.ToolOptions.description = '(no description provided)'
+            ToolOptions.description = doc_string.splitlines()[0]
+    if not ToolOptions.description:
+        ToolOptions.description = '(no description provided)'
     # Load standard modules, if enabled.
-    if not registry.ToolOptions.disable_help:
+    if not ToolOptions.disable_help:
         import jiig.tasks.help      # noqa
-    if not registry.ToolOptions.disable_alias:
+    if not ToolOptions.disable_alias:
         import jiig.tasks.alias     # noqa
     # Initialize tool parameters.
-    tool_params = init_file.ParamData(init_params)
+    tool_params = ParamData(init_params)
     tool_params['JIIG_ROOT'] = JIIG_ROOT
-    tool_params['TOOL_NAME'] = registry.ToolOptions.name
-    tool_params['TOOL_DESCRIPTION'] = registry.ToolOptions.description
-    tool_params['TOOL_EPILOG'] = registry.ToolOptions.epilog
+    tool_params['TOOL_NAME'] = ToolOptions.name
+    tool_params['TOOL_DESCRIPTION'] = ToolOptions.description
+    tool_params['TOOL_EPILOG'] = ToolOptions.epilog
     return tool_params
 
 
@@ -166,9 +172,9 @@ def expand_alias(tool_name: Text, command_args: List[Text]) -> List[Text]:
     """
     if not command_args:
         return []
-    if not aliases.expand_name(command_args[0]):
+    if not expand_alias_name(command_args[0]):
         return command_args
-    alias_manager = aliases.AliasManager(tool_name=tool_name)
+    alias_manager = AliasManager(tool_name=tool_name)
     alias = alias_manager.resolve_alias(command_args[0])
     if not alias:
         abort(f'Alias "{command_args[0]}" not found.')
@@ -186,18 +192,19 @@ def need_trailing_arguments(command_args: List[Text]) -> bool:
         return False
     # Access the mapped task to see if trailing arguments are used.
     dest_name = make_dest_name(command_args[0])
-    primary_mt = registry.MAPPED_TASKS_BY_DEST_NAME.get(dest_name)
+    primary_mt = get_mapped_task_by_dest_name(dest_name)
     return primary_mt and primary_mt.need_trailing_arguments
 
 
-def create_runner(data: task_runner.RunnerData) -> task_runner.TaskRunner:
-    if registry.RUNNER_FACTORY:
-        return registry.RUNNER_FACTORY(data)
-    return task_runner.TaskRunner(data)
+def create_runner(data: RunnerData) -> TaskRunner:
+    runner_factory = get_runner_factory()
+    if runner_factory:
+        return runner_factory(data)
+    return TaskRunner(data)
 
 
-def run_tool_task(cli_results: parser.CommandLineData,
-                  tool_params: init_file.ParamData):
+def run_tool_task(cli_results: CommandLineData,
+                  tool_params: ParamData):
     """
     Run the tool task based on the parsed command line.
 
@@ -205,10 +212,10 @@ def run_tool_task(cli_results: parser.CommandLineData,
     :param tool_params: tool parameters based on init file and tool script
     """
     # Bundle the data shared with tasks through the task runner.
-    runner_data = task_runner.RunnerData(cli_results.args,
-                                         cli_results.trailing_args,
-                                         cli_results.help_formatters,
-                                         tool_params)
+    runner_data = RunnerData(cli_results.args,
+                             cli_results.trailing_args,
+                             cli_results.help_formatters,
+                             tool_params)
     try:
         # Execute task dependencies first.
         for dependency_task in cli_results.mapped_task.execution_tasks:
@@ -241,11 +248,11 @@ def main():
     # Check if trailing arguments should be captured, e.g. for the "alias" task.
     capture_trailing = need_trailing_arguments(final_tool_args)
     # Parse the command line for real.
-    cli_results = parser.parse_command_line(cli_args=final_tool_args,
-                                            name=tool_params.TOOL_NAME,
-                                            description=tool_params.TOOL_DESCRIPTION,
-                                            epilog=tool_params.TOOL_EPILOG,
-                                            capture_trailing=capture_trailing)
+    cli_results = parse_command_line(cli_args=final_tool_args,
+                                     name=tool_params.TOOL_NAME,
+                                     description=tool_params.TOOL_DESCRIPTION,
+                                     epilog=tool_params.TOOL_EPILOG,
+                                     capture_trailing=capture_trailing)
     # Run the tool to invoke the specified task.
     run_tool_task(cli_results, tool_params)
 

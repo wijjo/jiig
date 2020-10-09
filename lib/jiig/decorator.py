@@ -5,26 +5,28 @@ Jiig decorators.
 from inspect import isfunction
 from typing import Callable, Text, Sequence, List
 
-from jiig.internal import registry
+from jiig.internal.types import RunnerFactoryFunction, TaskFunction, OptionRawDict, \
+    ArgumentList
+from jiig.internal.registry import register_task, register_runner_factory
 from jiig.utility.console import abort
 
 
-def runner_factory() -> Callable[[registry.RunnerFactoryFunction], registry.RunnerFactoryFunction]:
+def runner_factory() -> Callable[[RunnerFactoryFunction], RunnerFactoryFunction]:
     """Decorator for custom runner factories."""
-    def inner(function: registry.RunnerFactoryFunction) -> registry.RunnerFactoryFunction:
-        registry.RUNNER_FACTORY = function
+    def inner(function: RunnerFactoryFunction) -> RunnerFactoryFunction:
+        register_runner_factory(function)
         return function
     return inner
 
 
 # noinspection PyShadowingBuiltins
 def task(name: Text = None,
-         parent: registry.TaskFunction = None,
+         parent: TaskFunction = None,
          help: Text = None,
          epilog: Text = None,
-         options: registry.OptionRawDict = None,
-         arguments: registry.ArgumentList = None,
-         dependencies: List[registry.TaskFunction] = None,
+         options: OptionRawDict = None,
+         arguments: ArgumentList = None,
+         dependencies: List[TaskFunction] = None,
          trailing_arguments: bool = False,
          common_options: Sequence[Text] = None,
          common_arguments: Sequence[Text] = None,
@@ -64,20 +66,20 @@ def task(name: Text = None,
               f' have parentheses, even if empty')
 
     # Called after the outer function returns to provide the task function.
-    def inner(task_function: registry.TaskFunction) -> registry.TaskFunction:
-        registry.register_task(task_function=task_function,
-                               name=name,
-                               parent=parent,
-                               help=help,
-                               epilog=epilog,
-                               options=options,
-                               arguments=arguments,
-                               dependencies=dependencies,
-                               trailing_arguments=trailing_arguments,
-                               common_options=common_options,
-                               common_arguments=common_arguments,
-                               hidden_task=hidden_task,
-                               auxiliary_task=auxiliary_task)
+    def inner(task_function: TaskFunction) -> TaskFunction:
+        register_task(task_function=task_function,
+                      name=name,
+                      parent=parent,
+                      help=help,
+                      epilog=epilog,
+                      options=options,
+                      arguments=arguments,
+                      dependencies=dependencies,
+                      trailing_arguments=trailing_arguments,
+                      common_options=common_options,
+                      common_arguments=common_arguments,
+                      hidden_task=hidden_task,
+                      auxiliary_task=auxiliary_task)
         return task_function
 
     return inner

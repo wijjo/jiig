@@ -1,22 +1,12 @@
 """Data for a registered/mapped, task."""
 
-from __future__ import annotations
 import os
 import sys
 from dataclasses import dataclass
-from typing import Optional, Text, List, Iterator, Callable, Dict, Union, Sequence, Tuple
+from typing import Optional, Text, List, Iterator
 
-from jiig.task_runner import TaskRunner
+from jiig.internal.types import TaskFunction, OptionDict, ArgumentList
 
-# === Types
-
-TaskFunction = Callable[[TaskRunner], None]
-OptionRawFlags = Union[Text, Sequence[Text]]
-OptionRawDict = Dict[OptionRawFlags, Dict]
-OptionFlags = Tuple[Text]
-OptionDict = Dict[OptionFlags, Dict]
-OptionDestFlagsDict = Dict[Text, OptionFlags]
-ArgumentList = List[Dict]
 
 @dataclass
 class MappedTask:
@@ -29,14 +19,14 @@ class MappedTask:
     # noinspection PyShadowingBuiltins
     task_function: TaskFunction
     name: Optional[Text]
-    parent: Optional[MappedTask]
+    parent: Optional['MappedTask']
     dest_name: Optional[Text]
     metavar: Optional[Text]
     help: Text
     epilog: Optional[Text]
     options: OptionDict
     arguments: ArgumentList
-    execution_tasks: List[MappedTask]
+    execution_tasks: List['MappedTask']
     # True on the actual task that needs trailing arguments.
     trailing_arguments: bool = False
     # True on a root task that has a child that wants trailing arguments.
@@ -46,7 +36,7 @@ class MappedTask:
     # True for a task, like help, that should be listed separate from tool tasks.
     auxiliary_task: bool = False
     # Sub-tasks added when discovered child tasks reference this as the parent.
-    sub_tasks: List[MappedTask] = None
+    sub_tasks: List['MappedTask'] = None
 
     @property
     def tag(self) -> Text:
