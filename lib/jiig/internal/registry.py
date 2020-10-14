@@ -1,13 +1,17 @@
 """Task and associated tool data registry."""
+
 from typing import Text, Optional, List, Dict, Set, Iterator, Sequence
 
-from jiig.internal import tool_options, \
-    ArgumentList, OptionDict, OptionRawDict, OptionDestFlagsDict, \
-    TaskFunction, RunnerFactoryFunction
+from jiig.internal import tool_options, ArgumentList, OptionDict, OptionRawDict, \
+    OptionDestFlagsDict, NotesRawData
 from jiig.internal.mapped_task import MappedTask
+from jiig.internal.help_formatter import HelpTaskVisibility
+from jiig.task_runner import RunnerFactoryFunction, TaskFunction
 from jiig.utility.cli import make_dest_name, make_metavar
 from jiig.utility.console import abort, log_error
-from jiig.utility.general import make_tuple
+from jiig.utility.footnotes import FootnoteDict
+from jiig.utility.general import make_tuple, make_list
+
 
 # === Registered data
 
@@ -38,40 +42,42 @@ def get_tool_tasks(include_hidden: bool = False) -> Iterator[MappedTask]:
     :return: iterable MappedTask objects
     """
     for mt in _RegisteredData.mapped_tasks:
-        if not mt.parent and mt.name:
+        if not mt.parent:
             if include_hidden or mt.name not in _RegisteredData.hidden_task_names:
                 yield mt
 
 
 def tool(name: Text = None,
          description: Text = None,
-         epilog: Text = None,
+         notes: NotesRawData = None,
          disable_alias: bool = None,
          disable_help: bool = None,
          disable_debug: bool = None,
          disable_dry_run: bool = None,
          disable_verbose: bool = None,
-         common_options: OptionRawDict = None):
+         common_options: OptionRawDict = None,
+         common_footnotes: FootnoteDict = None):
     """
     Declare tool options and metadata.
 
     :param name: name of tool
     :param description: description of tool
-    :param epilog: additional help text displayed at the bottom
+    :param notes: additional notes displayed after help body
     :param disable_alias: disable aliases if True
     :param disable_help: disable help task if True
     :param disable_debug: disable debug option if True
     :param disable_dry_run: disable dry run option if True
     :param disable_verbose: disable verbose option if True
     :param common_options: options (or arguments) that can be shared between tasks
+    :param common_footnotes: common named common_footnotes for reference by options/arguments
     """
     # Only set values for the keywords that were provided.
     if name is not None:
         tool_options.set_name(name)
     if description is not None:
         tool_options.set_description(description)
-    if epilog is not None:
-        tool_options.set_epilog(epilog)
+    if notes:
+        tool_options.set_notes(make_list(notes))
     if disable_alias is not None:
         tool_options.set_disable_alias(disable_alias)
     if disable_help is not None:
@@ -91,6 +97,8 @@ def tool(name: Text = None,
             flags_by_dest[option_data['dest']] = flag_tuple
         tool_options.set_common_options(options)
         tool_options.set_common_flags_by_dest(flags_by_dest)
+    if common_footnotes is not None:
+        tool_options.set_common_footnotes(common_footnotes)
 
 
 class _MappedTaskDataGenerator:
@@ -100,11 +108,14 @@ class _MappedTaskDataGenerator:
         self.arguments: ArgumentList = []
         self.execution_tasks: List[MappedTask] = []
         self.parent_mapped_task: Optional[MappedTask] = None
+        self.footnote_labels: List[Text] = []
         # Data to be finalized before creating the mapped task.
         self.task_name: Optional[Text] = None
         self.dest_name: Optional[Text] = None
         self.metavar: Optional[Text] = None
         self.help_text: Optional[Text] = None
+        self.description: Optional[Text] = None
+        self.help_visibility = HelpTaskVisibility.NORMAL
         # Data used during merge processing.
         self._unique_dest_names: Set[Text] = set()
         self._unique_function_ids: Set[int] = set()
@@ -117,8 +128,6 @@ class _MappedTaskDataGenerator:
         mapped_task = _RegisteredData.mapped_tasks_by_id.get(id(task_function))
         if not mapped_task:
             abort(f'Unmapped task for function: {task_function.__name__}()')
-        if not mapped_task.name:
-            abort(f'Mapped task {mapped_task.__class__.__name__} has no name')
         return mapped_task
 
     def merge_raw_options(self, raw_options_in: Optional[OptionRawDict]):
@@ -148,11 +157,11 @@ class _MappedTaskDataGenerator:
                     dest = option_spec
                 flag_tuple = tool_options.common_flags_by_dest.get(dest)
                 if flag_tuple is not None:
-                    option_data = tool_options.common_options[flag_tuple]
+                    argument_data = tool_options.common_options[flag_tuple]
                     if nargs is None:
-                        self.arguments.append(option_data)
+                        self.arguments.append(argument_data)
                     else:
-                        self.arguments.append(dict(option_data, nargs=nargs))
+                        self.arguments.append(dict(argument_data, nargs=nargs))
                 else:
                     log_error(f'Ignoring unknown common argument "{dest}".')
 
@@ -204,7 +213,14 @@ class _MappedTaskDataGenerator:
                 self.execution_tasks.append(dependency_mapped_task)
                 self._unique_function_ids.add(dependency_function_id)
 
-    def generate_names(self, name: Optional[Text]):
+    def finalize_data(self,
+                      name: Optional[Text],
+                      help_text: Optional[Text],
+                      description: Optional[Text],
+                      hidden_task: Optional[bool],
+                      auxiliary_task: Optional[bool]):
+
+        # Generate the task name.
         if name:
             self.task_name = name
         else:
@@ -212,6 +228,8 @@ class _MappedTaskDataGenerator:
                 abort(f'Private @task function "{self.task_function.__name__}()"'
                       f' has no name attribute.')
             self.task_name = self.task_function.__name__
+
+        # Generate the dest and metavar names for argparse.
         names = []
         container_mapped_task = self.parent_mapped_task
         while container_mapped_task:
@@ -221,18 +239,23 @@ class _MappedTaskDataGenerator:
         self.dest_name = make_dest_name(*names)
         self.metavar = make_metavar(*names)
 
-    def generate_help_text(self, help_text: Optional[Text]):
-        if help_text:
-            self.help_text = help_text
-        else:
+        # Generate the help text.
+        self.help_text = help_text.strip() if help_text else ''
+        if not self.help_text:
             if self.task_function.__doc__:
-                doc_string = self.task_function.__doc__.strip()
-                if doc_string:
-                    self.help_text = doc_string.splitlines()[0]
+                self.help_text = self.task_function.__doc__.strip().splitlines()[0]
             if not self.help_text:
                 self.help_text = '(no help in @task decorator or doc string)'
 
-    def finalize(self):
+        # Generate the description.
+        self.description = description.strip() if description else ''
+        if not self.description:
+            if self.help_text:
+                self.description = f'TASK: {self.help_text}'
+            else:
+                self.description = '(no description or help in @task decorator or doc string)'
+
+        # Build final options and arguments by merging in ones from related tasks.
         for execution_task in self.execution_tasks:
             if execution_task.options:
                 self.merge_options(execution_task.options)
@@ -240,17 +263,25 @@ class _MappedTaskDataGenerator:
                 self.merge_arguments(execution_task.arguments)
         self.options = dict(sorted(list(self.options.items()), key=lambda o: o[0]))
 
+        # Derive the help visibility from the auxiliary and hidden flags
+        if hidden_task:
+            self.help_visibility = 2
+        elif auxiliary_task:
+            self.help_visibility = 1
+
 
 # noinspection PyShadowingBuiltins
 def register_task(task_function: TaskFunction,
                   name: Text = None,
                   parent: TaskFunction = None,
                   help: Text = None,
-                  epilog: Text = None,
+                  description: Text = None,
                   options: OptionRawDict = None,
                   arguments: ArgumentList = None,
                   dependencies: List[TaskFunction] = None,
                   trailing_arguments: bool = False,
+                  notes: NotesRawData = None,
+                  footnotes: FootnoteDict = None,
                   common_options: Sequence[Text] = None,
                   common_arguments: Sequence[Text] = None,
                   hidden_task: bool = False,
@@ -264,9 +295,7 @@ def register_task(task_function: TaskFunction,
     mt_data.merge_common_arguments(common_arguments)
     mt_data.merge_parent(parent)
     mt_data.merge_dependencies(dependencies)
-    mt_data.generate_names(name)
-    mt_data.generate_help_text(help)
-    mt_data.finalize()
+    mt_data.finalize_data(name, help, description, hidden_task, auxiliary_task)
 
     # Create new mapped task using input and prepared data.
     mapped_task = MappedTask(task_function=task_function,
@@ -275,14 +304,15 @@ def register_task(task_function: TaskFunction,
                              dest_name=mt_data.dest_name,
                              metavar=mt_data.metavar,
                              help=mt_data.help_text,
-                             epilog=epilog,
+                             description=mt_data.description,
                              options=mt_data.options,
                              arguments=mt_data.arguments,
+                             notes=make_list(notes),
+                             footnotes=footnotes,
                              trailing_arguments=trailing_arguments,
                              need_trailing_arguments=trailing_arguments,
                              execution_tasks=mt_data.execution_tasks,
-                             hidden_task=hidden_task,
-                             auxiliary_task=auxiliary_task)
+                             help_visibility=mt_data.help_visibility)
 
     # Copy the trailing arguments flag to the top level task
     if trailing_arguments:
@@ -296,7 +326,7 @@ def register_task(task_function: TaskFunction,
     _RegisteredData.mapped_tasks_by_id[id(mapped_task.task_function)] = mapped_task
     if mapped_task.dest_name:
         _RegisteredData.mapped_tasks_by_dest_name[mapped_task.dest_name] = mapped_task
-    if mapped_task.hidden_task:
+    if mapped_task.help_visibility == HelpTaskVisibility.HIDDEN:
         _RegisteredData.hidden_task_names.add(mapped_task.name)
 
     # Attach to parent sub-tasks or register globally if there is no parent.

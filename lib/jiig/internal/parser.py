@@ -8,12 +8,13 @@ import re
 import sys
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Optional, List, Text, Dict, Sequence, Tuple
+from typing import Optional, List, Text, Dict, Sequence, Tuple, Iterator
 
 from jiig.internal import global_data, tool_options
-from jiig.internal.help_formatter import HelpFormatter
+from jiig.internal.help_formatter import HelpFormatter, HelpSubTaskData
 from jiig.internal.mapped_task import MappedTask
-from jiig.internal.registry import get_sorted_named_mapped_tasks, get_mapped_task_by_dest_name
+from jiig.internal.registry import get_sorted_named_mapped_tasks, get_mapped_task_by_dest_name, \
+    get_tool_tasks
 from jiig.utility.cli import append_dest_name, make_dest_name
 from jiig.utility.console import abort, log_message
 from jiig.utility.python import format_call_string
@@ -73,8 +74,8 @@ class ArgumentParser(argparse.ArgumentParser):
         :param kwargs: argparse.ArgumentParser.add_argument() keyword arguments
         """
         # Remove any keywords that argparse does not handle.
-        if 'epilog' in kwargs:
-            del kwargs['epilog']
+        if 'common_footnotes' in kwargs:
+            del kwargs['common_footnotes']
         if global_data.debug:
             self._dump('add_argument', *args, **kwargs)
         try:
@@ -229,6 +230,13 @@ class _CommandLineParser:
         self.dest_name_preamble = (global_data.cli_dest_name_prefix +
                                    global_data.cli_dest_name_separator)
 
+    @staticmethod
+    def _get_help_sub_task_data(mapped_tasks: Iterator[MappedTask]) -> List[HelpSubTaskData]:
+        return [
+            HelpSubTaskData(mapped_task.name, mapped_task.help_visibility, mapped_task.help)
+            for mapped_task in sorted(mapped_tasks, key=lambda t: t.name)
+        ]
+
     def parse(self, *args, **kwargs) -> CommandLineData:
         """
         Parse the command line.
@@ -243,16 +251,22 @@ class _CommandLineParser:
                                              add_help=False)
 
         # Recursively build the parser tree under the primary sub-parser group.
-        top_formatter = HelpFormatter(None)
+        top_formatter = HelpFormatter(
+            'TASK',
+            [tool_options.name],
+            tool_options.description,
+            sub_tasks=self._get_help_sub_task_data(get_tool_tasks(include_hidden=True)),
+            notes=tool_options.notes,
+            footnote_dictionaries=[tool_options.common_footnotes])
         help_formatters = {make_dest_name(): top_formatter}
         top_group = self.parser.add_subparsers(dest=global_data.cli_dest_name_prefix,
                                                metavar=POSITIONAL_ARGUMENTS_MARKER,
                                                required=True)
-        for mt in get_sorted_named_mapped_tasks():
-            sub_parser = top_group.add_parser(mt.name,
-                                              help=mt.help,
+        for mapped_task in get_sorted_named_mapped_tasks():
+            sub_parser = top_group.add_parser(mapped_task.name,
+                                              help=mapped_task.help,
                                               add_help=False)
-            self._prepare_parser_recursive(mt,
+            self._prepare_parser_recursive(mapped_task,
                                            sub_parser,
                                            [self.prog],
                                            help_formatters)
@@ -290,27 +304,36 @@ class _CommandLineParser:
         return CommandLineData(args, trailing_args, mapped_task, help_formatters)
 
     def _prepare_parser_recursive(self,
-                                  mt: MappedTask,
+                                  mapped_task: MappedTask,
                                   parser: ArgumentParser,
-                                  command_parts: List[Text],
+                                  command_names: List[Text],
                                   help_formatters: Dict[Text, HelpFormatter]):
-        sub_command_parts = command_parts + [mt.name]
-        help_formatters[mt.dest_name] = HelpFormatter(mapped_task=mt)
-        for flags, option_data in mt.options.items():
+        sub_command_names = command_names + [mapped_task.name]
+        help_formatters[mapped_task.dest_name] = HelpFormatter(
+            'SUB_TASK',
+            sub_command_names,
+            mapped_task.description,
+            sub_tasks=self._get_help_sub_task_data(mapped_task.sub_tasks),
+            options=mapped_task.options,
+            arguments=mapped_task.arguments,
+            notes=mapped_task.notes,
+            footnote_dictionaries=[tool_options.common_footnotes, mapped_task.footnotes]
+        )
+        for flags, option_data in mapped_task.options.items():
             parser.add_argument(*flags, **option_data)
-        for argument_data in mt.arguments:
+        for argument_data in mapped_task.arguments:
             parser.add_argument(**argument_data)
-        if mt.sub_tasks:
-            sub_group = parser.add_subparsers(dest=mt.dest_name,
+        if mapped_task.sub_tasks:
+            sub_group = parser.add_subparsers(dest=mapped_task.dest_name,
                                               metavar=POSITIONAL_ARGUMENTS_MARKER,
                                               required=True)
-            for sub_task in mt.sub_tasks:
+            for sub_task in mapped_task.sub_tasks:
                 sub_parser = sub_group.add_parser(sub_task.name,
                                                   help=sub_task.help,
                                                   add_help=False)
                 self._prepare_parser_recursive(sub_task,
                                                sub_parser,
-                                               sub_command_parts,
+                                               sub_command_names,
                                                help_formatters)
 
 
@@ -335,11 +358,10 @@ def pre_parse_command_line(cli_args: List[Text] = None
 def parse_command_line(cli_args: List[Text] = None,
                        name: Text = None,
                        description: Text = None,
-                       epilog: Text = None,
                        capture_trailing: bool = False,
                        ) -> CommandLineData:
     """Set up command line parsers, parse, and return parsed command line data."""
     command_line_parser = _CommandLineParser(cli_args=cli_args,
                                              prog=name,
                                              capture_trailing=capture_trailing)
-    return command_line_parser.parse(description=description, epilog=epilog)
+    return command_line_parser.parse(description=description)

@@ -3,7 +3,9 @@
 import os
 import re
 from dataclasses import dataclass, field
-from typing import List, Text, Callable, Dict, Union, Sequence, Tuple
+from typing import List, Text, Dict, Union, Sequence, Tuple
+
+from jiig.utility.footnotes import FootnoteDict
 
 # Base and inspection types.
 
@@ -13,9 +15,8 @@ OptionFlags = Tuple[Text]
 OptionDict = Dict[OptionFlags, Dict]
 OptionDestFlagsDict = Dict[Text, OptionFlags]
 ArgumentList = List[Dict]
-
-TaskFunction = Callable[['TaskRunner'], None]
-RunnerFactoryFunction = Callable[['RunnerData'], 'TaskRunner']
+NotesRawData = Union[Text, List[Text]]
+NotesList = List[Text]
 
 
 @dataclass
@@ -187,15 +188,16 @@ class _ToolOptions:
 
     _name: Text = ''
     _description: Text = ''
-    _epilog: Text = ''
     _disable_alias: bool = False
     _disable_help: bool = False
     _disable_debug: bool = False
     _disable_dry_run: bool = False
     _disable_verbose: bool = False
+    _notes: NotesList = field(default_factory=list)
     _common_arguments: ArgumentList = field(default_factory=list)
     _common_options: OptionDict = field(default_factory=dict)
     _common_flags_by_dest: OptionDestFlagsDict = field(default_factory=dict)
+    _common_footnotes: FootnoteDict = field(default_factory=dict)
 
     # --- Read access through public properties.
 
@@ -208,11 +210,6 @@ class _ToolOptions:
     def description(self) -> Text:
         """Tool description."""
         return self._description
-
-    @property
-    def epilog(self) -> Text:
-        """Tool help epilog."""
-        return self._epilog
 
     @property
     def disable_alias(self) -> bool:
@@ -254,6 +251,15 @@ class _ToolOptions:
         """Dictionary mapping dest names to common option flags."""
         return self._common_flags_by_dest
 
+    @property
+    def notes(self) -> NotesList:
+        return self._notes
+
+    @property
+    def common_footnotes(self) -> FootnoteDict:
+        """Dictionary mapping footnote names to text."""
+        return self._common_footnotes
+
     # --- Write access through public set... methods.
 
     # noinspection PyAttributeOutsideInit
@@ -265,11 +271,6 @@ class _ToolOptions:
     def set_description(self, value: Text):
         """Set tool description."""
         self._description = value
-
-    # noinspection PyAttributeOutsideInit
-    def set_epilog(self, value: Text):
-        """Set tool help epilog."""
-        self._epilog = value
 
     # noinspection PyAttributeOutsideInit
     def set_disable_alias(self, value: bool):
@@ -310,6 +311,16 @@ class _ToolOptions:
     def set_common_flags_by_dest(self, value: OptionDestFlagsDict):
         """Set tool common option flags by dest name."""
         self._common_flags_by_dest = value
+
+    # noinspection PyAttributeOutsideInit
+    def set_notes(self, value: NotesList):
+        """Set tool footnote dictionary."""
+        self._notes = value
+
+    # noinspection PyAttributeOutsideInit
+    def set_common_footnotes(self, value: FootnoteDict):
+        """Set tool footnote dictionary."""
+        self._common_footnotes = value
 
 
 tool_options = _ToolOptions()

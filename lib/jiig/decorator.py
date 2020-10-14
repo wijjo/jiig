@@ -5,9 +5,11 @@ Jiig decorators.
 from inspect import isfunction
 from typing import Callable, Text, Sequence, List
 
-from jiig.internal import RunnerFactoryFunction, TaskFunction, OptionRawDict, ArgumentList
+from jiig.internal import OptionRawDict, ArgumentList, NotesRawData
 from jiig.internal.registry import register_task, register_runner_factory
+from jiig.task_runner import RunnerFactoryFunction, TaskFunction
 from jiig.utility.console import abort
+from jiig.utility.footnotes import FootnoteDict
 
 
 def runner_factory() -> Callable[[RunnerFactoryFunction], RunnerFactoryFunction]:
@@ -22,11 +24,13 @@ def runner_factory() -> Callable[[RunnerFactoryFunction], RunnerFactoryFunction]
 def task(name: Text = None,
          parent: TaskFunction = None,
          help: Text = None,
-         epilog: Text = None,
+         description: Text = None,
+         notes: NotesRawData = None,
          options: OptionRawDict = None,
          arguments: ArgumentList = None,
          dependencies: List[TaskFunction] = None,
          trailing_arguments: bool = False,
+         footnotes: FootnoteDict = None,
          common_options: Sequence[Text] = None,
          common_arguments: Sequence[Text] = None,
          hidden_task: bool = False,
@@ -37,16 +41,23 @@ def task(name: Text = None,
     Name is None for abstract tasks that are only used to pull in options,
     arguments, or initialization/validation logic in the task function.
 
+    All footnotes are displayed, even if not referenced in text by "[name]" at
+    the end of a string. Unreferenced ones are displayed naked, without labels.
+    In effect this allows the addition of general task notes.
+
     :param name: task name or None to use default
     :param parent: task function of parent task for sub-command
-    :param help: help string
-    :param epilog: additional help text displayed after the help body
+    :param help: text displayed in help task lists
+    :param description: text displayed below usage in help screen
+    :param notes: additional notes displayed after help body
     :param options: flag options as dictionary mapping option flags or flag tuples
                     to add_argument() parameter dictionaries
     :param arguments: positional arguments as list of add_argument() parameter dicts
     :param dependencies: task functions of dependency tasks
     :param trailing_arguments: pass along trailing extra arguments (only valid for
                                primary top level command)
+    :param footnotes: labeled footnotes that can be referenced by task, option, or
+                      argument help text (see note above about unreferenced ones)
     :param common_options: common options that may be shared between tasks
     :param common_arguments: common arguments that may be shared between tasks
     :param hidden_task: normally-hidden tool-management task if True
@@ -70,11 +81,13 @@ def task(name: Text = None,
                       name=name,
                       parent=parent,
                       help=help,
-                      epilog=epilog,
+                      description=description,
+                      notes=notes,
                       options=options,
                       arguments=arguments,
                       dependencies=dependencies,
                       trailing_arguments=trailing_arguments,
+                      footnotes=footnotes,
                       common_options=common_options,
                       common_arguments=common_arguments,
                       hidden_task=hidden_task,

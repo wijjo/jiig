@@ -5,18 +5,13 @@ Object passed to task functions for task execution.
 """
 
 import os
-from typing import Dict, Text, Any, List
+from typing import Dict, Text, Any, List, Callable
 
 from jiig.internal import global_data
+from jiig.internal.help_formatter import HelpFormatter
 from jiig.utility.cli import make_dest_name
 from jiig.utility.console import log_error
 from jiig.utility.general import AttrDict
-
-
-class RunnerHelpFormatter:
-    """Abstract help formatter."""
-    def format_help(self, show_hidden: bool = False) -> Text:
-        raise NotImplementedError
 
 
 class RunnerData:
@@ -24,7 +19,7 @@ class RunnerData:
     def __init__(self,
                  args: Any,
                  trailing_args: List[Text],
-                 help_formatters: Dict[Text, RunnerHelpFormatter],
+                 help_formatters: Dict[Text, HelpFormatter],
                  params: Dict):
         self.args = args
         self.trailing_args = trailing_args
@@ -75,3 +70,7 @@ class TaskRunner:
         if os.path.sep != '/':
             path = path.replace('/', os.path.sep)
         return self.expand_string(path, **more_params)
+
+
+TaskFunction = Callable[[TaskRunner], None]
+RunnerFactoryFunction = Callable[[RunnerData], TaskRunner]

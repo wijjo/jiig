@@ -1,5 +1,6 @@
 """General utilities."""
 
+from textwrap import wrap
 from typing import Iterable, Any, Text, Iterator, List, Optional, Tuple
 
 from .console import log_error
@@ -12,63 +13,6 @@ class AttrDict(dict):
 
     def __setattr__(self, name, value):
         self[name] = value
-
-
-def format_table(*rows: Iterable[Any],
-                 headers: Iterable[Text] = None,
-                 formats: Iterable[Text] = None,
-                 display_empty: bool = False
-                 ) -> Iterator[Text]:
-    """
-    Generate tabular output from input rows with optional headings.
-
-    :param rows: row data sequences
-    :param headers: column header strings
-    :param formats: column format strings
-    :param display_empty: display headers when there are no rows
-    :return: formatted line generator
-    """
-    widths: List[int] = []
-    format_list = list(formats) if formats is not None else []
-
-    def _get_strings(columns: Iterable[Any], padded: bool = False) -> Iterator[Text]:
-        num_columns = 0
-        for column_idx, column in enumerate(columns):
-            if len(format_list) > column_idx:
-                yield column.format(format_list[column_idx])
-            else:
-                yield str(column)
-            num_columns += 1
-        if padded:
-            for pad_idx in range(len(widths) - num_columns):
-                yield ''
-
-    def _check_widths(columns: Iterable[Any]):
-        for column_idx, column_string in enumerate(columns):
-            column_width = len(column_string)
-            if column_idx == len(widths):
-                widths.append(column_width)
-            elif column_width > widths[column_idx]:
-                widths[column_idx] = column_width
-
-    if headers is not None:
-        _check_widths(headers)
-    row_count = 0
-    for row in rows:
-        _check_widths(_get_strings(row))
-        row_count += 1
-
-    if row_count > 0 or display_empty:
-
-        format_strings = ['{:%d}' % w for w in widths[:-1]]
-        format_strings.append('{}')
-        format_string = '  '.join(format_strings)
-        if headers is not None:
-            yield format_string.format(*_get_strings(headers, padded=True))
-            yield '  '.join(['-' * width for width in widths])
-
-        for row in rows:
-            yield format_string.format(*_get_strings(row, padded=True))
 
 
 def make_list(value: Any, strings: bool = False) -> Optional[List]:
@@ -152,3 +96,88 @@ def format_byte_count(byte_count: int,
             return _format_byte_count(byte_count, 1000, DECIMAL_BYTE_COUNT_UNITS, decimal_places)
         log_error(f'Bad format_byte_count() unit_format ({unit_format}).')
     return str(byte_count)
+
+
+TABLE_COLUMN_SEPARATOR = '  '
+
+
+def format_table(*rows: Iterable[Any],
+                 headers: Iterable[Text] = None,
+                 formats: Iterable[Text] = None,
+                 display_empty: bool = False,
+                 max_width: int = None
+                 ) -> Iterator[Text]:
+    """
+    Generate tabular output from input rows with optional headings.
+
+    :param rows: row data sequences
+    :param headers: column header strings
+    :param formats: column format strings
+    :param display_empty: display headers when there are no rows
+    :param max_width: optional maximum full line width used for wrapping the
+                      last column as needed
+    :return: formatted line generator
+    """
+    widths: List[int] = []
+    format_list = list(formats) if formats is not None else []
+
+    def _get_strings(columns: Iterable[Any], padded: bool = False) -> Iterator[Text]:
+        num_columns = 0
+        for column_idx, column in enumerate(columns):
+            if len(format_list) > column_idx:
+                yield column.format(format_list[column_idx])
+            else:
+                yield str(column)
+            num_columns += 1
+        if padded:
+            for pad_idx in range(len(widths) - num_columns):
+                yield ''
+
+    def _check_widths(columns: Iterable[Any]):
+        for column_idx, column_string in enumerate(columns):
+            column_width = len(column_string)
+            if column_idx == len(widths):
+                widths.append(column_width)
+            elif column_width > widths[column_idx]:
+                widths[column_idx] = column_width
+
+    if headers is not None:
+        _check_widths(headers)
+    row_count = 0
+    for row in rows:
+        _check_widths(_get_strings(row))
+        row_count += 1
+
+    # Calculate wrapping width for last column.
+    # Disable wrapping if it doesn't fit well.
+    last_width: Optional[int] = None
+    if max_width is not None:
+        left_columns_width = sum(widths[:-1])
+        left_separators_width = len(TABLE_COLUMN_SEPARATOR) * (len(widths) - 1)
+        last_width = max_width - left_separators_width - left_columns_width
+        if last_width < 20:
+            last_width = None
+
+    if row_count > 0 or display_empty:
+
+        format_strings = ['{:%d}' % w for w in widths[:-1]]
+        format_strings.append('{}')
+        format_string = TABLE_COLUMN_SEPARATOR.join(format_strings)
+        if headers is not None:
+            yield format_string.format(*_get_strings(headers, padded=True))
+            yield TABLE_COLUMN_SEPARATOR.join(['-' * width for width in widths])
+
+        for row in rows:
+            if last_width is None:
+                yield format_string.format(*_get_strings(row, padded=True))
+            else:
+                column_strings = list(_get_strings(row, padded=True))
+                if len(column_strings[-1]) <= last_width:
+                    yield format_string.format(*column_strings)
+                else:
+                    partial_last_column_lines = wrap(column_strings[-1], width=last_width)
+                    for idx, partial_last_column_line in enumerate(partial_last_column_lines):
+                        column_strings[-1] = partial_last_column_line
+                        yield format_string.format(*column_strings)
+                        if idx == 0:
+                            column_strings = [''] * len(widths)
