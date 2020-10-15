@@ -6,9 +6,9 @@ from jiig.utility.process import run
     'hello',
     help='display hello message',
     # See ArgumentParser.add_argument() keyword arguments.
-    options={
-        '-t': {'dest': 'TEXAS_STYLE', 'action': 'store_true', 'help': 'greet with a drawl'},
-    },
+    options=[
+        ('-t', {'dest': 'TEXAS_STYLE', 'action': 'store_true', 'help': 'greet with a drawl'}),
+    ],
     arguments=[
         {'dest': 'NAME', 'nargs': '?', 'help': 'optional name'}
     ],

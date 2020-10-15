@@ -73,4 +73,5 @@ class TaskRunner:
 
 
 TaskFunction = Callable[[TaskRunner], None]
+TaskFunctionsSpec = List[TaskFunction]
 RunnerFactoryFunction = Callable[[RunnerData], TaskRunner]

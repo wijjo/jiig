@@ -34,13 +34,13 @@ def expand_tool_template(runner: TaskRunner, template_name: Text):
     'project',
     parent=task_tool,
     help='create Jiig tool project',
-    options={
-        '-o': {'dest': 'OVERWRITE',
-               'action': 'store_true',
-               'help': 'overwrite target files'},
-        '-n': {'dest': 'TOOL_NAME',
-               'help': 'tool name (default=<folder name>)'},
-    },
+    options=[
+        ('-o', {'dest': 'OVERWRITE',
+                'action': 'store_true',
+                'help': 'overwrite target files'}),
+        ('-n', {'dest': 'TOOL_NAME',
+                'help': 'tool name (default=<folder name>)'}),
+    ],
     arguments=[
         {'dest': 'TOOL_FOLDER',
          'nargs': '?',
@@ -56,13 +56,13 @@ def task_tool_project(runner: TaskRunner):
     'script',
     parent=task_tool,
     help='create monolithic Jiig tool script',
-    options={
-        '-o': {'dest': 'OVERWRITE',
-               'action': 'store_true',
-               'help': 'overwrite existing script'},
-        '-n': {'dest': 'TOOL_NAME',
-               'help': 'tool name (default=<folder name>)'},
-    },
+    options=[
+        ('-o', {'dest': 'OVERWRITE',
+                'action': 'store_true',
+                'help': 'overwrite existing script'}),
+        ('-n', {'dest': 'TOOL_NAME',
+                'help': 'tool name (default=<folder name>)'}),
+    ],
     arguments=[
         {'dest': 'TOOL_FOLDER',
          'nargs': '?',

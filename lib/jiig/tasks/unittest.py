@@ -16,11 +16,9 @@ from jiig.utility.python import import_module_path
     name='unittest',
     help='run unit tests using Python standard library unittest module',
     arguments=[
-        {
-            'dest': 'TESTS',
-            'nargs': '*',
-            'help': 'unit test module name(s) to load and run (default: all)'
-        },
+        {'dest': 'TESTS',
+         'nargs': '*',
+         'help': 'unit test module name(s) to load and run (default: all)'},
     ],
     hidden_task=True)
 def task_unittest(runner: TaskRunner):

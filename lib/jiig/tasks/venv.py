@@ -23,10 +23,11 @@ def task_venv(runner: TaskRunner):
     'build',
     parent=task_venv,
     help='(re-)build the tool virtual environment',
-    options={'-r': {
-        'dest': 'REBUILD_VENV',
-        'action': 'store_true',
-        'help': 'force virtual environment rebuild'}},
+    options=[
+        ('-r', {'dest': 'REBUILD_VENV',
+                'action': 'store_true',
+                'help': 'force virtual environment rebuild'}),
+    ],
 )
 def task_venv_build(runner: TaskRunner):
     if runner.params.PRIMARY_TASK:
@@ -73,7 +74,11 @@ def task_ipython(runner: TaskRunner):
     'pip',
     parent=task_venv,
     help='run pip from virtual environment',
-    arguments=[{'dest': 'ARGS', 'nargs': '*', 'help': 'Pip command line arguments'}],
+    arguments=[
+        {'dest': 'ARGS',
+         'nargs': '*',
+         'help': 'Pip command line arguments'},
+    ],
 )
 def task_pip(runner: TaskRunner):
     pip_path = runner.expand_path_template('{VENV_ROOT}/bin/pip')
@@ -84,7 +89,11 @@ def task_pip(runner: TaskRunner):
     'python',
     parent=task_venv,
     help='run python from virtual environment',
-    arguments=[{'dest': 'ARGS', 'nargs': '*', 'help': 'Python command line arguments'}],
+    arguments=[
+        {'dest': 'ARGS',
+         'nargs': '*',
+         'help': 'Python command line arguments'}
+    ],
 )
 def task_python(runner: TaskRunner):
     python_path = runner.expand_path_template('{VENV_ROOT}/bin/python')

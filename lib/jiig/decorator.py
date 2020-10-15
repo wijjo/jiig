@@ -3,11 +3,11 @@ Jiig decorators.
 """
 
 from inspect import isfunction
-from typing import Callable, Text, Sequence, List
+from typing import Callable, Text
 
-from jiig.internal import OptionRawDict, ArgumentList, NotesRawData
+from jiig.internal import OptionsSpec, ArgumentsSpec, NotesRawData
 from jiig.internal.registry import register_task, register_runner_factory
-from jiig.task_runner import RunnerFactoryFunction, TaskFunction
+from jiig.task_runner import RunnerFactoryFunction, TaskFunction, TaskFunctionsSpec
 from jiig.utility.console import abort
 from jiig.utility.footnotes import FootnoteDict
 
@@ -26,13 +26,11 @@ def task(name: Text = None,
          help: Text = None,
          description: Text = None,
          notes: NotesRawData = None,
-         options: OptionRawDict = None,
-         arguments: ArgumentList = None,
-         dependencies: List[TaskFunction] = None,
+         options: OptionsSpec = None,
+         arguments: ArgumentsSpec = None,
+         dependencies: TaskFunctionsSpec = None,
          trailing_arguments: bool = False,
          footnotes: FootnoteDict = None,
-         common_options: Sequence[Text] = None,
-         common_arguments: Sequence[Text] = None,
          hidden_task: bool = False,
          auxiliary_task: bool = False):
     """
@@ -58,8 +56,6 @@ def task(name: Text = None,
                                primary top level command)
     :param footnotes: labeled footnotes that can be referenced by task, option, or
                       argument help text (see note above about unreferenced ones)
-    :param common_options: common options that may be shared between tasks
-    :param common_arguments: common arguments that may be shared between tasks
     :param hidden_task: normally-hidden tool-management task if True
     :param auxiliary_task: used when commands like help should be listed separately
     """
@@ -88,8 +84,6 @@ def task(name: Text = None,
                       dependencies=dependencies,
                       trailing_arguments=trailing_arguments,
                       footnotes=footnotes,
-                      common_options=common_options,
-                      common_arguments=common_arguments,
                       hidden_task=hidden_task,
                       auxiliary_task=auxiliary_task)
         return task_function

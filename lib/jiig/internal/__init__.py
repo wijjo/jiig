@@ -3,18 +3,32 @@
 import os
 import re
 from dataclasses import dataclass, field
-from typing import List, Text, Dict, Union, Sequence, Tuple
+from typing import List, Text, Dict, Union, Tuple
 
 from jiig.utility.footnotes import FootnoteDict
 
 # Base and inspection types.
 
-OptionRawFlags = Union[Text, Sequence[Text]]
-OptionRawDict = Dict[OptionRawFlags, Dict]
-OptionFlags = Tuple[Text]
-OptionDict = Dict[OptionFlags, Dict]
-OptionDestFlagsDict = Dict[Text, OptionFlags]
-ArgumentList = List[Dict]
+DestName = Text
+
+ArgumentData = Dict
+ArgumentList = List[ArgumentData]
+ArgumentSpec = Union[DestName, ArgumentData]
+ArgumentsSpec = List[ArgumentSpec]
+
+OptionFlag = Text
+OptionFlags = List[OptionFlag]
+OptionFlagSpec = Union[OptionFlag, OptionFlags]
+
+FullOptionSpec = Tuple[OptionFlagSpec, ArgumentData]
+FullOptionsSpec = List[FullOptionSpec]
+OptionSpec = Union[DestName, FullOptionSpec]
+OptionsSpec = List[OptionSpec]
+CommonOptionsSpec = List[FullOptionSpec]
+OptionPair = Tuple[OptionFlags, ArgumentData]
+OptionList = List[OptionPair]
+OptionDestDict = Dict[DestName, OptionPair]
+
 NotesRawData = Union[Text, List[Text]]
 NotesList = List[Text]
 
@@ -195,8 +209,8 @@ class _ToolOptions:
     _disable_verbose: bool = False
     _notes: NotesList = field(default_factory=list)
     _common_arguments: ArgumentList = field(default_factory=list)
-    _common_options: OptionDict = field(default_factory=dict)
-    _common_flags_by_dest: OptionDestFlagsDict = field(default_factory=dict)
+    _common_options: OptionList = field(default_factory=dict)
+    _common_options_by_dest: OptionDestDict = field(default_factory=dict)
     _common_footnotes: FootnoteDict = field(default_factory=dict)
 
     # --- Read access through public properties.
@@ -242,14 +256,14 @@ class _ToolOptions:
         return self._common_arguments
 
     @property
-    def common_options(self) -> OptionDict:
+    def common_options(self) -> OptionList:
         """Common options that are available to tasks."""
         return self._common_options
 
     @property
-    def common_flags_by_dest(self) -> OptionDestFlagsDict:
-        """Dictionary mapping dest names to common option flags."""
-        return self._common_flags_by_dest
+    def common_options_by_dest(self) -> OptionDestDict:
+        """Dictionary mapping dest names to common option (flags, data) pairs."""
+        return self._common_options_by_dest
 
     @property
     def notes(self) -> NotesList:
@@ -303,14 +317,14 @@ class _ToolOptions:
         self._common_arguments = value
 
     # noinspection PyAttributeOutsideInit
-    def set_common_options(self, value: OptionDict):
+    def set_common_options(self, value: OptionList):
         """Set tool common options."""
         self._common_options = value
 
     # noinspection PyAttributeOutsideInit
-    def set_common_flags_by_dest(self, value: OptionDestFlagsDict):
-        """Set tool common option flags by dest name."""
-        self._common_flags_by_dest = value
+    def set_common_options_by_dest(self, value: OptionDestDict):
+        """Set tool common options by dest name."""
+        self._common_options_by_dest = value
 
     # noinspection PyAttributeOutsideInit
     def set_notes(self, value: NotesList):

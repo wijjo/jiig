@@ -51,11 +51,11 @@ def task_alias_description(runner: TaskRunner):
     name='list',
     parent=task_alias,
     help='list aliases',
-    options={
-        ('-e', '--expand-names'): {'dest': 'EXPAND_NAMES',
-                                   'action': 'store_true',
-                                   'help': 'display expanded paths in names'},
-    },
+    options=[
+        (['-e', '--expand-names'], {'dest': 'EXPAND_NAMES',
+                                    'action': 'store_true',
+                                    'help': 'display expanded paths in names'}),
+    ],
 )
 def task_alias_list(runner: TaskRunner):
     displayed_line_count = 0
@@ -89,10 +89,10 @@ def task_alias_rename(runner: TaskRunner):
     name='set',
     parent=task_alias,
     help='create or update alias',
-    options={
-        ('-d', '--description'): {'dest': 'DESCRIPTION',
-                                  'help': 'alias description'},
-    },
+    options=[
+        (['-d', '--description'], {'dest': 'DESCRIPTION',
+                                   'help': 'alias description'}),
+    ],
     arguments=[
         {'dest': 'ALIAS',
          'help': 'name of alias to create or update'},

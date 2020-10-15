@@ -153,6 +153,12 @@ class ArgumentParser(argparse.ArgumentParser):
             sys.exit(0)
         super().error(message)
 
+    def format_usage(self):
+        return f'(see tool help for more information){os.linesep}'
+
+    def format_help(self):
+        return super().format_help()
+
     @staticmethod
     def _dump(method_name, *args, **kwargs):
         if global_data.debug:
@@ -319,7 +325,7 @@ class _CommandLineParser:
             notes=mapped_task.notes,
             footnote_dictionaries=[tool_options.common_footnotes, mapped_task.footnotes]
         )
-        for flags, option_data in mapped_task.options.items():
+        for flags, option_data in mapped_task.options:
             parser.add_argument(*flags, **option_data)
         for argument_data in mapped_task.arguments:
             parser.add_argument(**argument_data)

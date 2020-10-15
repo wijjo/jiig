@@ -6,9 +6,9 @@ from shutil import get_terminal_size
 from textwrap import wrap
 from typing import Text, List, Tuple, Optional, Iterator, Dict
 
-from jiig.internal import OptionDict, ArgumentList, NotesList
+from jiig.internal import OptionList, ArgumentList, NotesList
 from jiig.utility.footnotes import FootnoteDict, FootnoteBuilder
-from jiig.utility.general import format_table, make_list
+from jiig.utility.general import format_table
 
 
 class Footnote:
@@ -42,7 +42,7 @@ class HelpFormatter:
                  command_names: List[Text],
                  description: Text,
                  sub_tasks: List[HelpSubTaskData] = None,
-                 options: OptionDict = None,
+                 options: OptionList = None,
                  arguments: ArgumentList = None,
                  notes: NotesList = None,
                  footnote_dictionaries: List[Optional[FootnoteDict]] = None):
@@ -159,8 +159,8 @@ class HelpFormatter:
     def _add_table_options(self, table_builder: TableFormatter):
         if self.options:
             table_builder.start_block(heading='OPTION')
-            for opt_key, opt_dict in self.options.items():
-                table_builder.add_row(', '.join(make_list(opt_key)),
+            for opt_flags, opt_dict in self.options:
+                table_builder.add_row(', '.join(opt_flags),
                                       self._format_help_text(opt_dict.get('help')))
 
     def _format_tables(self, show_hidden: bool, width: int) -> Iterator[Text]:

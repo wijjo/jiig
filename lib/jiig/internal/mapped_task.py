@@ -5,7 +5,7 @@ import sys
 from dataclasses import dataclass, field
 from typing import Optional, Text, List
 
-from jiig.internal import OptionDict, ArgumentList, NotesList
+from jiig.internal import OptionList, ArgumentList, NotesList
 from jiig.task_runner import TaskFunction
 from jiig.utility.footnotes import FootnoteDict
 
@@ -26,7 +26,7 @@ class MappedTask:
     help: Text
     description: Text
     notes: NotesList
-    options: OptionDict
+    options: OptionList
     arguments: ArgumentList
     footnotes: Optional[FootnoteDict]
     execution_tasks: List['MappedTask']

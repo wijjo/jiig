@@ -57,7 +57,11 @@ class FootnoteBuilder:
         parts = [text_block[:markers_match.start(1)].rstrip()]
         found_labels = markers_match.group(1).replace('[', '').replace(']', '').split()
         for label in found_labels:
-            if label not in self.labels:
+            for existing_label_num, existing_label in enumerate(self.labels, start=1):
+                if label == existing_label:
+                    parts.append(f'[{existing_label_num}]')
+                    break
+            else:
                 self.labels.append(label)
                 if context_labels:
                     self.context_labels.setdefault(label, []).extend(context_labels)

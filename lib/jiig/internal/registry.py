@@ -1,16 +1,17 @@
 """Task and associated tool data registry."""
 
-from typing import Text, Optional, List, Dict, Set, Iterator, Sequence
+from pprint import pformat
+from typing import Text, Optional, List, Dict, Set, Iterator, Tuple
 
-from jiig.internal import tool_options, ArgumentList, OptionDict, OptionRawDict, \
-    OptionDestFlagsDict, NotesRawData
+from jiig.internal import tool_options, ArgumentList, OptionList, OptionsSpec, \
+    OptionDestDict, NotesRawData, ArgumentsSpec, OptionFlags, ArgumentData, CommonOptionsSpec
 from jiig.internal.mapped_task import MappedTask
 from jiig.internal.help_formatter import HelpTaskVisibility
-from jiig.task_runner import RunnerFactoryFunction, TaskFunction
+from jiig.task_runner import RunnerFactoryFunction, TaskFunction, TaskFunctionsSpec
 from jiig.utility.cli import make_dest_name, make_metavar
 from jiig.utility.console import abort, log_error
 from jiig.utility.footnotes import FootnoteDict
-from jiig.utility.general import make_tuple, make_list
+from jiig.utility.general import make_list
 
 
 # === Registered data
@@ -55,7 +56,7 @@ def tool(name: Text = None,
          disable_debug: bool = None,
          disable_dry_run: bool = None,
          disable_verbose: bool = None,
-         common_options: OptionRawDict = None,
+         common_options: CommonOptionsSpec = None,
          common_footnotes: FootnoteDict = None):
     """
     Declare tool options and metadata.
@@ -89,14 +90,16 @@ def tool(name: Text = None,
     if disable_verbose is not None:
         tool_options.set_disable_verbose(disable_verbose)
     if common_options is not None:
-        options: OptionDict = {}
-        flags_by_dest: OptionDestFlagsDict = {}
-        for raw_flags, option_data in common_options.items():
-            flag_tuple = make_tuple(raw_flags)
-            options[flag_tuple] = option_data
-            flags_by_dest[option_data['dest']] = flag_tuple
+        options: OptionList = []
+        options_by_dest: OptionDestDict = {}
+        if not isinstance(common_options, (tuple, list)):
+            abort('Bad common_options specification for tool.')
+        for raw_flags, option_data in common_options:
+            flag_list = make_list(raw_flags)
+            options.append((flag_list, option_data))
+            options_by_dest[option_data['dest']] = (flag_list, option_data)
         tool_options.set_common_options(options)
-        tool_options.set_common_flags_by_dest(flags_by_dest)
+        tool_options.set_common_options_by_dest(options_by_dest)
     if common_footnotes is not None:
         tool_options.set_common_footnotes(common_footnotes)
 
@@ -104,12 +107,13 @@ def tool(name: Text = None,
 class _MappedTaskDataGenerator:
     def __init__(self, task_function: Optional[TaskFunction]):
         self.task_function = task_function
-        self.options: OptionDict = {}
+        self.unsorted_options: List[Tuple[OptionFlags, ArgumentData]] = []
         self.arguments: ArgumentList = []
         self.execution_tasks: List[MappedTask] = []
         self.parent_mapped_task: Optional[MappedTask] = None
         self.footnote_labels: List[Text] = []
         # Data to be finalized before creating the mapped task.
+        self.sorted_options: Optional[OptionList] = None
         self.task_name: Optional[Text] = None
         self.dest_name: Optional[Text] = None
         self.metavar: Optional[Text] = None
@@ -127,60 +131,87 @@ class _MappedTaskDataGenerator:
             return None
         mapped_task = _RegisteredData.mapped_tasks_by_id.get(id(task_function))
         if not mapped_task:
-            abort(f'Unmapped task for function: {task_function.__name__}()')
+            abort('Unmapped task for function:', f'{task_function.__name__}()')
         return mapped_task
 
-    def merge_raw_options(self, raw_options_in: Optional[OptionRawDict]):
-        if raw_options_in:
-            for raw_flags, option_data in raw_options_in.items():
-                flag_tuple = make_tuple(raw_flags)
-                self.options[flag_tuple] = option_data
-
-    def merge_common_options(self, common_options_in: Optional[Sequence[Text]]):
-        if common_options_in:
-            for dest in common_options_in:
-                flag_tuple = tool_options.common_flags_by_dest.get(dest)
-                if flag_tuple is not None:
-                    option_data = tool_options.common_options[flag_tuple]
-                    self.options[flag_tuple] = option_data
-                else:
-                    log_error(f'Ignoring unknown common option "{dest}".')
-
-    def merge_common_arguments(self, common_arguments_in: Optional[Sequence[Text]]):
-        if common_arguments_in:
-            for option_spec in common_arguments_in:
-                if option_spec[-1] in ('?', '*', '+'):
-                    nargs = option_spec[-1]
-                    dest = option_spec[:-1]
-                else:
-                    nargs = None
-                    dest = option_spec
-                flag_tuple = tool_options.common_flags_by_dest.get(dest)
-                if flag_tuple is not None:
-                    argument_data = tool_options.common_options[flag_tuple]
-                    if nargs is None:
-                        self.arguments.append(argument_data)
+    def merge_options_spec(self, options_spec: Optional[OptionsSpec]):
+        if options_spec:
+            for option_spec in options_spec:
+                error = None
+                if isinstance(option_spec, str):
+                    # Common option name.
+                    option_pair = tool_options.common_options_by_dest.get(option_spec)
+                    if option_pair is not None:
+                        flag_list, option_data = option_pair
+                        self.merge_option(flag_list, option_data)
                     else:
-                        self.arguments.append(dict(argument_data, nargs=nargs))
-                else:
-                    log_error(f'Ignoring unknown common argument "{dest}".')
+                        error = 'Common option not found.'
+                elif isinstance(option_spec, tuple) and len(option_spec) == 2:
+                    # (flags, spec) pair.
+                    flag_list = make_list(option_spec[0])
+                    if flag_list:
+                        if not list(filter(lambda f: not isinstance(f, str), flag_list)):
+                            if isinstance(option_spec[1], dict):
+                                option_data = option_spec[1]
+                                self.merge_option(flag_list, option_data)
+                            else:
+                                error = 'Option data is not a dictionary.'
+                        else:
+                            error = 'Option flags are not all strings.'
+                if error:
+                    log_error('Ignoring bad option spec:', error,
+                              *pformat(option_spec, compact=True).splitlines())
 
-    def merge_options(self, options_in: OptionDict):
-        for flag_tuple, option_data in options_in.items():
-            option_dest_name = option_data.get('dest', None)
-            if option_dest_name:
-                if option_dest_name not in self._unique_dest_names:
-                    self.options[flag_tuple] = option_data
-                    self._unique_dest_names.add(option_dest_name)
+    def merge_arguments_spec(self, arguments_spec: Optional[ArgumentsSpec]):
+        if arguments_spec:
+            for argument_spec in arguments_spec:
+                error = None
+                if isinstance(argument_spec, str):
+                    if argument_spec[-1] in ('?', '*', '+'):
+                        nargs = argument_spec[-1]
+                        dest = argument_spec[:-1]
+                    else:
+                        nargs = None
+                        dest = argument_spec
+                    option_pair = tool_options.common_options_by_dest.get(dest)
+                    if option_pair is not None:
+                        argument_data = option_pair[1]
+                        if nargs is None:
+                            self.merge_argument(argument_data)
+                        else:
+                            self.merge_argument(dict(argument_data, nargs=nargs))
+                    else:
+                        error = 'Common option not found for argument.'
+                elif isinstance(argument_spec, dict):
+                    self.merge_argument(argument_spec)
+                else:
+                    error = 'Argument data is not a dictionary.'
+                if error:
+                    log_error('Ignoring bad argument spec:', error,
+                              *pformat(argument_spec, compact=True).splitlines())
+
+    def merge_options(self, options_in: OptionList):
+        for flag_list, option_data in options_in:
+            self.merge_option(flag_list, option_data)
+
+    def merge_option(self, flag_list: OptionFlags, option_data: ArgumentData):
+        option_dest_name = option_data.get('dest', None)
+        if option_dest_name:
+            if option_dest_name not in self._unique_dest_names:
+                self.unsorted_options.append((flag_list, option_data))
+                self._unique_dest_names.add(option_dest_name)
 
     def merge_arguments(self, arguments_in: Optional[ArgumentList]):
         if arguments_in:
             for argument_data in arguments_in:
-                argument_dest_name = argument_data.get('dest', None)
-                if argument_dest_name:
-                    if argument_dest_name not in self._unique_dest_names:
-                        self.arguments.append(argument_data)
-                        self._unique_dest_names.add(argument_dest_name)
+                self.merge_argument(argument_data)
+
+    def merge_argument(self, argument_data: ArgumentData):
+        argument_dest_name = argument_data.get('dest', None)
+        if argument_dest_name:
+            if argument_dest_name not in self._unique_dest_names:
+                self.arguments.append(argument_data)
+                self._unique_dest_names.add(argument_dest_name)
 
     def merge_parent(self, parent_task_function: TaskFunction):
         self.parent_mapped_task = self.get_mapped_task(parent_task_function)
@@ -261,7 +292,7 @@ class _MappedTaskDataGenerator:
                 self.merge_options(execution_task.options)
             if execution_task.arguments:
                 self.merge_arguments(execution_task.arguments)
-        self.options = dict(sorted(list(self.options.items()), key=lambda o: o[0]))
+        self.sorted_options = sorted(self.unsorted_options, key=lambda o: o[0])
 
         # Derive the help visibility from the auxiliary and hidden flags
         if hidden_task:
@@ -276,23 +307,19 @@ def register_task(task_function: TaskFunction,
                   parent: TaskFunction = None,
                   help: Text = None,
                   description: Text = None,
-                  options: OptionRawDict = None,
-                  arguments: ArgumentList = None,
-                  dependencies: List[TaskFunction] = None,
+                  options: OptionsSpec = None,
+                  arguments: ArgumentsSpec = None,
+                  dependencies: TaskFunctionsSpec = None,
                   trailing_arguments: bool = False,
                   notes: NotesRawData = None,
                   footnotes: FootnoteDict = None,
-                  common_options: Sequence[Text] = None,
-                  common_arguments: Sequence[Text] = None,
                   hidden_task: bool = False,
                   auxiliary_task: bool = False):
 
     # Merge and generate all the data needed for creating a mapped task.
     mt_data = _MappedTaskDataGenerator(task_function)
-    mt_data.merge_raw_options(options)
-    mt_data.merge_common_options(common_options)
-    mt_data.merge_arguments(arguments)
-    mt_data.merge_common_arguments(common_arguments)
+    mt_data.merge_options_spec(options)
+    mt_data.merge_arguments_spec(arguments)
     mt_data.merge_parent(parent)
     mt_data.merge_dependencies(dependencies)
     mt_data.finalize_data(name, help, description, hidden_task, auxiliary_task)
@@ -305,7 +332,7 @@ def register_task(task_function: TaskFunction,
                              metavar=mt_data.metavar,
                              help=mt_data.help_text,
                              description=mt_data.description,
-                             options=mt_data.options,
+                             options=mt_data.sorted_options,
                              arguments=mt_data.arguments,
                              notes=make_list(notes),
                              footnotes=footnotes,
