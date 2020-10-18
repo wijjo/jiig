@@ -12,22 +12,21 @@ from jiig.utility.footnotes import FootnoteDict
 DestName = Text
 
 ArgumentData = Dict
-ArgumentList = List[ArgumentData]
 ArgumentSpec = Union[DestName, ArgumentData]
-ArgumentsSpec = List[ArgumentSpec]
+ArgumentsList = List[ArgumentData]
+
+CommonArgumentsSpecList = List[ArgumentData]
+CommonArgumentsDestDict = Dict[DestName, ArgumentData]
 
 OptionFlag = Text
 OptionFlags = List[OptionFlag]
 OptionFlagSpec = Union[OptionFlag, OptionFlags]
-
-FullOptionSpec = Tuple[OptionFlagSpec, ArgumentData]
-FullOptionsSpec = List[FullOptionSpec]
-OptionSpec = Union[DestName, FullOptionSpec]
-OptionsSpec = List[OptionSpec]
-CommonOptionsSpec = List[FullOptionSpec]
+OptionSpec = Tuple[OptionFlagSpec, ArgumentSpec]
 OptionPair = Tuple[OptionFlags, ArgumentData]
-OptionList = List[OptionPair]
-OptionDestDict = Dict[DestName, OptionPair]
+OptionsList = List[OptionPair]
+
+TaskArgumentSpec = Union[ArgumentSpec, OptionSpec]
+TaskArgumentsSpecList = List[TaskArgumentSpec]
 
 NotesRawData = Union[Text, List[Text]]
 NotesList = List[Text]
@@ -208,9 +207,8 @@ class _ToolOptions:
     _disable_dry_run: bool = False
     _disable_verbose: bool = False
     _notes: NotesList = field(default_factory=list)
-    _common_arguments: ArgumentList = field(default_factory=list)
-    _common_options: OptionList = field(default_factory=dict)
-    _common_options_by_dest: OptionDestDict = field(default_factory=dict)
+    _common_arguments: CommonArgumentsSpecList = field(default_factory=list)
+    _common_arguments_by_dest_name: CommonArgumentsDestDict = field(default_factory=dict)
     _common_footnotes: FootnoteDict = field(default_factory=dict)
 
     # --- Read access through public properties.
@@ -251,19 +249,14 @@ class _ToolOptions:
         return self._disable_verbose
 
     @property
-    def common_arguments(self) -> ArgumentList:
+    def common_arguments(self) -> CommonArgumentsSpecList:
         """Common arguments that are available to tasks."""
         return self._common_arguments
 
     @property
-    def common_options(self) -> OptionList:
-        """Common options that are available to tasks."""
-        return self._common_options
-
-    @property
-    def common_options_by_dest(self) -> OptionDestDict:
+    def common_arguments_by_dest_name(self) -> CommonArgumentsDestDict:
         """Dictionary mapping dest names to common option (flags, data) pairs."""
-        return self._common_options_by_dest
+        return self._common_arguments_by_dest_name
 
     @property
     def notes(self) -> NotesList:
@@ -312,19 +305,14 @@ class _ToolOptions:
         self._disable_verbose = value
 
     # noinspection PyAttributeOutsideInit
-    def set_common_arguments(self, value: ArgumentList):
+    def set_common_arguments(self, value: CommonArgumentsSpecList):
         """Set tool common arguments."""
         self._common_arguments = value
 
     # noinspection PyAttributeOutsideInit
-    def set_common_options(self, value: OptionList):
-        """Set tool common options."""
-        self._common_options = value
-
-    # noinspection PyAttributeOutsideInit
-    def set_common_options_by_dest(self, value: OptionDestDict):
+    def set_common_arguments_by_dest_name(self, value: CommonArgumentsDestDict):
         """Set tool common options by dest name."""
-        self._common_options_by_dest = value
+        self._common_arguments_by_dest_name = value
 
     # noinspection PyAttributeOutsideInit
     def set_notes(self, value: NotesList):

@@ -6,11 +6,14 @@ from jiig.utility.process import run
     'hello',
     help='display hello message',
     # See ArgumentParser.add_argument() keyword arguments.
-    options=[
-        ('-t', {'dest': 'TEXAS_STYLE', 'action': 'store_true', 'help': 'greet with a drawl'}),
-    ],
     arguments=[
-        {'dest': 'NAME', 'nargs': '?', 'help': 'optional name'}
+        ('-t',
+         {'dest': 'TEXAS_STYLE',
+          'action': 'store_true',
+          'help': 'greet with a drawl'}),
+        {'dest': 'NAME',
+         'nargs': '?',
+         'help': 'optional name'}
     ],
 )
 def task_hello(runner: TaskRunner):

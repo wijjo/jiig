@@ -6,12 +6,11 @@ from jiig import task, TaskRunner
 @task(
     'help',
     help='display help screen',
-    options=[
-        (['-a', '--all'], {'dest': 'ALL_TASKS',
-                           'action': 'store_true',
-                           'help': 'show all tasks, including hidden ones'}),
-    ],
     arguments=[
+        (['-a', '--all'],
+         {'dest': 'ALL_TASKS',
+          'action': 'store_true',
+          'help': 'show all tasks, including hidden ones'}),
         {'dest': 'HELP_NAMES',
          'nargs': '*',
          'help': 'command task name sequence or empty for top level help'}

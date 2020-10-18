@@ -20,11 +20,10 @@ def task_task(runner: TaskRunner):
     'create',
     parent=task_task,
     help='create task module(s)',
-    options=[
-        ('-o', {'dest': 'OUTPUT_FOLDER',
-                'help': 'folder for generated module(s) (default: working folder)'}),
-    ],
     arguments=[
+        ('-o',
+         {'dest': 'OUTPUT_FOLDER',
+          'help': 'folder for generated module(s) (default: working folder)'}),
         {'dest': 'NEW_TASK_NAME',
          'nargs': '+',
          'help': 'task/module name(s)'},

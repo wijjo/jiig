@@ -191,7 +191,7 @@ def need_trailing_arguments(command_args: List[Text]) -> bool:
     # Access the mapped task to see if trailing arguments are used.
     dest_name = make_dest_name(command_args[0])
     primary_mt = get_mapped_task_by_dest_name(dest_name)
-    return primary_mt and primary_mt.need_trailing_arguments
+    return primary_mt and primary_mt.capture_trailing_arguments
 
 
 def create_runner(data: RunnerData) -> TaskRunner:

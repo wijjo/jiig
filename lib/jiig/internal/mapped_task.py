@@ -5,7 +5,7 @@ import sys
 from dataclasses import dataclass, field
 from typing import Optional, Text, List
 
-from jiig.internal import OptionList, ArgumentList, NotesList
+from jiig.internal import OptionsList, ArgumentsList, NotesList
 from jiig.task_runner import TaskFunction
 from jiig.utility.footnotes import FootnoteDict
 
@@ -26,15 +26,15 @@ class MappedTask:
     help: Text
     description: Text
     notes: NotesList
-    options: OptionList
-    arguments: ArgumentList
+    options: OptionsList
+    arguments: ArgumentsList
     footnotes: Optional[FootnoteDict]
     execution_tasks: List['MappedTask']
     help_visibility: int
-    # True on the actual task that needs trailing arguments.
-    trailing_arguments: bool = False
-    # True on a root task that has a child that wants trailing arguments.
-    need_trailing_arguments: bool = False
+    # True on any task that accepts trailing arguments.
+    receive_trailing_arguments: bool = False
+    # Set to True when any child at any level has receive_trailing_arguments==True.
+    capture_trailing_arguments: bool = False
     # Sub-tasks added when discovered child tasks reference this as the parent.
     sub_tasks: List['MappedTask'] = field(default_factory=list)
 

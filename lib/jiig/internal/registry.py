@@ -1,10 +1,11 @@
 """Task and associated tool data registry."""
 
 from pprint import pformat
-from typing import Text, Optional, List, Dict, Set, Iterator, Tuple
+from typing import Text, Optional, List, Dict, Set, Iterator, Tuple, Any
 
-from jiig.internal import tool_options, ArgumentList, OptionList, OptionsSpec, \
-    OptionDestDict, NotesRawData, ArgumentsSpec, OptionFlags, ArgumentData, CommonOptionsSpec
+from jiig.internal import tool_options, NotesRawData, \
+    CommonArgumentsSpecList, CommonArgumentsDestDict, TaskArgumentsSpecList, \
+    OptionFlags, ArgumentData, OptionsList, ArgumentsList
 from jiig.internal.mapped_task import MappedTask
 from jiig.internal.help_formatter import HelpTaskVisibility
 from jiig.task_runner import RunnerFactoryFunction, TaskFunction, TaskFunctionsSpec
@@ -56,7 +57,7 @@ def tool(name: Text = None,
          disable_debug: bool = None,
          disable_dry_run: bool = None,
          disable_verbose: bool = None,
-         common_options: CommonOptionsSpec = None,
+         common_arguments: CommonArgumentsSpecList = None,
          common_footnotes: FootnoteDict = None):
     """
     Declare tool options and metadata.
@@ -69,7 +70,7 @@ def tool(name: Text = None,
     :param disable_debug: disable debug option if True
     :param disable_dry_run: disable dry run option if True
     :param disable_verbose: disable verbose option if True
-    :param common_options: options (or arguments) that can be shared between tasks
+    :param common_arguments: options (or arguments) that can be shared between tasks
     :param common_footnotes: common named common_footnotes for reference by options/arguments
     """
     # Only set values for the keywords that were provided.
@@ -89,17 +90,16 @@ def tool(name: Text = None,
         tool_options.set_disable_dry_run(disable_dry_run)
     if disable_verbose is not None:
         tool_options.set_disable_verbose(disable_verbose)
-    if common_options is not None:
-        options: OptionList = []
-        options_by_dest: OptionDestDict = {}
-        if not isinstance(common_options, (tuple, list)):
-            abort('Bad common_options specification for tool.')
-        for raw_flags, option_data in common_options:
-            flag_list = make_list(raw_flags)
-            options.append((flag_list, option_data))
-            options_by_dest[option_data['dest']] = (flag_list, option_data)
-        tool_options.set_common_options(options)
-        tool_options.set_common_options_by_dest(options_by_dest)
+    if common_arguments is not None:
+        arguments: CommonArgumentsSpecList = []
+        arguments_by_dest: CommonArgumentsDestDict = {}
+        if not isinstance(common_arguments, (tuple, list)):
+            abort('Bad common_arguments specification for tool.')
+        for argument_data in common_arguments:
+            arguments.append(argument_data)
+            arguments_by_dest[argument_data['dest']] = argument_data
+        tool_options.set_common_arguments(arguments)
+        tool_options.set_common_arguments_by_dest_name(arguments_by_dest)
     if common_footnotes is not None:
         tool_options.set_common_footnotes(common_footnotes)
 
@@ -108,12 +108,12 @@ class _MappedTaskDataGenerator:
     def __init__(self, task_function: Optional[TaskFunction]):
         self.task_function = task_function
         self.unsorted_options: List[Tuple[OptionFlags, ArgumentData]] = []
-        self.arguments: ArgumentList = []
+        self.arguments: TaskArgumentsSpecList = []
         self.execution_tasks: List[MappedTask] = []
         self.parent_mapped_task: Optional[MappedTask] = None
         self.footnote_labels: List[Text] = []
         # Data to be finalized before creating the mapped task.
-        self.sorted_options: Optional[OptionList] = None
+        self.sorted_options: Optional[OptionsList] = None
         self.task_name: Optional[Text] = None
         self.dest_name: Optional[Text] = None
         self.metavar: Optional[Text] = None
@@ -134,63 +134,65 @@ class _MappedTaskDataGenerator:
             abort('Unmapped task for function:', f'{task_function.__name__}()')
         return mapped_task
 
-    def merge_options_spec(self, options_spec: Optional[OptionsSpec]):
-        if options_spec:
-            for option_spec in options_spec:
-                error = None
-                if isinstance(option_spec, str):
-                    # Common option name.
-                    option_pair = tool_options.common_options_by_dest.get(option_spec)
-                    if option_pair is not None:
-                        flag_list, option_data = option_pair
-                        self.merge_option(flag_list, option_data)
-                    else:
-                        error = 'Common option not found.'
-                elif isinstance(option_spec, tuple) and len(option_spec) == 2:
-                    # (flags, spec) pair.
-                    flag_list = make_list(option_spec[0])
-                    if flag_list:
-                        if not list(filter(lambda f: not isinstance(f, str), flag_list)):
-                            if isinstance(option_spec[1], dict):
-                                option_data = option_spec[1]
-                                self.merge_option(flag_list, option_data)
-                            else:
-                                error = 'Option data is not a dictionary.'
-                        else:
-                            error = 'Option flags are not all strings.'
-                if error:
-                    log_error('Ignoring bad option spec:', error,
-                              *pformat(option_spec, compact=True).splitlines())
+    @staticmethod
+    def _is_valid_flag_list(flag_list: Any):
+        if not isinstance(flag_list, list):
+            return False
+        if list(filter(lambda f: not isinstance(f, str), flag_list)):
+            return False
+        return True
 
-    def merge_arguments_spec(self, arguments_spec: Optional[ArgumentsSpec]):
-        if arguments_spec:
-            for argument_spec in arguments_spec:
+    def merge_arguments_spec_list(
+            self, arguments_spec_list: Optional[TaskArgumentsSpecList]):
+        if arguments_spec_list:
+            for argument_spec in arguments_spec_list:
                 error = None
                 if isinstance(argument_spec, str):
+                    # Simple string: common positional argument dest name.
                     if argument_spec[-1] in ('?', '*', '+'):
                         nargs = argument_spec[-1]
                         dest = argument_spec[:-1]
                     else:
                         nargs = None
                         dest = argument_spec
-                    option_pair = tool_options.common_options_by_dest.get(dest)
-                    if option_pair is not None:
-                        argument_data = option_pair[1]
+                    argument_data = tool_options.common_arguments_by_dest_name.get(dest)
+                    if argument_data is not None:
                         if nargs is None:
                             self.merge_argument(argument_data)
                         else:
                             self.merge_argument(dict(argument_data, nargs=nargs))
                     else:
-                        error = 'Common option not found for argument.'
+                        error = 'Common argument data not found for positional argument.'
                 elif isinstance(argument_spec, dict):
+                    # Simple dictionary: inline positional argument specification.
                     self.merge_argument(argument_spec)
+                elif isinstance(argument_spec, tuple) and len(argument_spec) == 2:
+                    # Tuple (pair): (flags, argument spec) for option argument.
+                    flag_list, arg_dest_or_data = argument_spec
+                    flag_list = make_list(flag_list)
+                    if self._is_valid_flag_list(flag_list):
+                        if isinstance(arg_dest_or_data, str):
+                            dest = arg_dest_or_data
+                            # Common argument dest name.
+                            argument_data = tool_options.common_arguments_by_dest_name.get(dest)
+                            if argument_data is not None:
+                                self.merge_option(flag_list, argument_data)
+                            else:
+                                error = 'Common argument data not found for option.'
+                        elif isinstance(arg_dest_or_data, dict):
+                            argument_data = arg_dest_or_data
+                            self.merge_option(flag_list, argument_data)
+                        else:
+                            error = 'Option data is not a dictionary.'
+                    else:
+                        error = f'Option flags ({flag_list}) is not a string list.'
                 else:
-                    error = 'Argument data is not a dictionary.'
+                    error = 'Argument spec is not a argument string or option pair.'
                 if error:
                     log_error('Ignoring bad argument spec:', error,
                               *pformat(argument_spec, compact=True).splitlines())
 
-    def merge_options(self, options_in: OptionList):
+    def merge_options(self, options_in: OptionsList):
         for flag_list, option_data in options_in:
             self.merge_option(flag_list, option_data)
 
@@ -201,7 +203,7 @@ class _MappedTaskDataGenerator:
                 self.unsorted_options.append((flag_list, option_data))
                 self._unique_dest_names.add(option_dest_name)
 
-    def merge_arguments(self, arguments_in: Optional[ArgumentList]):
+    def merge_arguments(self, arguments_in: Optional[ArgumentsList]):
         if arguments_in:
             for argument_data in arguments_in:
                 self.merge_argument(argument_data)
@@ -307,10 +309,9 @@ def register_task(task_function: TaskFunction,
                   parent: TaskFunction = None,
                   help: Text = None,
                   description: Text = None,
-                  options: OptionsSpec = None,
-                  arguments: ArgumentsSpec = None,
+                  arguments: TaskArgumentsSpecList = None,
                   dependencies: TaskFunctionsSpec = None,
-                  trailing_arguments: bool = False,
+                  receive_trailing_arguments: bool = False,
                   notes: NotesRawData = None,
                   footnotes: FootnoteDict = None,
                   hidden_task: bool = False,
@@ -318,8 +319,7 @@ def register_task(task_function: TaskFunction,
 
     # Merge and generate all the data needed for creating a mapped task.
     mt_data = _MappedTaskDataGenerator(task_function)
-    mt_data.merge_options_spec(options)
-    mt_data.merge_arguments_spec(arguments)
+    mt_data.merge_arguments_spec_list(arguments)
     mt_data.merge_parent(parent)
     mt_data.merge_dependencies(dependencies)
     mt_data.finalize_data(name, help, description, hidden_task, auxiliary_task)
@@ -336,18 +336,16 @@ def register_task(task_function: TaskFunction,
                              arguments=mt_data.arguments,
                              notes=make_list(notes),
                              footnotes=footnotes,
-                             trailing_arguments=trailing_arguments,
-                             need_trailing_arguments=trailing_arguments,
+                             receive_trailing_arguments=receive_trailing_arguments,
                              execution_tasks=mt_data.execution_tasks,
                              help_visibility=mt_data.help_visibility)
 
-    # Copy the trailing arguments flag to the top level task
-    if trailing_arguments:
-        container_mapped_task = mapped_task.parent
-        while container_mapped_task:
-            if not container_mapped_task.parent:
-                container_mapped_task.need_trailing_arguments = True
-            container_mapped_task = container_mapped_task.parent
+    # Cascade trailing arguments flag upwards to signal need for capture.
+    if receive_trailing_arguments:
+        stack_mapped_task = mapped_task
+        while stack_mapped_task:
+            stack_mapped_task.capture_trailing_arguments = True
+            stack_mapped_task = stack_mapped_task.parent
 
     # Register new MappedTask into global data structures.
     _RegisteredData.mapped_tasks_by_id[id(mapped_task.task_function)] = mapped_task

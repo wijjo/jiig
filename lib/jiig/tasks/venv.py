@@ -23,10 +23,11 @@ def task_venv(runner: TaskRunner):
     'build',
     parent=task_venv,
     help='(re-)build the tool virtual environment',
-    options=[
-        ('-r', {'dest': 'REBUILD_VENV',
-                'action': 'store_true',
-                'help': 'force virtual environment rebuild'}),
+    arguments=[
+        ('-r',
+         {'dest': 'REBUILD_VENV',
+          'action': 'store_true',
+          'help': 'force virtual environment rebuild'}),
     ],
 )
 def task_venv_build(runner: TaskRunner):

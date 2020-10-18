@@ -5,7 +5,7 @@ Jiig decorators.
 from inspect import isfunction
 from typing import Callable, Text
 
-from jiig.internal import OptionsSpec, ArgumentsSpec, NotesRawData
+from jiig.internal import TaskArgumentsSpecList, NotesRawData
 from jiig.internal.registry import register_task, register_runner_factory
 from jiig.task_runner import RunnerFactoryFunction, TaskFunction, TaskFunctionsSpec
 from jiig.utility.console import abort
@@ -26,10 +26,9 @@ def task(name: Text = None,
          help: Text = None,
          description: Text = None,
          notes: NotesRawData = None,
-         options: OptionsSpec = None,
-         arguments: ArgumentsSpec = None,
+         arguments: TaskArgumentsSpecList = None,
          dependencies: TaskFunctionsSpec = None,
-         trailing_arguments: bool = False,
+         receive_trailing_arguments: bool = False,
          footnotes: FootnoteDict = None,
          hidden_task: bool = False,
          auxiliary_task: bool = False):
@@ -48,12 +47,9 @@ def task(name: Text = None,
     :param help: text displayed in help task lists
     :param description: text displayed below usage in help screen
     :param notes: additional notes displayed after help body
-    :param options: flag options as dictionary mapping option flags or flag tuples
-                    to add_argument() parameter dictionaries
-    :param arguments: positional arguments as list of add_argument() parameter dicts
+    :param arguments: positional arguments and or options list
     :param dependencies: task functions of dependency tasks
-    :param trailing_arguments: pass along trailing extra arguments (only valid for
-                               primary top level command)
+    :param receive_trailing_arguments: accept extra trailing arguments (valid for top level command)
     :param footnotes: labeled footnotes that can be referenced by task, option, or
                       argument help text (see note above about unreferenced ones)
     :param hidden_task: normally-hidden tool-management task if True
@@ -65,7 +61,6 @@ def task(name: Text = None,
     if (isfunction(name)
             and parent is None
             and help is None
-            and options is None
             and arguments is None
             and dependencies is None):
         abort(f'@task decorator for function "{name.__name__}" must'
@@ -79,10 +74,9 @@ def task(name: Text = None,
                       help=help,
                       description=description,
                       notes=notes,
-                      options=options,
                       arguments=arguments,
                       dependencies=dependencies,
-                      trailing_arguments=trailing_arguments,
+                      receive_trailing_arguments=receive_trailing_arguments,
                       footnotes=footnotes,
                       hidden_task=hidden_task,
                       auxiliary_task=auxiliary_task)

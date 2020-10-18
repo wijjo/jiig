@@ -51,10 +51,11 @@ def task_alias_description(runner: TaskRunner):
     name='list',
     parent=task_alias,
     help='list aliases',
-    options=[
-        (['-e', '--expand-names'], {'dest': 'EXPAND_NAMES',
-                                    'action': 'store_true',
-                                    'help': 'display expanded paths in names'}),
+    arguments=[
+        (['-e', '--expand-names'],
+         {'dest': 'EXPAND_NAMES',
+          'action': 'store_true',
+          'help': 'display expanded paths in names'}),
     ],
 )
 def task_alias_list(runner: TaskRunner):
@@ -89,18 +90,17 @@ def task_alias_rename(runner: TaskRunner):
     name='set',
     parent=task_alias,
     help='create or update alias',
-    options=[
-        (['-d', '--description'], {'dest': 'DESCRIPTION',
-                                   'help': 'alias description'}),
-    ],
     arguments=[
+        (['-d', '--description'],
+         {'dest': 'DESCRIPTION',
+          'help': 'alias description'}),
         {'dest': 'ALIAS',
          'help': 'name of alias to create or update'},
         {'dest': 'COMMAND',
          'help': 'command with options and arguments'},
     ],
     # The command to alias is fed as unparsed trailing arguments.
-    trailing_arguments=True,
+    receive_trailing_arguments=True,
 )
 def task_alias_set(runner: TaskRunner):
     with AliasManager() as manager:

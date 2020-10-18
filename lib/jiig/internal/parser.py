@@ -303,7 +303,7 @@ class _CommandLineParser:
 
         # Shouldn't have trailing arguments unless the specific command needs it.
         mapped_task = get_mapped_task_by_dest_name(full_dest_name)
-        if trailing_args and not mapped_task.trailing_arguments:
+        if trailing_args and not mapped_task.receive_trailing_arguments:
             abort(f'Unexpected trailing arguments for command:',
                   ' '.join(mapped_task.get_full_command_names()))
 
