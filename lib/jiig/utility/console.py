@@ -5,6 +5,7 @@ import traceback
 from typing import Any, Text, Set
 
 from jiig.internal import global_data
+from .general import format_exception
 
 MESSAGES_ISSUED_ONCE: Set[Text] = set()
 
@@ -39,13 +40,15 @@ def log_message(text: Any, *args, **kwargs):
         else:
             lines.append(str(text))
     for value in args:
+        if isinstance(value, Exception):
+            value = f"Exception: {format_exception(value)}')"
         lines.append('  {}'.format(value))
     for key, value in kwargs.items():
         if isinstance(value, (list, tuple)):
             for idx, sub_value in enumerate(value):
-                lines.append('  {}[{}] = {}'.format(key, idx + 1, sub_value))
+                lines.append('  {}[{}]: {}'.format(key, idx + 1, sub_value))
         else:
-            lines.append('  {} = {}'.format(key, value))
+            lines.append('  {}: {}'.format(key, value))
     for line in lines:
         if tag:
             print('{}: {}'.format(tag.upper(), line))
@@ -53,9 +56,18 @@ def log_message(text: Any, *args, **kwargs):
             print(line)
 
 
-def print_call_stack(skip: int = 0, limit: int = None):
-    print('  ::Call Stack::')
-    for file, line, function, source in traceback.extract_stack(limit=limit)[:-skip]:
+def print_call_stack(skip: int = None,
+                     limit: int = None,
+                     tb: object = None,
+                     label: Text = None):
+    print(f'  ::{label or "Call"} Stack::')
+    if tb:
+        stack = traceback.extract_tb(tb, limit=limit)
+    else:
+        stack = traceback.extract_stack(limit=limit)
+    if skip is not None:
+        stack = stack[:-skip]
+    for file, line, function, source in stack:
         print('  {}.{}, {}()'.format(file, line, function))
 
 

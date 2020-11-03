@@ -1,26 +1,24 @@
-from jiig import task, TaskRunner
-from jiig.utility.process import run
+import jiig
+from jiig.utility import process
 
 
-@task(
+@jiig.task(
     'hello',
-    help='display hello message',
-    # See ArgumentParser.add_argument() keyword arguments.
-    arguments=[
-        ('-t',
-         {'dest': 'TEXAS_STYLE',
-          'action': 'store_true',
-          'help': 'greet with a drawl'}),
-        {'dest': 'NAME',
-         'nargs': '?',
-         'help': 'optional name'}
-    ],
+    jiig.Arg('TEXAS_STYLE',
+             jiig.arg.Boolean,
+             description='Greet with a drawl',
+             flags='-t'),
+    jiig.Arg('NAME',
+             jiig.arg.String,
+             description='Optional name',
+             cardinality='?'),
+    description='Display hello message',
 )
-def task_hello(runner: TaskRunner):
+def task_hello(runner: jiig.TaskRunner):
     greeting = 'Howdy' if runner.args.TEXAS_STYLE else 'Hello'
     if runner.args.NAME:
         greeting = f'{greeting} {runner.args.NAME}'
-    run(['date'], quiet=True)
+    process.run(['date'], quiet=True)
     print(f'''{greeting}:
 
 Sample task module: "{__file__}"

@@ -12,6 +12,6 @@ registered for when the CLI is built.
 
 import jiig
 
-jiig.tool(description='Jiig tool manager.')
+jiig.tool(description='Jiig tool manager')
 
 from jiig.tasks import task, unittest, tool, venv   # noqa

@@ -1,17 +1,16 @@
 """Task and associated tool data registry."""
 
-from pprint import pformat
-from typing import Text, Optional, List, Dict, Set, Iterator, Tuple, Any
+from typing import Text, Optional, List, Dict, Set, Iterator, Sequence
 
-from jiig.internal import tool_options, NotesRawData, \
-    CommonArgumentsSpecList, CommonArgumentsDestDict, TaskArgumentsSpecList, \
-    OptionFlags, ArgumentData, OptionsList, ArgumentsList
+from jiig.arg.argument_type import ArgName, Description
+from jiig.external.argument import Arg, ArgList
+from jiig.external.task_runner import RunnerFactoryFunction, TaskFunction, TaskFunctionsSpec
+from jiig.internal import tool_options
 from jiig.internal.mapped_task import MappedTask
 from jiig.internal.help_formatter import HelpTaskVisibility
-from jiig.task_runner import RunnerFactoryFunction, TaskFunction, TaskFunctionsSpec
 from jiig.utility.cli import make_dest_name, make_metavar
-from jiig.utility.console import abort, log_error
-from jiig.utility.footnotes import FootnoteDict
+from jiig.utility.console import abort
+from jiig.utility.footnotes import FootnoteDict, NotesSpec
 from jiig.utility.general import make_list
 
 
@@ -49,30 +48,15 @@ def get_tool_tasks(include_hidden: bool = False) -> Iterator[MappedTask]:
                 yield mt
 
 
-def tool(name: Text = None,
-         description: Text = None,
-         notes: NotesRawData = None,
-         disable_alias: bool = None,
-         disable_help: bool = None,
-         disable_debug: bool = None,
-         disable_dry_run: bool = None,
-         disable_verbose: bool = None,
-         common_arguments: CommonArgumentsSpecList = None,
-         common_footnotes: FootnoteDict = None):
-    """
-    Declare tool options and metadata.
-
-    :param name: name of tool
-    :param description: description of tool
-    :param notes: additional notes displayed after help body
-    :param disable_alias: disable aliases if True
-    :param disable_help: disable help task if True
-    :param disable_debug: disable debug option if True
-    :param disable_dry_run: disable dry run option if True
-    :param disable_verbose: disable verbose option if True
-    :param common_arguments: options (or arguments) that can be shared between tasks
-    :param common_footnotes: common named common_footnotes for reference by options/arguments
-    """
+def register_tool(name: Text = None,
+                  description: Text = None,
+                  notes: NotesSpec = None,
+                  disable_alias: bool = None,
+                  disable_help: bool = None,
+                  disable_debug: bool = None,
+                  disable_dry_run: bool = None,
+                  disable_verbose: bool = None,
+                  common_footnotes: FootnoteDict = None):
     # Only set values for the keywords that were provided.
     if name is not None:
         tool_options.set_name(name)
@@ -90,34 +74,21 @@ def tool(name: Text = None,
         tool_options.set_disable_dry_run(disable_dry_run)
     if disable_verbose is not None:
         tool_options.set_disable_verbose(disable_verbose)
-    if common_arguments is not None:
-        arguments: CommonArgumentsSpecList = []
-        arguments_by_dest: CommonArgumentsDestDict = {}
-        if not isinstance(common_arguments, (tuple, list)):
-            abort('Bad common_arguments specification for tool.')
-        for argument_data in common_arguments:
-            arguments.append(argument_data)
-            arguments_by_dest[argument_data['dest']] = argument_data
-        tool_options.set_common_arguments(arguments)
-        tool_options.set_common_arguments_by_dest_name(arguments_by_dest)
     if common_footnotes is not None:
         tool_options.set_common_footnotes(common_footnotes)
 
 
 class _MappedTaskDataGenerator:
-    def __init__(self, task_function: Optional[TaskFunction]):
+    def __init__(self, task_function: Optional[TaskFunction], arguments: List[Arg]):
         self.task_function = task_function
-        self.unsorted_options: List[Tuple[OptionFlags, ArgumentData]] = []
-        self.arguments: TaskArgumentsSpecList = []
+        self.arguments: ArgList = arguments
         self.execution_tasks: List[MappedTask] = []
         self.parent_mapped_task: Optional[MappedTask] = None
         self.footnote_labels: List[Text] = []
         # Data to be finalized before creating the mapped task.
-        self.sorted_options: Optional[OptionsList] = None
         self.task_name: Optional[Text] = None
         self.dest_name: Optional[Text] = None
         self.metavar: Optional[Text] = None
-        self.help_text: Optional[Text] = None
         self.description: Optional[Text] = None
         self.help_visibility = HelpTaskVisibility.NORMAL
         # Data used during merge processing.
@@ -134,86 +105,8 @@ class _MappedTaskDataGenerator:
             abort('Unmapped task for function:', f'{task_function.__name__}()')
         return mapped_task
 
-    @staticmethod
-    def _is_valid_flag_list(flag_list: Any):
-        if not isinstance(flag_list, list):
-            return False
-        if list(filter(lambda f: not isinstance(f, str), flag_list)):
-            return False
-        return True
-
-    def merge_arguments_spec_list(
-            self, arguments_spec_list: Optional[TaskArgumentsSpecList]):
-        if arguments_spec_list:
-            for argument_spec in arguments_spec_list:
-                error = None
-                if isinstance(argument_spec, str):
-                    # Simple string: common positional argument dest name.
-                    if argument_spec[-1] in ('?', '*', '+'):
-                        nargs = argument_spec[-1]
-                        dest = argument_spec[:-1]
-                    else:
-                        nargs = None
-                        dest = argument_spec
-                    argument_data = tool_options.common_arguments_by_dest_name.get(dest)
-                    if argument_data is not None:
-                        if nargs is None:
-                            self.merge_argument(argument_data)
-                        else:
-                            self.merge_argument(dict(argument_data, nargs=nargs))
-                    else:
-                        error = 'Common argument data not found for positional argument.'
-                elif isinstance(argument_spec, dict):
-                    # Simple dictionary: inline positional argument specification.
-                    self.merge_argument(argument_spec)
-                elif isinstance(argument_spec, tuple) and len(argument_spec) == 2:
-                    # Tuple (pair): (flags, argument spec) for option argument.
-                    flag_list, arg_dest_or_data = argument_spec
-                    flag_list = make_list(flag_list)
-                    if self._is_valid_flag_list(flag_list):
-                        if isinstance(arg_dest_or_data, str):
-                            dest = arg_dest_or_data
-                            # Common argument dest name.
-                            argument_data = tool_options.common_arguments_by_dest_name.get(dest)
-                            if argument_data is not None:
-                                self.merge_option(flag_list, argument_data)
-                            else:
-                                error = 'Common argument data not found for option.'
-                        elif isinstance(arg_dest_or_data, dict):
-                            argument_data = arg_dest_or_data
-                            self.merge_option(flag_list, argument_data)
-                        else:
-                            error = 'Option data is not a dictionary.'
-                    else:
-                        error = f'Option flags ({flag_list}) is not a string list.'
-                else:
-                    error = 'Argument spec is not a argument string or option pair.'
-                if error:
-                    log_error('Ignoring bad argument spec:', error,
-                              *pformat(argument_spec, compact=True).splitlines())
-
-    def merge_options(self, options_in: OptionsList):
-        for flag_list, option_data in options_in:
-            self.merge_option(flag_list, option_data)
-
-    def merge_option(self, flag_list: OptionFlags, option_data: ArgumentData):
-        option_dest_name = option_data.get('dest', None)
-        if option_dest_name:
-            if option_dest_name not in self._unique_dest_names:
-                self.unsorted_options.append((flag_list, option_data))
-                self._unique_dest_names.add(option_dest_name)
-
-    def merge_arguments(self, arguments_in: Optional[ArgumentsList]):
-        if arguments_in:
-            for argument_data in arguments_in:
-                self.merge_argument(argument_data)
-
-    def merge_argument(self, argument_data: ArgumentData):
-        argument_dest_name = argument_data.get('dest', None)
-        if argument_dest_name:
-            if argument_dest_name not in self._unique_dest_names:
-                self.arguments.append(argument_data)
-                self._unique_dest_names.add(argument_dest_name)
+    class ArgumentMergeError(Exception):
+        pass
 
     def merge_parent(self, parent_task_function: TaskFunction):
         self.parent_mapped_task = self.get_mapped_task(parent_task_function)
@@ -248,7 +141,6 @@ class _MappedTaskDataGenerator:
 
     def finalize_data(self,
                       name: Optional[Text],
-                      help_text: Optional[Text],
                       description: Optional[Text],
                       hidden_task: Optional[bool],
                       auxiliary_task: Optional[bool]):
@@ -272,29 +164,23 @@ class _MappedTaskDataGenerator:
         self.dest_name = make_dest_name(*names)
         self.metavar = make_metavar(*names)
 
-        # Generate the help text.
-        self.help_text = help_text.strip() if help_text else ''
-        if not self.help_text:
-            if self.task_function.__doc__:
-                self.help_text = self.task_function.__doc__.strip().splitlines()[0]
-            if not self.help_text:
-                self.help_text = '(no help in @task decorator or doc string)'
-
         # Generate the description.
         self.description = description.strip() if description else ''
         if not self.description:
-            if self.help_text:
-                self.description = f'TASK: {self.help_text}'
-            else:
-                self.description = '(no description or help in @task decorator or doc string)'
+            self.description = '(no description in @task decorator or doc string)'
 
         # Build final options and arguments by merging in ones from related tasks.
         for execution_task in self.execution_tasks:
-            if execution_task.options:
-                self.merge_options(execution_task.options)
             if execution_task.arguments:
-                self.merge_arguments(execution_task.arguments)
-        self.sorted_options = sorted(self.unsorted_options, key=lambda o: o[0])
+                if execution_task.arguments:
+                    for argument in execution_task.arguments:
+                        if argument.flags:
+                            if list(filter(lambda f: not isinstance(f, str), argument.flags)):
+                                raise self.ArgumentMergeError(
+                                    f'Option flag(s) ({argument.flags}) are not all strings.')
+                        if argument.name not in self._unique_dest_names:
+                            self.arguments.append(argument)
+                            self._unique_dest_names.add(argument.name)
 
         # Derive the help visibility from the auxiliary and hidden flags
         if hidden_task:
@@ -303,26 +189,30 @@ class _MappedTaskDataGenerator:
             self.help_visibility = 1
 
 
-# noinspection PyShadowingBuiltins
 def register_task(task_function: TaskFunction,
-                  name: Text = None,
+                  name: ArgName = None,
                   parent: TaskFunction = None,
-                  help: Text = None,
-                  description: Text = None,
-                  arguments: TaskArgumentsSpecList = None,
+                  description: Description = None,
+                  arguments: Sequence[Arg] = None,
                   dependencies: TaskFunctionsSpec = None,
                   receive_trailing_arguments: bool = False,
-                  notes: NotesRawData = None,
+                  notes: NotesSpec = None,
                   footnotes: FootnoteDict = None,
                   hidden_task: bool = False,
                   auxiliary_task: bool = False):
 
     # Merge and generate all the data needed for creating a mapped task.
-    mt_data = _MappedTaskDataGenerator(task_function)
-    mt_data.merge_arguments_spec_list(arguments)
+    argument_list: ArgList = []
+    if arguments:
+        for arg_spec in arguments:
+            if not isinstance(arg_spec, Arg):
+                raise abort(f'Argument specification is not an Arg class or instance.',
+                            arg_spec)
+            argument_list.append(arg_spec)
+    mt_data = _MappedTaskDataGenerator(task_function, argument_list)
     mt_data.merge_parent(parent)
     mt_data.merge_dependencies(dependencies)
-    mt_data.finalize_data(name, help, description, hidden_task, auxiliary_task)
+    mt_data.finalize_data(name, description, hidden_task, auxiliary_task)
 
     # Create new mapped task using input and prepared data.
     mapped_task = MappedTask(task_function=task_function,
@@ -330,9 +220,7 @@ def register_task(task_function: TaskFunction,
                              parent=mt_data.parent_mapped_task,
                              dest_name=mt_data.dest_name,
                              metavar=mt_data.metavar,
-                             help=mt_data.help_text,
                              description=mt_data.description,
-                             options=mt_data.sorted_options,
                              arguments=mt_data.arguments,
                              notes=make_list(notes),
                              footnotes=footnotes,

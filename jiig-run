@@ -27,14 +27,14 @@ if JIIG_LIB not in sys.path:
 if JIIG_ROOT in sys.path:
     sys.path.remove(JIIG_ROOT)
 
-from jiig.init_file import ParamData, ParamList, ParamFolder, ParamFolderList, ParamLoader
-from jiig.task_runner import TaskRunner, RunnerData
+from jiig.utility.init_file import ParamData, ParamList, ParamFolder, ParamFolderList, ParamLoader
+from jiig.external.task_runner import TaskRunner, RunnerData
 from jiig.internal import global_data, tool_options
 from jiig.internal.aliases import AliasManager, expand_alias_name
 from jiig.internal.parser import pre_parse_command_line, parse_command_line, CommandLineData
 from jiig.internal.registry import get_mapped_task_by_dest_name, get_runner_factory
 from jiig.utility.cli import make_dest_name
-from jiig.utility.console import abort, log_message
+from jiig.utility.console import abort, log_message, print_call_stack
 from jiig.utility.python import build_virtual_environment, execute_source
 
 INIT_PARAM_TYPES = [
@@ -132,28 +132,33 @@ def load_tool(script_path: Text, init_params: Dict) -> ParamData:
     :param script_path: path to tool script
     :param init_params: data loaded from init file
     """
-    script_symbols = execute_source(file=script_path)
-    # If no name was provided use the script base name.
-    if not tool_options.name:
-        tool_options.set_name(os.path.basename(script_path))
-    # If no description was provided try to scrape it from the doc string, if it exists.
-    if not tool_options.description:
-        doc_string = script_symbols.get('__doc__', '').strip()
-        if doc_string:
-            tool_options.set_description(doc_string.splitlines()[0])
-    if not tool_options.description:
-        tool_options.set_description('(no description provided)')
-    # Load standard modules, if enabled.
-    if not tool_options.disable_help:
-        import jiig.tasks.help      # noqa
-    if not tool_options.disable_alias:
-        import jiig.tasks.alias     # noqa
-    # Initialize tool parameters.
-    tool_params = ParamData(init_params)
-    tool_params['JIIG_ROOT'] = JIIG_ROOT
-    tool_params['TOOL_NAME'] = tool_options.name
-    tool_params['TOOL_DESCRIPTION'] = tool_options.description
-    return tool_params
+    try:
+        script_symbols = execute_source(file=script_path)
+        # If no name was provided use the script base name.
+        if not tool_options.name:
+            tool_options.set_name(os.path.basename(script_path))
+        # If no description was provided try to scrape it from the doc string, if it exists.
+        if not tool_options.description:
+            doc_string = script_symbols.get('__doc__', '').strip()
+            if doc_string:
+                tool_options.set_description(doc_string.splitlines()[0])
+        if not tool_options.description:
+            tool_options.set_description('(no description provided)')
+        # Load standard modules, if enabled.
+        if not tool_options.disable_help:
+            import jiig.tasks.help      # noqa
+        if not tool_options.disable_alias:
+            import jiig.tasks.alias     # noqa
+        # Initialize tool parameters.
+        tool_params = ParamData(init_params)
+        tool_params['JIIG_ROOT'] = JIIG_ROOT
+        tool_params['TOOL_NAME'] = tool_options.name
+        tool_params['TOOL_DESCRIPTION'] = tool_options.description
+        return tool_params
+    except Exception as exc:
+        if global_data.debug:
+            print_call_stack(tb=sys.exc_info()[2], label='Exception')
+        abort('Exception occurred while loading tool.', exc)
 
 
 def expand_alias(tool_name: Text, command_args: List[Text]) -> List[Text]:

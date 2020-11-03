@@ -5,8 +5,9 @@ import sys
 from dataclasses import dataclass, field
 from typing import Optional, Text, List
 
-from jiig.internal import OptionsList, ArgumentsList, NotesList
-from jiig.task_runner import TaskFunction
+from jiig.external.argument import ArgList
+from jiig.internal import NotesList
+from jiig.external.task_runner import TaskFunction
 from jiig.utility.footnotes import FootnoteDict
 
 
@@ -17,17 +18,14 @@ class MappedTask:
 
     NB: Do not create directly. It is done by the @task() decorator.
     """
-    # noinspection PyShadowingBuiltins
     task_function: TaskFunction
     name: Text
     parent: Optional['MappedTask']
     dest_name: Text
     metavar: Text
-    help: Text
     description: Text
     notes: NotesList
-    options: OptionsList
-    arguments: ArgumentsList
+    arguments: ArgList
     footnotes: Optional[FootnoteDict]
     execution_tasks: List['MappedTask']
     help_visibility: int

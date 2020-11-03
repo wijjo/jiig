@@ -1,9 +1,18 @@
-"""General utilities."""
+"""
+General-purpose (independent) utilities.
 
+Make sure that any other utility module can import this module without circular
+import references. I.e. DO NOT import other utility modules here.
+
+To handle errors independently, avoid functions like console.log_error(), and
+either throw an exception or provide an informative return value.
+"""
+
+import os
+import sys
+import traceback
 from textwrap import wrap
 from typing import Iterable, Any, Text, Iterator, List, Optional, Tuple
-
-from .console import log_error
 
 
 class AttrDict(dict):
@@ -15,18 +24,21 @@ class AttrDict(dict):
         self[name] = value
 
 
-def make_list(value: Any, strings: bool = False) -> Optional[List]:
+def make_list(value: Any, strings: bool = False, allow_none: bool = False) -> Optional[List]:
     """
     Coerce a sequence or non-sequence to a list.
 
     :param value: item to make into a list
     :param strings: convert to text strings if True
+    :param allow_none: return None if value is None if True, otherwise empty list
     :return: resulting list or None if value is None
     """
     def _fix(items: List) -> List:
         if not strings:
             return items
         return [str(item) for item in items]
+    if value is None:
+        return None if allow_none else []
     if isinstance(value, list):
         return _fix(value)
     if isinstance(value, tuple):
@@ -34,18 +46,21 @@ def make_list(value: Any, strings: bool = False) -> Optional[List]:
     return _fix([value])
 
 
-def make_tuple(value: Any, strings: bool = False) -> Optional[Tuple]:
+def make_tuple(value: Any, strings: bool = False, allow_none: bool = False) -> Optional[Tuple]:
     """
     Coerce a sequence or non-sequence to a tuple.
 
     :param value: item to make into a tuple
     :param strings: convert to text strings if True
+    :param allow_none: return None if value is None if True, otherwise empty list
     :return: resulting tuple or None if value is None
     """
     def _fix(items: Tuple) -> Tuple:
         if not strings:
             return items
         return tuple(str(item) for item in items)
+    if value is None:
+        return None if allow_none else tuple()
     if isinstance(value, tuple):
         return _fix(value)
     if isinstance(value, list):
@@ -53,49 +68,66 @@ def make_tuple(value: Any, strings: bool = False) -> Optional[Tuple]:
     return _fix(tuple([value]))
 
 
-BINARY_BYTE_COUNT_UNITS = ['KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']
-DECIMAL_BYTE_COUNT_UNITS = ['KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
+HUMAN_BINARY_UNITS = ['KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']
+HUMAN_DECIMAL_UNITS = ['KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
 
 
-def _format_byte_count(byte_count: int,
-                       factor: int,
-                       units: List[Text],
-                       decimal_places: int) -> Text:
-    adjusted_quantity = float(byte_count)
-    unit_format = '{value:0.%df}{unit}' % (decimal_places or 1)
-    for unit_idx in range(len(units)):
-        if adjusted_quantity < factor:
-            if unit_idx == 0:
-                return str(byte_count)
-            return unit_format.format(value=adjusted_quantity, unit=units[unit_idx - 1])
-        adjusted_quantity /= factor
-    return unit_format.format(value=adjusted_quantity, unit=units[-1])
-
-
-def format_byte_count(byte_count: int,
-                      unit_format: Text = None,
-                      decimal_places: int = 1
-                      ) -> Text:
+def human_byte_count(byte_count: float,
+                     unit_format: Optional[Text],
+                     ) -> Tuple[float, Text]:
     """
-    Format byte count string using unit abbreviations.
+    Adjust raw byte count to add appropriate unit.
 
-    Either decimal_units or binary_units must be true, or it just formats it as
-    a simple integer, and decimal_places is ignored.
+    unit_format values:
+      b: binary/1024-based KiB, MiB, etc.
+      d: decimal/1000-based KB, MB, etc.
+      other: returns error text instead of unit
 
-    KB, MB, etc. are 1000-based units. KiB, MiB, etc. are 1024-based units.
+    :param byte_count: input byte count
+    :param unit_format: 'd' for KB/MB/..., 'b' for KiB/MiB/..., or bytes if None
+    :return: (adjusted byte count, unit string) tuple
+    """
+    byte_count = float(byte_count)      # cya
+    if unit_format is None:
+        return byte_count, ''
+    unit_format = unit_format.lower()
+    if unit_format not in ['b', 'd']:
+        return byte_count, f'(unit format "{unit_format}"?)'
+    if unit_format.lower() == 'b':
+        divisor = 1024
+        unit_strings = HUMAN_BINARY_UNITS
+    else:
+        divisor = 1000
+        unit_strings = HUMAN_DECIMAL_UNITS
+    adjusted_quantity = byte_count
+    for unit_idx in range(len(unit_strings)):
+        if adjusted_quantity < divisor:
+            if unit_idx == 0:
+                return float(byte_count), ''
+            return adjusted_quantity, unit_strings[unit_idx - 1]
+        adjusted_quantity /= divisor
+    return adjusted_quantity, unit_strings[-1]
+
+
+def format_human_byte_count(byte_count: int,
+                            unit_format: Text = None,
+                            decimal_places: int = 1
+                            ) -> Text:
+    """
+    Format byte count for human consumption using unit abbreviations.
+
+    unit_format values:
+      b: binary/1024-based KiB, MiB, etc.
+      d: decimal/1000-based KB, MB, etc.
+      other: returns error text instead of unit
 
     :param byte_count: number of bytes
-    :param decimal_places: number of decimal places (default=1 if unit_format specified)
     :param unit_format: 'd' for KB/MB/..., 'b' for KiB/MiB/..., or bytes if None
+    :param decimal_places: number of decimal places (default=1 if unit_format specified)
     :return: formatted string with applied unit abbreviation
     """
-    if unit_format is not None:
-        if unit_format.lower() == 'b':
-            return _format_byte_count(byte_count, 1024, BINARY_BYTE_COUNT_UNITS, decimal_places)
-        if unit_format.lower() == 'd':
-            return _format_byte_count(byte_count, 1000, DECIMAL_BYTE_COUNT_UNITS, decimal_places)
-        log_error(f'Bad format_byte_count() unit_format ({unit_format}).')
-    return str(byte_count)
+    return ('{:0.%df}{}' % (decimal_places or 1)).format(
+        *human_byte_count(byte_count, unit_format))
 
 
 TABLE_COLUMN_SEPARATOR = '  '
@@ -181,3 +213,27 @@ def format_table(*rows: Iterable[Any],
                         yield format_string.format(*column_strings)
                         if idx == 0:
                             column_strings = [''] * len(widths)
+
+
+def format_exception(exc: Exception,
+                     label: Text = None,
+                     skip_stack_levels: int = 0
+                     ) -> Text:
+    """
+    Format exception text.
+
+    :param exc: the exception to format
+    :param label: preamble for exception message
+    :param skip_stack_levels: number of stack levels to skip
+    :return: text string for exception
+    """
+    parts = []
+    if label:
+        parts.append(label)
+    stack = traceback.extract_tb(sys.exc_info()[2])
+    if len(stack) > skip_stack_levels:
+        file, line, function, source = stack[skip_stack_levels]
+        parts.append(f'{os.path.basename(file)}.{line}')
+    parts.append(exc.__class__.__name__)
+    parts.append(str(exc))
+    return ': '.join(parts)

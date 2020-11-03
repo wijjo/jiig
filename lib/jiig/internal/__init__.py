@@ -3,33 +3,9 @@
 import os
 import re
 from dataclasses import dataclass, field
-from typing import List, Text, Dict, Union, Tuple
+from typing import List, Text
 
-from jiig.utility.footnotes import FootnoteDict
-
-# Base and inspection types.
-
-DestName = Text
-
-ArgumentData = Dict
-ArgumentSpec = Union[DestName, ArgumentData]
-ArgumentsList = List[ArgumentData]
-
-CommonArgumentsSpecList = List[ArgumentData]
-CommonArgumentsDestDict = Dict[DestName, ArgumentData]
-
-OptionFlag = Text
-OptionFlags = List[OptionFlag]
-OptionFlagSpec = Union[OptionFlag, OptionFlags]
-OptionSpec = Tuple[OptionFlagSpec, ArgumentSpec]
-OptionPair = Tuple[OptionFlags, ArgumentData]
-OptionsList = List[OptionPair]
-
-TaskArgumentSpec = Union[ArgumentSpec, OptionSpec]
-TaskArgumentsSpecList = List[TaskArgumentSpec]
-
-NotesRawData = Union[Text, List[Text]]
-NotesList = List[Text]
+from jiig.utility.footnotes import FootnoteDict, NotesList
 
 
 @dataclass
@@ -207,8 +183,6 @@ class _ToolOptions:
     _disable_dry_run: bool = False
     _disable_verbose: bool = False
     _notes: NotesList = field(default_factory=list)
-    _common_arguments: CommonArgumentsSpecList = field(default_factory=list)
-    _common_arguments_by_dest_name: CommonArgumentsDestDict = field(default_factory=dict)
     _common_footnotes: FootnoteDict = field(default_factory=dict)
 
     # --- Read access through public properties.
@@ -247,16 +221,6 @@ class _ToolOptions:
     def disable_verbose(self) -> bool:
         """Verbose mode is disabled if True."""
         return self._disable_verbose
-
-    @property
-    def common_arguments(self) -> CommonArgumentsSpecList:
-        """Common arguments that are available to tasks."""
-        return self._common_arguments
-
-    @property
-    def common_arguments_by_dest_name(self) -> CommonArgumentsDestDict:
-        """Dictionary mapping dest names to common option (flags, data) pairs."""
-        return self._common_arguments_by_dest_name
 
     @property
     def notes(self) -> NotesList:
@@ -303,16 +267,6 @@ class _ToolOptions:
     def set_disable_verbose(self, value: bool):
         """Enable/disable verbose mode."""
         self._disable_verbose = value
-
-    # noinspection PyAttributeOutsideInit
-    def set_common_arguments(self, value: CommonArgumentsSpecList):
-        """Set tool common arguments."""
-        self._common_arguments = value
-
-    # noinspection PyAttributeOutsideInit
-    def set_common_arguments_by_dest_name(self, value: CommonArgumentsDestDict):
-        """Set tool common options by dest name."""
-        self._common_arguments_by_dest_name = value
 
     # noinspection PyAttributeOutsideInit
     def set_notes(self, value: NotesList):

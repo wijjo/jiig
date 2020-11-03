@@ -6,7 +6,8 @@ from shutil import get_terminal_size
 from textwrap import wrap
 from typing import Text, List, Tuple, Optional, Iterator, Dict
 
-from jiig.internal import OptionsList, TaskArgumentsSpecList, NotesList
+from jiig.external.argument import ArgList
+from jiig.internal import NotesList
 from jiig.utility.footnotes import FootnoteDict, FootnoteBuilder
 from jiig.utility.general import format_table
 
@@ -42,8 +43,7 @@ class HelpFormatter:
                  command_names: List[Text],
                  description: Text,
                  sub_tasks: List[HelpSubTaskData] = None,
-                 options: OptionsList = None,
-                 arguments: TaskArgumentsSpecList = None,
+                 arguments: ArgList = None,
                  notes: NotesList = None,
                  footnote_dictionaries: List[Optional[FootnoteDict]] = None):
         """
@@ -53,7 +53,6 @@ class HelpFormatter:
         :param command_names: command names in appearance order for Usage
         :param sub_tasks: sub-task data, i.e. name/visibility/help text
         :param description: task description for description block
-        :param options: task options
         :param arguments: task arguments
         :param footnote_dictionaries: dictionaries for resolving footnote references
         """
@@ -61,12 +60,13 @@ class HelpFormatter:
         self.command_names = command_names
         self.sub_tasks = sub_tasks
         self.description = description
-        self.options = options
-        self.arguments = arguments
+        self.arguments = arguments or []
         self.notes = notes
         self.footnote_builder = FootnoteBuilder()
         if footnote_dictionaries:
             self.footnote_builder.add_footnotes(*footnote_dictionaries)
+        self._option_arguments: Optional[ArgList] = None
+        self._positional_arguments: Optional[ArgList] = None
 
     class TableFormatter:
         def __init__(self, max_width: int):
@@ -90,23 +90,32 @@ class HelpFormatter:
                         yield f'{heading}:'
                 yield f'{" " * HELP_TABLE_INDENT_SIZE}{line}'
 
+    @property
+    def option_arguments(self) -> ArgList:
+        if self._option_arguments is None:
+            self._option_arguments = list(filter(lambda a: a.flags, self.arguments))
+        return self._option_arguments
+
+    @property
+    def positional_arguments(self) -> ArgList:
+        if self._positional_arguments is None:
+            self._positional_arguments = list(filter(lambda a: not a.flags, self.arguments))
+        return self._positional_arguments
+
     def _format_usage(self) -> Iterator[Text]:
         parts: List[Text] = ['Usage:']
         parts.extend(self.command_names)
-        if self.options:
+        if self.option_arguments:
             parts.append('[OPTION ...]')
-        if self.arguments:
-            for arg_data in self.arguments:
-                dest = arg_data.get('dest', '(ARG)')
-                nargs = arg_data.get('nargs')
-                if not nargs or nargs == '?':
-                    parts.append(f'[{dest}]')
-                elif nargs == 1 or nargs == '1':
-                    parts.append(dest)
-                elif nargs == '*':
-                    parts.append(f'[{dest} ...]')
-                else:
-                    parts.append(f'{dest} [{dest} ...]')
+        for argument in self.arguments:
+            if not argument.cardinality or argument.cardinality == '?':
+                parts.append(f'[{argument.name}]')
+            elif argument.cardinality == 1 or argument.cardinality == '1':
+                parts.append(argument.name)
+            elif argument.cardinality == '*':
+                parts.append(f'[{argument.name} ...]')
+            else:
+                parts.append(f'{argument.name} [{argument.name} ...]')
         parts.extend([self.task_type_label, '...'])
         yield ' '.join(parts)
 
@@ -150,18 +159,18 @@ class HelpFormatter:
                                           self._format_help_text(task.help_text))
 
     def _add_table_positionals(self, table_builder: TableFormatter):
-        if self.arguments:
+        if self.positional_arguments:
             table_builder.start_block(heading='ARGUMENT')
-            for arg_dict in self.arguments:
-                table_builder.add_row(arg_dict.get('dest', ''),
-                                      self._format_help_text(arg_dict.get('help')))
+            for argument in self.positional_arguments:
+                table_builder.add_row(argument.name,
+                                      self._format_help_text(argument.description))
 
     def _add_table_options(self, table_builder: TableFormatter):
-        if self.options:
+        if self.option_arguments:
             table_builder.start_block(heading='OPTION')
-            for opt_flags, opt_dict in self.options:
-                table_builder.add_row(', '.join(opt_flags),
-                                      self._format_help_text(opt_dict.get('help')))
+            for argument in self.option_arguments:
+                table_builder.add_row(', '.join(argument.flags),
+                                      self._format_help_text(argument.description))
 
     def _format_tables(self, show_hidden: bool, width: int) -> Iterator[Text]:
         table_builder = self.TableFormatter(width)

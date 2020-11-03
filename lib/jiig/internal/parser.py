@@ -17,6 +17,7 @@ from jiig.internal.registry import get_sorted_named_mapped_tasks, get_mapped_tas
     get_tool_tasks
 from jiig.utility.cli import append_dest_name, make_dest_name
 from jiig.utility.console import abort, log_message
+from jiig.utility.general import format_exception
 from jiig.utility.python import format_call_string
 
 # Expose Namespace, since it's pretty generic, so that other modules don't need
@@ -166,7 +167,9 @@ class ArgumentParser(argparse.ArgumentParser):
 
     @staticmethod
     def _abort(method_name, exc, *args, **kwargs):
-        abort(f'argparse: {format_call_string(method_name, *args, **kwargs)})', exception=exc)
+        abort(f'argparse: {format_call_string(method_name, *args, **kwargs)})',
+              'Run with --debug to see a call stack.',
+              exception=exc)
 
     @classmethod
     @contextmanager
@@ -239,7 +242,7 @@ class _CommandLineParser:
     @staticmethod
     def _get_help_sub_task_data(mapped_tasks: Iterator[MappedTask]) -> List[HelpSubTaskData]:
         return [
-            HelpSubTaskData(mapped_task.name, mapped_task.help_visibility, mapped_task.help)
+            HelpSubTaskData(mapped_task.name, mapped_task.help_visibility, mapped_task.description)
             for mapped_task in sorted(mapped_tasks, key=lambda t: t.name)
         ]
 
@@ -270,7 +273,7 @@ class _CommandLineParser:
                                                required=True)
         for mapped_task in get_sorted_named_mapped_tasks():
             sub_parser = top_group.add_parser(mapped_task.name,
-                                              help=mapped_task.help,
+                                              help=mapped_task.description,
                                               add_help=False)
             self._prepare_parser_recursive(mapped_task,
                                            sub_parser,
@@ -307,6 +310,22 @@ class _CommandLineParser:
             abort(f'Unexpected trailing arguments for command:',
                   ' '.join(mapped_task.get_full_command_names()))
 
+        # Convert argument data.
+        for argument in mapped_task.arguments:
+            exception_messages: List[Text] = []
+            if argument.name in args:
+                raw_value = getattr(args, argument.name)
+                try:
+                    processed_value = argument.argument_type.process_data(raw_value)
+                    setattr(args, argument.name, processed_value)
+                except (TypeError, ValueError) as exc:
+                    exception_messages.append(
+                        format_exception(exc, label=argument.name, skip_stack_levels=1))
+            if exception_messages:
+                plural = 's' if len(exception_messages) > 1 else ''
+                abort(f'Task "{mapped_task.name}" argument processing failure{plural}:',
+                      *exception_messages)
+
         return CommandLineData(args, trailing_args, mapped_task, help_formatters)
 
     def _prepare_parser_recursive(self,
@@ -320,22 +339,25 @@ class _CommandLineParser:
             sub_command_names,
             mapped_task.description,
             sub_tasks=self._get_help_sub_task_data(mapped_task.sub_tasks),
-            options=mapped_task.options,
             arguments=mapped_task.arguments,
             notes=mapped_task.notes,
             footnote_dictionaries=[tool_options.common_footnotes, mapped_task.footnotes]
         )
-        for flags, option_data in mapped_task.options:
-            parser.add_argument(*flags, **option_data)
-        for argument_data in mapped_task.arguments:
-            parser.add_argument(**argument_data)
+        for argument in mapped_task.arguments:
+            kwargs = {'dest': argument.name, 'help': argument.description}
+            if argument.cardinality:
+                kwargs['nargs'] = argument.cardinality
+            argument.argument_type.argparse_prepare(kwargs)
+            if argument.default_value is not None:
+                kwargs['default'] = argument.default_value
+            parser.add_argument(*argument.flags, **kwargs)
         if mapped_task.sub_tasks:
             sub_group = parser.add_subparsers(dest=mapped_task.dest_name,
                                               metavar=POSITIONAL_ARGUMENTS_MARKER,
                                               required=True)
             for sub_task in mapped_task.sub_tasks:
                 sub_parser = sub_group.add_parser(sub_task.name,
-                                                  help=sub_task.help,
+                                                  help=sub_task.description,
                                                   add_help=False)
                 self._prepare_parser_recursive(sub_task,
                                                sub_parser,

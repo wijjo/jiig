@@ -12,7 +12,7 @@ Labels may be any sequence of letters or numbers.
 
 import os
 import re
-from typing import Text, List, Optional, Iterator, Sequence, Dict
+from typing import Text, List, Optional, Iterator, Sequence, Dict, Union
 
 FootnoteDict = Dict[Text, Text]
 
@@ -77,3 +77,7 @@ class FootnoteBuilder:
                     ','.join([f'[{label_num}]'] + (self.context_labels.get(label) or [])),
                     self.footnotes[label].strip()
                 ])
+
+
+NotesSpec = Union[Text, List[Text]]
+NotesList = List[Text]
