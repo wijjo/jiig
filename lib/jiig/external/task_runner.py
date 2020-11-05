@@ -7,7 +7,7 @@ Object passed to task functions for task execution.
 import os
 from typing import Dict, Text, Any, List, Callable
 
-from jiig.internal import global_data
+from jiig.internal.globals import global_data
 from jiig.internal.help_formatter import HelpFormatter
 from jiig.utility.cli import make_dest_name
 from jiig.utility.console import log_error

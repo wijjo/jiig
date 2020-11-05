@@ -10,14 +10,14 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Optional, List, Text, Dict, Sequence, Tuple, Iterator
 
-from jiig.internal import global_data, tool_options
-from jiig.internal.help_formatter import HelpFormatter, HelpSubTaskData
+from jiig.internal.globals import global_data, tool_options
+from jiig.internal.help_formatter import HelpFormatter, HelpSubTaskData, HelpArgument
 from jiig.internal.mapped_task import MappedTask
 from jiig.internal.registry import get_sorted_named_mapped_tasks, get_mapped_task_by_dest_name, \
     get_tool_tasks
 from jiig.utility.cli import append_dest_name, make_dest_name
 from jiig.utility.console import abort, log_message
-from jiig.utility.general import format_exception
+from jiig.utility.general import format_exception, make_list
 from jiig.utility.python import format_call_string
 
 # Expose Namespace, since it's pretty generic, so that other modules don't need
@@ -246,6 +246,18 @@ class _CommandLineParser:
             for mapped_task in sorted(mapped_tasks, key=lambda t: t.name)
         ]
 
+    @staticmethod
+    def _get_help_arguments(mapped_task: MappedTask) -> List[HelpArgument]:
+        return [
+            HelpArgument(argument.name,
+                         argument.description,
+                         argument.cardinality,
+                         argument.flags,
+                         argument.default_value,
+                         argument.choices)
+            for argument in sorted(mapped_task.arguments, key=lambda t: t.name)
+        ]
+
     def parse(self, *args, **kwargs) -> CommandLineData:
         """
         Parse the command line.
@@ -316,7 +328,7 @@ class _CommandLineParser:
             if argument.name in args:
                 raw_value = getattr(args, argument.name)
                 try:
-                    processed_value = argument.argument_type.process_data(raw_value)
+                    processed_value = argument.function(raw_value)
                     setattr(args, argument.name, processed_value)
                 except (TypeError, ValueError) as exc:
                     exception_messages.append(
@@ -339,18 +351,23 @@ class _CommandLineParser:
             sub_command_names,
             mapped_task.description,
             sub_tasks=self._get_help_sub_task_data(mapped_task.sub_tasks),
-            arguments=mapped_task.arguments,
+            arguments=self._get_help_arguments(mapped_task),
             notes=mapped_task.notes,
             footnote_dictionaries=[tool_options.common_footnotes, mapped_task.footnotes]
         )
         for argument in mapped_task.arguments:
             kwargs = {'dest': argument.name, 'help': argument.description}
+            if argument.type_cls == bool:
+                kwargs['action'] = 'store_true'
             if argument.cardinality:
                 kwargs['nargs'] = argument.cardinality
-            argument.argument_type.argparse_prepare(kwargs)
             if argument.default_value is not None:
                 kwargs['default'] = argument.default_value
-            parser.add_argument(*argument.flags, **kwargs)
+            if argument.choices:
+                kwargs['choices'] = argument.choices
+            if argument.default_value is not None:
+                kwargs['default'] = argument.default_value
+            parser.add_argument(*make_list(argument.flags), **kwargs)
         if mapped_task.sub_tasks:
             sub_group = parser.add_subparsers(dest=mapped_task.dest_name,
                                               metavar=POSITIONAL_ARGUMENTS_MARKER,

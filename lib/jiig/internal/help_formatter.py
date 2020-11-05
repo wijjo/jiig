@@ -4,11 +4,11 @@ import os
 from dataclasses import dataclass
 from shutil import get_terminal_size
 from textwrap import wrap
-from typing import Text, List, Tuple, Optional, Iterator, Dict
+from typing import Text, List, Tuple, Optional, Iterator, Dict, Any, Sequence
 
-from jiig.external.argument import ArgList
-from jiig.internal import NotesList
-from jiig.utility.footnotes import FootnoteDict, FootnoteBuilder
+from jiig.internal.constants import HelpTaskVisibility
+from jiig.external.typing import ArgName, Description, Cardinality, OptionFlagSpec
+from jiig.utility.footnotes import FootnoteDict, FootnoteBuilder, NotesList
 from jiig.utility.general import format_table
 
 
@@ -19,17 +19,21 @@ class Footnote:
         self.argument_dests: List[Text] = []
 
 
-class HelpTaskVisibility:
-    NORMAL = 0
-    AUXILIARY = 1
-    HIDDEN = 2
-
-
 @dataclass
 class HelpSubTaskData:
     name: Text
     visibility: int
     help_text: Text
+
+
+@dataclass
+class HelpArgument:
+    name: ArgName
+    description: Description = None,
+    cardinality: Cardinality = None,
+    flags: OptionFlagSpec = None,
+    default_value: Any = None,
+    choices: Sequence = None
 
 
 HELP_TABLE_INDENT_SIZE = 2
@@ -43,7 +47,7 @@ class HelpFormatter:
                  command_names: List[Text],
                  description: Text,
                  sub_tasks: List[HelpSubTaskData] = None,
-                 arguments: ArgList = None,
+                 arguments: List[HelpArgument] = None,
                  notes: NotesList = None,
                  footnote_dictionaries: List[Optional[FootnoteDict]] = None):
         """
@@ -65,8 +69,8 @@ class HelpFormatter:
         self.footnote_builder = FootnoteBuilder()
         if footnote_dictionaries:
             self.footnote_builder.add_footnotes(*footnote_dictionaries)
-        self._option_arguments: Optional[ArgList] = None
-        self._positional_arguments: Optional[ArgList] = None
+        self._option_arguments: Optional[List[HelpArgument]] = None
+        self._positional_arguments: Optional[List[HelpArgument]] = None
 
     class TableFormatter:
         def __init__(self, max_width: int):
@@ -91,13 +95,13 @@ class HelpFormatter:
                 yield f'{" " * HELP_TABLE_INDENT_SIZE}{line}'
 
     @property
-    def option_arguments(self) -> ArgList:
+    def option_arguments(self) -> List[HelpArgument]:
         if self._option_arguments is None:
             self._option_arguments = list(filter(lambda a: a.flags, self.arguments))
         return self._option_arguments
 
     @property
-    def positional_arguments(self) -> ArgList:
+    def positional_arguments(self) -> List[HelpArgument]:
         if self._positional_arguments is None:
             self._positional_arguments = list(filter(lambda a: not a.flags, self.arguments))
         return self._positional_arguments

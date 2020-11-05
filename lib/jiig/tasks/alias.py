@@ -2,56 +2,49 @@
 
 from typing import Text, Iterator, Iterable
 
-import jiig
+from jiig import task, sub_task, argument, TaskRunner
+from jiig.arg import text, boolean
 
 from jiig.internal.aliases import AliasManager, Alias
 from jiig.utility.general import format_table
 from jiig.utility.console import log_message, log_error
 
 
-@jiig.task(
-    'alias',
-    description='Manage command aliases',
-    auxiliary_task=True,
-)
-def task_alias(_runner: jiig.TaskRunner):
+@task('alias',
+      description='Manage command aliases',
+      auxiliary_task=True)
+def task_alias(_runner: TaskRunner):
     pass
 
 
-@jiig.sub_task(
-    task_alias, 'delete',
-    jiig.Arg('ALIAS', jiig.arg.String,
-             description='Name of alias to delete'),
-    description='Delete alias',
-)
-def task_alias_delete(runner: jiig.TaskRunner):
+@sub_task(task_alias, 'delete',
+          argument('ALIAS', text,
+                   description='Name of alias to delete'),
+          description='Delete alias')
+def task_alias_delete(runner: TaskRunner):
     with AliasManager() as manager:
         manager.delete_alias(runner.args.ALIAS)
 
 
-@jiig.sub_task(
-    task_alias, 'description',
-    jiig.Arg('ALIAS', jiig.arg.String,
-             description='Name of alias to update'),
-    jiig.Arg('DESCRIPTION', jiig.arg.String,
-             description='Alias description',
-             cardinality='+'),
-    description='Set alias description',
-)
-def task_alias_description(runner: jiig.TaskRunner):
+@sub_task(task_alias, 'description',
+          argument('ALIAS', text,
+                   description='Name of alias to update'),
+          argument('DESCRIPTION', text,
+                   description='Alias description',
+                   cardinality='+'),
+          description='Set alias description')
+def task_alias_description(runner: TaskRunner):
     with AliasManager() as manager:
         description = ' '.join(runner.args.DESCRIPTION)
         manager.update_alias(runner.args.ALIAS, description=description)
 
 
-@jiig.sub_task(
-    task_alias, 'list',
-    jiig.Arg('EXPAND_NAMES', jiig.arg.Boolean,
-             description='Display expanded paths in names',
-             flags=('-e', '--expand-names')),
-    description='List aliases',
-)
-def task_alias_list(runner: jiig.TaskRunner):
+@sub_task(task_alias, 'list',
+          argument('EXPAND_NAMES', boolean,
+                   description='Display expanded paths in names',
+                   flags=('-e', '--expand-names')),
+          description='List aliases')
+def task_alias_list(runner: TaskRunner):
     displayed_line_count = 0
     with AliasManager() as manager:
         for line in _format_aliases(manager.iterate_aliases(),
@@ -63,33 +56,29 @@ def task_alias_list(runner: jiig.TaskRunner):
         log_message('No aliases exist.')
 
 
-@jiig.sub_task(
-    task_alias, 'rename',
-    jiig.Arg('ALIAS', jiig.arg.String,
-             description='Existing alias name'),
-    jiig.Arg('ALIAS_NEW', jiig.arg.String,
-             description='New alias name'),
-    description='Rename alias',
-)
-def task_alias_rename(runner: jiig.TaskRunner):
+@sub_task(task_alias, 'rename',
+          argument('ALIAS', text,
+                   description='Existing alias name'),
+          argument('ALIAS_NEW', text,
+                   description='New alias name'),
+          description='Rename alias')
+def task_alias_rename(runner: TaskRunner):
     with AliasManager() as manager:
         manager.rename_alias(runner.args.ALIAS, runner.args.ALIAS_NEW)
 
 
-@jiig.sub_task(
-    task_alias, 'set',
-    jiig.Arg('DESCRIPTION', jiig.arg.String,
-             description='New alias description',
-             flags=('-d', '--description')),
-    jiig.Arg('ALIAS', jiig.arg.String,
-             description='Name of alias to create or update'),
-    jiig.Arg('COMMAND', jiig.arg.String,
-             description='Command with options and arguments'),
-    description='Create or update alias',
-    # The command to alias is fed as unparsed trailing arguments.
-    receive_trailing_arguments=True,
-)
-def task_alias_set(runner: jiig.TaskRunner):
+@sub_task(task_alias, 'set',
+          argument('DESCRIPTION', text,
+                   description='New alias description',
+                   flags=('-d', '--description')),
+          argument('ALIAS', text,
+                   description='Name of alias to create or update'),
+          argument('COMMAND', text,
+                   description='Command with options and arguments'),
+          description='Create or update alias',
+          # The command to alias is fed as unparsed trailing arguments.
+          receive_trailing_arguments=True)
+def task_alias_set(runner: TaskRunner):
     with AliasManager() as manager:
         if manager.resolve_alias(runner.args.ALIAS):
             manager.update_alias(runner.args.ALIAS,
@@ -101,14 +90,12 @@ def task_alias_set(runner: jiig.TaskRunner):
                                  description=runner.args.DESCRIPTION)
 
 
-@jiig.sub_task(
-    task_alias, 'show',
-    jiig.Arg('ALIASES', jiig.arg.String,
-             description='Alias name(s) to display',
-             cardinality='+'),
-    description='Display alias',
-)
-def task_alias_show(runner: jiig.TaskRunner):
+@sub_task(task_alias, 'show',
+          argument('ALIASES', text,
+                   description='Alias name(s) to display',
+                   cardinality='+'),
+          description='Display alias')
+def task_alias_show(runner: TaskRunner):
     def _generate_aliases() -> Iterator[Alias]:
         for name in runner.args.ALIASES:
             alias = manager.resolve_alias(name)

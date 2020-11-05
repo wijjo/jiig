@@ -1,7 +1,7 @@
 import os
 from typing import Text, Any, Dict, Optional, Union, List, Tuple
 
-from jiig.internal import global_data
+from jiig.internal.globals import global_data
 from jiig.utility.console import abort
 from jiig.utility.filesystem import chdir
 

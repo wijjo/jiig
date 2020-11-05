@@ -1,23 +1,15 @@
 """Date/time argument type, produces timestamp values."""
 
-from typing import Text, Optional, Any
-
 from jiig.utility.date_time import parse_time_interval
-from .argument_type import ArgumentType
+from jiig.external.argument import arg_type
 
 
-class Interval(ArgumentType):
+@arg_type(str)
+def interval(value: str) -> int:
+    """
+    Interval argument type function.
 
-    def __init__(self, default_value: Text = None):
-        """
-        DateTime constructor.
-
-        :param default_value: default date/time string value
-        """
-        super().__init__(default_value=default_value)
-
-    def process_data(self, data: Optional[Any]) -> Optional[Any]:
-        # Argparse should provide a string value.
-        if data is None:
-            return None
-        return parse_time_interval(data)
+    :param value: raw text value
+    :return: returned interval integer
+    """
+    return parse_time_interval(value)

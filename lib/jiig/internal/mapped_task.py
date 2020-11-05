@@ -1,14 +1,13 @@
-"""Data for a registered/mapped, task."""
+"""Data for a registered/mapped task."""
 
 import os
 import sys
 from dataclasses import dataclass, field
 from typing import Optional, Text, List
 
-from jiig.external.argument import ArgList
-from jiig.internal import NotesList
 from jiig.external.task_runner import TaskFunction
-from jiig.utility.footnotes import FootnoteDict
+from jiig.utility.footnotes import FootnoteDict, NotesList
+from .mapped_argument import MappedArgumentList
 
 
 @dataclass
@@ -25,7 +24,7 @@ class MappedTask:
     metavar: Text
     description: Text
     notes: NotesList
-    arguments: ArgList
+    arguments: MappedArgumentList
     footnotes: Optional[FootnoteDict]
     execution_tasks: List['MappedTask']
     help_visibility: int

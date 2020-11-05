@@ -6,7 +6,7 @@ import sys
 import traceback
 from typing import Text, List, Tuple, Optional, IO, Dict
 
-from jiig.internal import global_data
+from jiig.internal.globals import global_data
 from .console import abort, log_error, log_message
 from .filesystem import delete_folder, short_path
 from .process import run

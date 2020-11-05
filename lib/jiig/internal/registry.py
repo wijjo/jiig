@@ -1,13 +1,14 @@
 """Task and associated tool data registry."""
+from dataclasses import dataclass
+from typing import Text, Optional, List, Dict, Set, Iterator, Type, Any, Sequence
 
-from typing import Text, Optional, List, Dict, Set, Iterator, Sequence
-
-from jiig.arg.argument_type import ArgName, Description
-from jiig.external.argument import Arg, ArgList
-from jiig.external.task_runner import RunnerFactoryFunction, TaskFunction, TaskFunctionsSpec
-from jiig.internal import tool_options
+from jiig.internal.globals import tool_options
+from jiig.internal.constants import HelpTaskVisibility
+from jiig.internal.mapped_argument import MappedArgument, MappedArgumentList
 from jiig.internal.mapped_task import MappedTask
-from jiig.internal.help_formatter import HelpTaskVisibility
+from jiig.external.typing import ArgName, Description, \
+    ArgumentTypeFactoryFunction, ArgumentTypeConversionFunction
+from jiig.external.task_runner import RunnerFactoryFunction, TaskFunction, TaskFunctionsSpec
 from jiig.utility.cli import make_dest_name, make_metavar
 from jiig.utility.console import abort
 from jiig.utility.footnotes import FootnoteDict, NotesSpec
@@ -15,6 +16,20 @@ from jiig.utility.general import make_list
 
 
 # === Registered data
+
+
+@dataclass
+class RegisteredArgumentTypeFactoryFunction:
+    """Saved data for argument type factory function."""
+    function: ArgumentTypeFactoryFunction
+
+
+@dataclass
+class RegisteredArgumentTypeConversionFunction:
+    """Saved data for argument type conversion function."""
+    function: ArgumentTypeConversionFunction
+    type_cls: Type
+    default_value: Optional[Any]
 
 
 class _RegisteredData:
@@ -33,6 +48,24 @@ class _RegisteredData:
 
     # Names of tasks that are only shown when the ALL_TASKS option is used for help.
     hidden_task_names: Set[Text] = set()
+
+    # Argument type factory functions.
+    argument_type_factories: Dict[int, RegisteredArgumentTypeFactoryFunction] = {}
+
+    # Argument type conversion functions.
+    argument_type_conversions: Dict[int, RegisteredArgumentTypeConversionFunction] = {}
+
+
+def register_argument_type_factory(function: ArgumentTypeFactoryFunction):
+    reg_obj = RegisteredArgumentTypeFactoryFunction(function)
+    _RegisteredData.argument_type_factories[id(function)] = reg_obj
+
+
+def register_argument_type(function: ArgumentTypeConversionFunction,
+                           type_cls: Type,
+                           default_value: Any = None):
+    reg_obj = RegisteredArgumentTypeConversionFunction(function, type_cls, default_value)
+    _RegisteredData.argument_type_conversions[id(function)] = reg_obj
 
 
 def get_tool_tasks(include_hidden: bool = False) -> Iterator[MappedTask]:
@@ -78,10 +111,10 @@ def register_tool(name: Text = None,
         tool_options.set_common_footnotes(common_footnotes)
 
 
-class _MappedTaskDataGenerator:
-    def __init__(self, task_function: Optional[TaskFunction], arguments: List[Arg]):
+class _MappedTaskMerger:
+    def __init__(self, task_function: Optional[TaskFunction], arguments: Sequence[MappedArgument]):
         self.task_function = task_function
-        self.arguments: ArgList = arguments
+        self.arguments: MappedArgumentList = list(arguments)
         self.execution_tasks: List[MappedTask] = []
         self.parent_mapped_task: Optional[MappedTask] = None
         self.footnote_labels: List[Text] = []
@@ -184,16 +217,16 @@ class _MappedTaskDataGenerator:
 
         # Derive the help visibility from the auxiliary and hidden flags
         if hidden_task:
-            self.help_visibility = 2
+            self.help_visibility = HelpTaskVisibility.HIDDEN
         elif auxiliary_task:
-            self.help_visibility = 1
+            self.help_visibility = HelpTaskVisibility.AUXILIARY
 
 
 def register_task(task_function: TaskFunction,
                   name: ArgName = None,
                   parent: TaskFunction = None,
                   description: Description = None,
-                  arguments: Sequence[Arg] = None,
+                  arguments: Sequence[MappedArgument] = None,
                   dependencies: TaskFunctionsSpec = None,
                   receive_trailing_arguments: bool = False,
                   notes: NotesSpec = None,
@@ -202,14 +235,7 @@ def register_task(task_function: TaskFunction,
                   auxiliary_task: bool = False):
 
     # Merge and generate all the data needed for creating a mapped task.
-    argument_list: ArgList = []
-    if arguments:
-        for arg_spec in arguments:
-            if not isinstance(arg_spec, Arg):
-                raise abort(f'Argument specification is not an Arg class or instance.',
-                            arg_spec)
-            argument_list.append(arg_spec)
-    mt_data = _MappedTaskDataGenerator(task_function, argument_list)
+    mt_data = _MappedTaskMerger(task_function, arguments)
     mt_data.merge_parent(parent)
     mt_data.merge_dependencies(dependencies)
     mt_data.finalize_data(name, description, hidden_task, auxiliary_task)
@@ -267,3 +293,13 @@ def get_sorted_named_mapped_tasks() -> List[MappedTask]:
 
 def get_mapped_task_by_dest_name(dest_name: Text) -> Optional[MappedTask]:
     return _RegisteredData.mapped_tasks_by_dest_name.get(dest_name)
+
+
+def get_argument_type_factory(function: ArgumentTypeFactoryFunction
+                              ) -> Optional[RegisteredArgumentTypeFactoryFunction]:
+    return _RegisteredData.argument_type_factories.get(id(function))
+
+
+def get_argument_type_conversion(function: ArgumentTypeConversionFunction
+                                 ) -> Optional[RegisteredArgumentTypeConversionFunction]:
+    return _RegisteredData.argument_type_conversions.get(id(function))

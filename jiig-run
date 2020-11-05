@@ -29,13 +29,14 @@ if JIIG_ROOT in sys.path:
 
 from jiig.utility.init_file import ParamData, ParamList, ParamFolder, ParamFolderList, ParamLoader
 from jiig.external.task_runner import TaskRunner, RunnerData
-from jiig.internal import global_data, tool_options
+from jiig.internal.globals import global_data, tool_options
 from jiig.internal.aliases import AliasManager, expand_alias_name
 from jiig.internal.parser import pre_parse_command_line, parse_command_line, CommandLineData
 from jiig.internal.registry import get_mapped_task_by_dest_name, get_runner_factory
 from jiig.utility.cli import make_dest_name
 from jiig.utility.console import abort, log_message, print_call_stack
-from jiig.utility.python import build_virtual_environment, execute_source
+from jiig.utility.python import build_virtual_environment
+from jiig.utility.stream import open_text
 
 INIT_PARAM_TYPES = [
     ParamFolderList('LIB_FOLDERS', default_value=['lib']),
@@ -133,7 +134,9 @@ def load_tool(script_path: Text, init_params: Dict) -> ParamData:
     :param init_params: data loaded from init file
     """
     try:
-        script_symbols = execute_source(file=script_path)
+        script_symbols = {}
+        with open_text(file=script_path) as text_stream:
+            exec(text_stream.read(), script_symbols)
         # If no name was provided use the script base name.
         if not tool_options.name:
             tool_options.set_name(os.path.basename(script_path))

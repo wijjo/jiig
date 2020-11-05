@@ -4,7 +4,7 @@ import sys
 import traceback
 from typing import Any, Text, Set
 
-from jiig.internal import global_data
+from jiig.internal.globals import global_data
 from .general import format_exception
 
 MESSAGES_ISSUED_ONCE: Set[Text] = set()

@@ -5,15 +5,16 @@ Jiig task declaration support, including decorators.
 from inspect import isfunction
 from typing import Text
 
-from jiig.internal.registry import register_task, Description
+from jiig.internal.registry import register_task
+from jiig.external.typing import Description
 from jiig.external.task_runner import TaskFunction, TaskFunctionsSpec
 from jiig.utility.console import abort
 from jiig.utility.footnotes import FootnoteDict, NotesSpec
-from .argument import Arg
+from .argument import MappedArgument
 
 
 def task(name: Text,
-         *arguments: Arg,
+         *arguments: MappedArgument,
          description: Description = None,
          parent: TaskFunction = None,
          notes: NotesSpec = None,
@@ -69,7 +70,7 @@ def task(name: Text,
 
 def sub_task(parent: TaskFunction,
              name: Text,
-             *arguments: Arg,
+             *arguments: MappedArgument,
              description: Description = None,
              notes: NotesSpec = None,
              dependencies: TaskFunctionsSpec = None,

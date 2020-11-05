@@ -1,16 +1,16 @@
 """Boolean argument type."""
 
-from .argument_type import ArgumentType
+from jiig.external.argument import arg_type
 
 
-class Boolean(ArgumentType):
-    def __init__(self, default_value: bool = None):
-        """
-        Boolean constructor.
+@arg_type(bool)
+def boolean(value: bool) -> bool:
+    """
+    Boolean argument type function.
 
-        :param default_value: default value when not provided
-        """
-        super().__init__(default_value=default_value)
+    Argparse does the conversion, so this is a pass-through.
 
-    def argparse_prepare(self, params: dict):
-        params['action'] = 'store_true'
+    :param value: boolean value
+    :return: returned boolean value (same as input value)
+    """
+    return value

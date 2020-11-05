@@ -9,7 +9,7 @@ from typing import Text, List, Optional, Dict, Iterator, Any
 
 from thirdparty.gitignore_parser.gitignore_parser import parse_gitignore, prepare_ignore_patterns
 
-from jiig.internal import global_data
+from jiig.internal.globals import global_data
 from .console import abort, log_error, log_heading, log_message, log_warning
 from .general import make_list
 from .process import run

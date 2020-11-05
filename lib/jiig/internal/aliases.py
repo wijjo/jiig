@@ -12,7 +12,7 @@ import os
 from dataclasses import dataclass
 from typing import Text, List, Optional, Iterator, Any, Iterable, Dict
 
-from jiig.internal import global_data, tool_options
+from jiig.internal.globals import global_data, tool_options
 from jiig.internal.registry import get_mapped_task_by_dest_name
 from jiig.utility.cli import make_dest_name
 from jiig.utility.console import abort, log_error, log_message, log_warning

@@ -1,38 +1,33 @@
 """File path type."""
 
 import os
-from typing import Optional, Any, Text
 
-from .string import String
+from jiig.external.argument import arg_type_factory, arg_type
+from jiig.external.typing import ArgumentTypeConversionFunction
 
 
-class File(String):
+@arg_type_factory
+def file_path(must_exist: bool = False,
+              absolute: bool = False,
+              allow_folder: bool = False
+              ) -> ArgumentTypeConversionFunction:
+    """
+    File parameterized argument type function.
 
-    def __init__(self,
-                 default_value: Text = None,
-                 must_exist: bool = False,
-                 absolute: bool = False,
-                 allow_folder: bool = False):
-        """
-        File argument type constructor.
-
-        :param default_value: default path
-        :param must_exist: require that the file exists
-        :param absolute: convert to absolute path
-        """
-        self.must_exist = must_exist
-        self.absolute = absolute
-        self.allow_folder = allow_folder
-        super().__init__(default_value=default_value)
-
-    def process_data(self, data: Optional[Any]) -> Optional[Any]:
-        # Argparse should provide a string value.
-        path = os.path.expanduser(super().process_data(data))
+    :param must_exist: require that the file exists
+    :param absolute: convert to absolute path
+    :param allow_folder: allow a folder path if True
+    :return: parameterized closure function to perform checking and conversion
+    """
+    @arg_type
+    def file_path_inner(value: str) -> str:
+        path = os.path.expanduser(value)
         exists = os.path.exists(path)
-        if self.must_exist and not exists:
+        if must_exist and not exists:
             raise ValueError(f'File "{path}" does not exist.')
-        if exists and not self.allow_folder and not os.path.isfile(path):
+        if exists and not allow_folder and not os.path.isfile(path):
             raise ValueError(f'Path "{path}" exists but is not a file.')
-        if self.absolute:
+        if absolute:
             path = os.path.abspath(path)
         return path
+    return file_path_inner

@@ -2,35 +2,31 @@
 
 import os
 
-import jiig
-
-from jiig.internal import global_data
+from jiig import task, sub_task, TaskRunner, argument
+from jiig.arg import folder_path, text
+from jiig.internal.globals import global_data
 from jiig.utility.console import log_heading, log_message, abort
 from jiig.utility.filesystem import expand_template
 
 
-@jiig.task(
-    'task',
-    description='Manage task modules',
-    hidden_task=True,
-)
-def task_task(runner: jiig.TaskRunner):
+@task('task',
+      description='Manage task modules',
+      hidden_task=True)
+def task_task(runner: TaskRunner):
     if os.getcwd() == runner.params.CORE_ROOT:
         abort('Please run this command from an application folder.')
 
 
-@jiig.sub_task(
-    task_task, 'create',
-    jiig.Arg('OUTPUT_FOLDER', jiig.arg.Folder(must_exist=True),
-             description='Generated module(s) folder',
-             default_value='.',
-             flags='-o'),
-    jiig.Arg('NEW_TASK_NAME', jiig.arg.String,
-             description='Task/module name(s)',
-             cardinality='+'),
-    description='Create task module(s)',
-)
-def task_task_create(runner: jiig.TaskRunner):
+@sub_task(task_task, 'create',
+          argument('OUTPUT_FOLDER', folder_path(must_exist=True),
+                   description='Generated module(s) folder',
+                   default_value='.',
+                   flags='-o'),
+          argument('NEW_TASK_NAME', text,
+                   description='Task/module name(s)',
+                   cardinality='+'),
+          description='Create task module(s)')
+def task_task_create(runner: TaskRunner):
     log_heading(1, 'Create task module(s)')
     output_folder = runner.params.OUTPUT_FOLDER or os.getcwd()
     template_path = os.path.join(runner.params.JIIG_ROOT,
