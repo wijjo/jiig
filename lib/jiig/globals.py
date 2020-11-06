@@ -5,7 +5,7 @@ import re
 from dataclasses import dataclass, field
 from typing import List, Text
 
-from jiig.utility.footnotes import NotesList, FootnoteDict
+from jiig.typing import NotesList, NoteDict
 
 
 @dataclass
@@ -183,7 +183,7 @@ class _ToolOptions:
     _disable_dry_run: bool = False
     _disable_verbose: bool = False
     _notes: NotesList = field(default_factory=list)
-    _common_footnotes: FootnoteDict = field(default_factory=dict)
+    _common_footnotes: NoteDict = field(default_factory=dict)
 
     # --- Read access through public properties.
 
@@ -227,7 +227,7 @@ class _ToolOptions:
         return self._notes
 
     @property
-    def common_footnotes(self) -> FootnoteDict:
+    def common_footnotes(self) -> NoteDict:
         """Dictionary mapping footnote names to text."""
         return self._common_footnotes
 
@@ -274,7 +274,7 @@ class _ToolOptions:
         self._notes = value
 
     # noinspection PyAttributeOutsideInit
-    def set_common_footnotes(self, value: FootnoteDict):
+    def set_common_footnotes(self, value: NoteDict):
         """Set tool footnote dictionary."""
         self._common_footnotes = value
 

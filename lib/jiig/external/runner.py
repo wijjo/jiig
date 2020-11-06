@@ -4,7 +4,8 @@ Runner declaration support, including decorators.
 
 from typing import Callable
 
-from jiig.internal.registry import register_runner_factory, RunnerFactoryFunction
+from jiig.internal.registry import register_runner_factory
+from jiig.typing import RunnerFactoryFunction
 
 
 def runner_factory() -> Callable[[RunnerFactoryFunction], RunnerFactoryFunction]:

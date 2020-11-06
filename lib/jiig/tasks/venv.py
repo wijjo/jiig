@@ -2,9 +2,10 @@
 
 import os
 
-from jiig import task, sub_task, TaskRunner, argument
-from jiig.arg import boolean, text
-from jiig.internal.globals import global_data
+from jiig import arg, task, sub_task, TaskRunner, argument
+
+from jiig.globals import global_data
+
 from jiig.utility.console import abort, log_heading, log_message
 from jiig.utility.process import run
 from jiig.utility.python import build_virtual_environment, update_virtual_environment
@@ -19,7 +20,7 @@ def task_venv(runner: TaskRunner):
 
 
 @sub_task(task_venv, 'build',
-          argument('REBUILD_VENV', boolean,
+          argument('REBUILD_VENV', arg.boolean,
                    description='Force virtual environment rebuild',
                    flags='-r'),
           description='(Re-)Build the tool virtual environment')
@@ -59,7 +60,7 @@ def task_ipython(runner: TaskRunner):
 
 
 @sub_task(task_venv, 'pip',
-          argument('ARGS', text,
+          argument('ARGS', arg.text,
                    description='Pip command line arguments',
                    cardinality='*'),
           description='Run pip from virtual environment')
@@ -69,7 +70,7 @@ def task_pip(runner: TaskRunner):
 
 
 @sub_task(task_venv, 'python',
-          argument('ARGS', text,
+          argument('ARGS', arg.text,
                    description='Python command line arguments',
                    cardinality='*'),
           description='Run python from virtual environment')

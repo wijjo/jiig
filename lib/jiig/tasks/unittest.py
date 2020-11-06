@@ -4,9 +4,10 @@ import os
 import unittest
 from glob import glob
 
-from jiig import task, TaskRunner, argument
-from jiig.arg import text
-from jiig.internal.globals import global_data
+from jiig import arg, task, TaskRunner, argument
+
+from jiig.globals import global_data
+
 from jiig.utility.console import abort, log_error
 from jiig.utility.filesystem import check_folder_exists
 from jiig.utility.python import import_module_path
@@ -15,7 +16,7 @@ from jiig.utility.python import import_module_path
 # TODO: Support tool tests, e.g. with TOOL specifier option.
 @task(
     'unittest',
-    argument('TESTS', text,
+    argument('TESTS', arg.text,
              description='Unit test module name(s) to load and run (default: <all>)',
              cardinality='*'),
     hidden_task=True,

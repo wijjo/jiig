@@ -10,15 +10,16 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Optional, List, Text, Dict, Sequence, Tuple, Iterator
 
-from jiig.internal.globals import global_data, tool_options
-from jiig.internal.help_formatter import HelpFormatter, HelpSubTaskData, HelpArgument
-from jiig.internal.mapped_task import MappedTask
-from jiig.internal.registry import get_sorted_named_mapped_tasks, get_mapped_task_by_dest_name, \
-    get_tool_tasks
 from jiig.utility.cli import append_dest_name, make_dest_name
 from jiig.utility.console import abort, log_message
 from jiig.utility.general import format_exception, make_list
 from jiig.utility.python import format_call_string
+
+from jiig.globals import global_data, tool_options
+
+from .help_formatter import HelpFormatter, HelpSubTaskData, HelpArgument
+from .registry import get_sorted_named_mapped_tasks, get_mapped_task_by_dest_name, \
+    get_tool_tasks, RegisteredTask
 
 # Expose Namespace, since it's pretty generic, so that other modules don't need
 # to know about argparse.
@@ -189,7 +190,7 @@ class CommandLineData:
     # Trailing argument list, if captured. Used by `alias` command.
     trailing_args: List[Text]
     # Chosen mapped task, based on primary command name.
-    mapped_task: MappedTask
+    mapped_task: RegisteredTask
     # Help formatter map used by `help` command.
     help_formatters: Dict[Text, HelpFormatter]
 
@@ -240,14 +241,14 @@ class _CommandLineParser:
                                    global_data.cli_dest_name_separator)
 
     @staticmethod
-    def _get_help_sub_task_data(mapped_tasks: Iterator[MappedTask]) -> List[HelpSubTaskData]:
+    def _get_help_sub_task_data(mapped_tasks: Iterator[RegisteredTask]) -> List[HelpSubTaskData]:
         return [
             HelpSubTaskData(mapped_task.name, mapped_task.help_visibility, mapped_task.description)
             for mapped_task in sorted(mapped_tasks, key=lambda t: t.name)
         ]
 
     @staticmethod
-    def _get_help_arguments(mapped_task: MappedTask) -> List[HelpArgument]:
+    def _get_help_arguments(mapped_task: RegisteredTask) -> List[HelpArgument]:
         return [
             HelpArgument(argument.name,
                          argument.description,
@@ -341,7 +342,7 @@ class _CommandLineParser:
         return CommandLineData(args, trailing_args, mapped_task, help_formatters)
 
     def _prepare_parser_recursive(self,
-                                  mapped_task: MappedTask,
+                                  mapped_task: RegisteredTask,
                                   parser: ArgumentParser,
                                   command_names: List[Text],
                                   help_formatters: Dict[Text, HelpFormatter]):

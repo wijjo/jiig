@@ -2,7 +2,8 @@
 
 from typing import Text
 
-from jiig.internal.globals import global_data
+from jiig.globals import global_data
+
 from .console import log_error
 
 

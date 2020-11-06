@@ -1,9 +1,10 @@
 import os
 from typing import Text, Any, Dict, Optional, Union, List, Tuple
 
-from jiig.internal.globals import global_data
-from jiig.utility.console import abort
-from jiig.utility.filesystem import chdir
+from jiig.globals import global_data
+
+from .console import abort
+from .filesystem import chdir
 
 
 class NoDefault:

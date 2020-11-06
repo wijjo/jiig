@@ -1,17 +1,30 @@
-"""Data for a registered/mapped task."""
+"""Registry classes."""
 
 import os
 import sys
 from dataclasses import dataclass, field
-from typing import Optional, Text, List
+from typing import Type, Optional, Any, List, Text
 
-from jiig.external.task_runner import TaskFunction
-from jiig.utility.footnotes import FootnoteDict, NotesList
-from .mapped_argument import MappedArgumentList
+from jiig.typing import TaskFunction, ArgumentTypeFactoryFunction, ArgumentTypeConversionFunction, \
+    ArgumentList, NotesList, NoteDict
 
 
 @dataclass
-class MappedTask:
+class RegisteredArgumentTypeFactoryFunction:
+    """Saved data for argument type factory function."""
+    function: ArgumentTypeFactoryFunction
+
+
+@dataclass
+class RegisteredArgumentTypeConversionFunction:
+    """Saved data for argument type conversion function."""
+    function: ArgumentTypeConversionFunction
+    type_cls: Type
+    default_value: Optional[Any]
+
+
+@dataclass
+class RegisteredTask:
     """
     Externally-visible task that gets mapped into the command line interface.
 
@@ -19,21 +32,21 @@ class MappedTask:
     """
     task_function: TaskFunction
     name: Text
-    parent: Optional['MappedTask']
+    parent: Optional['RegisteredTask']
     dest_name: Text
     metavar: Text
     description: Text
     notes: NotesList
-    arguments: MappedArgumentList
-    footnotes: Optional[FootnoteDict]
-    execution_tasks: List['MappedTask']
+    arguments: ArgumentList
+    footnotes: Optional[NoteDict]
+    execution_tasks: List['RegisteredTask']
     help_visibility: int
     # True on any task that accepts trailing arguments.
     receive_trailing_arguments: bool = False
     # Set to True when any child at any level has receive_trailing_arguments==True.
     capture_trailing_arguments: bool = False
     # Sub-tasks added when discovered child tasks reference this as the parent.
-    sub_tasks: List['MappedTask'] = field(default_factory=list)
+    sub_tasks: List['RegisteredTask'] = field(default_factory=list)
 
     @property
     def folder(self) -> Text:

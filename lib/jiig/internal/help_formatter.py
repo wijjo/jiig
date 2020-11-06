@@ -6,10 +6,12 @@ from shutil import get_terminal_size
 from textwrap import wrap
 from typing import Text, List, Tuple, Optional, Iterator, Dict, Any, Sequence
 
-from jiig.internal.constants import HelpTaskVisibility
-from jiig.external.typing import ArgName, Description, Cardinality, OptionFlagSpec
-from jiig.utility.footnotes import FootnoteDict, FootnoteBuilder, NotesList
+from jiig.typing import ArgName, Description, Cardinality, OptionFlagSpec, NotesList, NoteDict
+
+from jiig.utility.footnotes import FootnoteBuilder
 from jiig.utility.general import format_table
+
+from jiig.constants import HelpTaskVisibility
 
 
 class Footnote:
@@ -49,7 +51,7 @@ class HelpFormatter:
                  sub_tasks: List[HelpSubTaskData] = None,
                  arguments: List[HelpArgument] = None,
                  notes: NotesList = None,
-                 footnote_dictionaries: List[Optional[FootnoteDict]] = None):
+                 footnote_dictionaries: List[Optional[NoteDict]] = None):
         """
         Help formatter constructor.
 

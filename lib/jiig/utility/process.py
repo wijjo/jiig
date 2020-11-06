@@ -5,7 +5,8 @@ import shlex
 import subprocess
 from typing import Text, List, Dict, Optional
 
-from jiig.internal.globals import global_data
+from jiig.globals import global_data
+
 from .console import abort, log_message
 
 # Operators to leave unchanged when quoting shell arguments.

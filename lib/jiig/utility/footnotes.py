@@ -12,9 +12,9 @@ Labels may be any sequence of letters or numbers.
 
 import os
 import re
-from typing import Text, List, Optional, Iterator, Sequence, Dict, Union
+from typing import Text, List, Optional, Iterator, Sequence, Dict
 
-FootnoteDict = Dict[Text, Text]
+from jiig.typing import NoteDict
 
 # noinspection RegExpRedundantEscape
 TRAILING_FOOTNOTE_REFERENCES_REGEX = re.compile(r'((?:\[\w*\]\s*)+)$')
@@ -23,13 +23,13 @@ TRAILING_FOOTNOTE_REFERENCES_REGEX = re.compile(r'((?:\[\w*\]\s*)+)$')
 class FootnoteBuilder:
     """Scrapes footnote labels from text blocks."""
 
-    def __init__(self, *footnotes: FootnoteDict):
+    def __init__(self, *footnotes: NoteDict):
         self.labels: List[Text] = []
         self.context_labels: Dict[Text, List[Text]] = {}
-        self.footnotes: FootnoteDict = {}
+        self.footnotes: NoteDict = {}
         self.add_footnotes(*footnotes)
 
-    def add_footnotes(self, *footnotes: Optional[FootnoteDict]):
+    def add_footnotes(self, *footnotes: Optional[NoteDict]):
         for footnote_dictionary in footnotes:
             if footnote_dictionary:
                 self.footnotes.update(footnote_dictionary)
@@ -77,7 +77,3 @@ class FootnoteBuilder:
                     ','.join([f'[{label_num}]'] + (self.context_labels.get(label) or [])),
                     self.footnotes[label].strip()
                 ])
-
-
-NotesSpec = Union[Text, List[Text]]
-NotesList = List[Text]

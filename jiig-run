@@ -29,7 +29,7 @@ if JIIG_ROOT in sys.path:
 
 from jiig.utility.init_file import ParamData, ParamList, ParamFolder, ParamFolderList, ParamLoader
 from jiig.external.task_runner import TaskRunner, RunnerData
-from jiig.internal.globals import global_data, tool_options
+from jiig.globals import global_data, tool_options
 from jiig.internal.aliases import AliasManager, expand_alias_name
 from jiig.internal.parser import pre_parse_command_line, parse_command_line, CommandLineData
 from jiig.internal.registry import get_mapped_task_by_dest_name, get_runner_factory

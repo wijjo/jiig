@@ -3,9 +3,10 @@
 import os
 from typing import Text
 
-from jiig import task, sub_task, TaskRunner, argument
-from jiig.arg import boolean, text, folder_path
-from jiig.internal.globals import global_data
+from jiig import arg, task, sub_task, TaskRunner, argument
+
+from jiig.globals import global_data
+
 from jiig.utility.console import log_heading, abort
 from jiig.utility.filesystem import expand_template_folder
 
@@ -32,13 +33,13 @@ def expand_tool_template(runner: TaskRunner, template_name: Text):
 
 
 @sub_task(task_tool, 'project',
-          argument('OVERWRITE', boolean,
+          argument('OVERWRITE', arg.boolean,
                    description='Overwrite target files',
                    flags='-o'),
-          argument('TOOL_NAME', text,
+          argument('TOOL_NAME', arg.text,
                    description='Tool name (default: <folder name>)',
                    flags='-n'),
-          argument('TOOL_FOLDER', folder_path,
+          argument('TOOL_FOLDER', arg.folder_path,
                    description='Generated tool output folder',
                    default_value='.',
                    cardinality='?'),
@@ -48,13 +49,13 @@ def task_tool_project(runner: TaskRunner):
 
 
 @sub_task(task_tool, 'script',
-          argument('OVERWRITE', boolean,
+          argument('OVERWRITE', arg.boolean,
                    description='Overwrite existing script',
                    flags='-o'),
-          argument('TOOL_NAME', text,
+          argument('TOOL_NAME', arg.text,
                    description='Tool name (default: <folder name>)',
                    flags='-n'),
-          argument('TOOL_FOLDER', folder_path,
+          argument('TOOL_FOLDER', arg.folder_path,
                    description='Generated tool output folder',
                    default_value='.',
                    cardinality='?'),

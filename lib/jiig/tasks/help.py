@@ -1,14 +1,13 @@
 """Help task."""
 
-from jiig import task, argument, TaskRunner
-from jiig.arg import boolean, text
+from jiig import arg, task, argument, TaskRunner
 
 
 @task('help',
-      argument('ALL_TASKS', boolean,
+      argument('ALL_TASKS', arg.boolean,
                description='Show all tasks, including hidden ones',
                flags=('-a', '--all')),
-      argument('HELP_NAMES', text,
+      argument('HELP_NAMES', arg.text,
                description='Command task name(s) or empty for top level help',
                cardinality='*'),
       description='Display help screen',

@@ -5,9 +5,9 @@ Argument types for declarations.
 import inspect
 from typing import Any, Union, Type, Sequence, Callable
 
-from jiig.external.typing import ArgumentTypeConversionFunction, ArgumentTypeFactoryFunction, \
-    ArgumentTypeFactoryOrConversionFunction, ArgName, OptionFlagSpec, Cardinality, Description
-from jiig.internal.mapped_argument import MappedArgument
+from jiig.typing import ArgumentTypeConversionFunction, ArgumentTypeFactoryFunction, \
+    ArgumentTypeFactoryOrConversionFunction, ArgName, OptionFlagSpec, \
+    Cardinality, Description, Argument
 from jiig.internal.registry import register_argument_type_factory, register_argument_type, \
     get_argument_type_factory, get_argument_type_conversion, \
     RegisteredArgumentTypeConversionFunction
@@ -89,7 +89,7 @@ def argument(name: ArgName,
              positional: bool = False,
              default_value: Any = None,
              choices: Sequence = None,
-             ) -> MappedArgument:
+             ) -> Argument:
     """
     Factory function to create an argument for @task() or @sub_task().
 
@@ -145,12 +145,12 @@ def argument(name: ArgName,
         if any([not isinstance(f, str) or not f.startswith('-') for f in final_flags]):
             _type_error('bad flags', flags)
 
-    return MappedArgument(name,
-                          conversion_function_data.type_cls,
-                          conversion_function_data.function,
-                          description=final_description,
-                          cardinality=cardinality,
-                          flags=final_flags,
-                          positional=positional,
-                          default_value=final_default_value,
-                          choices=choices)
+    return Argument(name,
+                    conversion_function_data.type_cls,
+                    conversion_function_data.function,
+                    description=final_description,
+                    cardinality=cardinality,
+                    flags=final_flags,
+                    positional=positional,
+                    default_value=final_default_value,
+                    choices=choices)

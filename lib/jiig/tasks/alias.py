@@ -2,10 +2,10 @@
 
 from typing import Text, Iterator, Iterable
 
-from jiig import task, sub_task, argument, TaskRunner
-from jiig.arg import text, boolean
+from jiig import arg, task, sub_task, argument, TaskRunner
 
 from jiig.internal.aliases import AliasManager, Alias
+
 from jiig.utility.general import format_table
 from jiig.utility.console import log_message, log_error
 
@@ -18,7 +18,7 @@ def task_alias(_runner: TaskRunner):
 
 
 @sub_task(task_alias, 'delete',
-          argument('ALIAS', text,
+          argument('ALIAS', arg.text,
                    description='Name of alias to delete'),
           description='Delete alias')
 def task_alias_delete(runner: TaskRunner):
@@ -27,9 +27,9 @@ def task_alias_delete(runner: TaskRunner):
 
 
 @sub_task(task_alias, 'description',
-          argument('ALIAS', text,
+          argument('ALIAS', arg.text,
                    description='Name of alias to update'),
-          argument('DESCRIPTION', text,
+          argument('DESCRIPTION', arg.text,
                    description='Alias description',
                    cardinality='+'),
           description='Set alias description')
@@ -40,7 +40,7 @@ def task_alias_description(runner: TaskRunner):
 
 
 @sub_task(task_alias, 'list',
-          argument('EXPAND_NAMES', boolean,
+          argument('EXPAND_NAMES', arg.boolean,
                    description='Display expanded paths in names',
                    flags=('-e', '--expand-names')),
           description='List aliases')
@@ -57,9 +57,9 @@ def task_alias_list(runner: TaskRunner):
 
 
 @sub_task(task_alias, 'rename',
-          argument('ALIAS', text,
+          argument('ALIAS', arg.text,
                    description='Existing alias name'),
-          argument('ALIAS_NEW', text,
+          argument('ALIAS_NEW', arg.text,
                    description='New alias name'),
           description='Rename alias')
 def task_alias_rename(runner: TaskRunner):
@@ -68,12 +68,12 @@ def task_alias_rename(runner: TaskRunner):
 
 
 @sub_task(task_alias, 'set',
-          argument('DESCRIPTION', text,
+          argument('DESCRIPTION', arg.text,
                    description='New alias description',
                    flags=('-d', '--description')),
-          argument('ALIAS', text,
+          argument('ALIAS', arg.text,
                    description='Name of alias to create or update'),
-          argument('COMMAND', text,
+          argument('COMMAND', arg.text,
                    description='Command with options and arguments'),
           description='Create or update alias',
           # The command to alias is fed as unparsed trailing arguments.
@@ -91,7 +91,7 @@ def task_alias_set(runner: TaskRunner):
 
 
 @sub_task(task_alias, 'show',
-          argument('ALIASES', text,
+          argument('ALIASES', arg.text,
                    description='Alias name(s) to display',
                    cardinality='+'),
           description='Display alias')

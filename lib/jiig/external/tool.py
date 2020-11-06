@@ -4,7 +4,7 @@ Jiig tool declaration support.
 
 from typing import Text
 from jiig.internal.registry import register_tool
-from jiig.utility.footnotes import FootnoteDict, NotesSpec
+from jiig.typing import NoteDict, NotesSpec
 
 
 def tool(name: Text = None,
@@ -15,7 +15,7 @@ def tool(name: Text = None,
          disable_debug: bool = None,
          disable_dry_run: bool = None,
          disable_verbose: bool = None,
-         common_footnotes: FootnoteDict = None):
+         common_footnotes: NoteDict = None):
     """
     Declare tool options and metadata.
 

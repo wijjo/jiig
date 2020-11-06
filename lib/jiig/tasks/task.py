@@ -2,9 +2,10 @@
 
 import os
 
-from jiig import task, sub_task, TaskRunner, argument
-from jiig.arg import folder_path, text
-from jiig.internal.globals import global_data
+from jiig import arg, task, sub_task, TaskRunner, argument
+
+from jiig.globals import global_data
+
 from jiig.utility.console import log_heading, log_message, abort
 from jiig.utility.filesystem import expand_template
 
@@ -18,11 +19,11 @@ def task_task(runner: TaskRunner):
 
 
 @sub_task(task_task, 'create',
-          argument('OUTPUT_FOLDER', folder_path(must_exist=True),
+          argument('OUTPUT_FOLDER', arg.folder_path(must_exist=True),
                    description='Generated module(s) folder',
                    default_value='.',
                    flags='-o'),
-          argument('NEW_TASK_NAME', text,
+          argument('NEW_TASK_NAME', arg.text,
                    description='Task/module name(s)',
                    cardinality='+'),
           description='Create task module(s)')

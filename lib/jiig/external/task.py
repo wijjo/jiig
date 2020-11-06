@@ -6,21 +6,18 @@ from inspect import isfunction
 from typing import Text
 
 from jiig.internal.registry import register_task
-from jiig.external.typing import Description
-from jiig.external.task_runner import TaskFunction, TaskFunctionsSpec
+from jiig.typing import Description, TaskFunction, TaskFunctionsSpec, Argument, NoteDict, NotesSpec
 from jiig.utility.console import abort
-from jiig.utility.footnotes import FootnoteDict, NotesSpec
-from .argument import MappedArgument
 
 
 def task(name: Text,
-         *arguments: MappedArgument,
+         *arguments: Argument,
          description: Description = None,
          parent: TaskFunction = None,
          notes: NotesSpec = None,
          dependencies: TaskFunctionsSpec = None,
          receive_trailing_arguments: bool = False,
-         footnotes: FootnoteDict = None,
+         footnotes: NoteDict = None,
          hidden_task: bool = False,
          auxiliary_task: bool = False):
     """
@@ -70,12 +67,12 @@ def task(name: Text,
 
 def sub_task(parent: TaskFunction,
              name: Text,
-             *arguments: MappedArgument,
+             *arguments: Argument,
              description: Description = None,
              notes: NotesSpec = None,
              dependencies: TaskFunctionsSpec = None,
              receive_trailing_arguments: bool = False,
-             footnotes: FootnoteDict = None,
+             footnotes: NoteDict = None,
              hidden_task: bool = False,
              auxiliary_task: bool = False):
     """

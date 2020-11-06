@@ -3,7 +3,7 @@
 from typing import Text, Optional
 
 from jiig.external.argument import arg_type_factory, arg_type
-from jiig.external.typing import ArgumentTypeConversionFunction
+from jiig.typing import ArgumentTypeConversionFunction
 
 
 @arg_type_factory
