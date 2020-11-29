@@ -4,9 +4,8 @@ import sys
 import traceback
 from typing import Any, Text, Set
 
-from jiig.globals import global_data
-
-from .general import format_exception
+from .general import format_message_lines
+from . import options
 
 MESSAGES_ISSUED_ONCE: Set[Text] = set()
 
@@ -21,40 +20,19 @@ def log_message(text: Any, *args, **kwargs):
        debug           True if requires DEBUG mode
        issue_once_tag  unique tag to prevent issuing the message more than once
     """
-
-    tag = kwargs.pop('tag', None)
     verbose = kwargs.pop('verbose', None)
     debug = kwargs.pop('debug', None)
     issue_once_tag = kwargs.pop('issue_once_tag', None)
-    if verbose and not global_data.verbose:
+    if verbose and not options.VERBOSE:
         return
-    if debug and not global_data.debug:
+    if debug and not options.DEBUG:
         return
     if issue_once_tag:
         if issue_once_tag in MESSAGES_ISSUED_ONCE:
             return
         MESSAGES_ISSUED_ONCE.add(issue_once_tag)
-    lines = []
-    if text:
-        if isinstance(text, (list, tuple)):
-            lines.extend(text)
-        else:
-            lines.append(str(text))
-    for value in args:
-        if isinstance(value, Exception):
-            value = f"Exception: {format_exception(value)}')"
-        lines.append('  {}'.format(value))
-    for key, value in kwargs.items():
-        if isinstance(value, (list, tuple)):
-            for idx, sub_value in enumerate(value):
-                lines.append('  {}[{}]: {}'.format(key, idx + 1, sub_value))
-        else:
-            lines.append('  {}: {}'.format(key, value))
-    for line in lines:
-        if tag:
-            print('{}: {}'.format(tag.upper(), line))
-        else:
-            print(line)
+    for line in format_message_lines(text, *args, **kwargs):
+        print(line)
 
 
 def print_call_stack(skip: int = None,
@@ -77,7 +55,7 @@ def abort(text: Any, *args, **kwargs):
     skip = kwargs.pop('skip', 0)
     kwargs['tag'] = 'FATAL'
     log_message(text, *args, **kwargs)
-    if global_data.debug:
+    if options.DEBUG:
         print_call_stack(skip=skip + 2)
     sys.exit(255)
 

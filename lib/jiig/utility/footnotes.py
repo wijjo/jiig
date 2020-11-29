@@ -12,9 +12,11 @@ Labels may be any sequence of letters or numbers.
 
 import os
 import re
-from typing import Text, List, Optional, Iterator, Sequence, Dict
+from typing import Text, List, Optional, Iterator, Sequence, Dict, Union
 
-from jiig.typing import NoteDict
+NotesSpec = Union[Text, List[Text]]
+NotesList = List[Text]
+NoteDict = Dict[Text, Text]
 
 # noinspection RegExpRedundantEscape
 TRAILING_FOOTNOTE_REFERENCES_REGEX = re.compile(r'((?:\[\w*\]\s*)+)$')

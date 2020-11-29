@@ -175,7 +175,7 @@ def load_json_file_stack(file_name: Text, folder: Text = None) -> Dict:
                                           f' for "{key}" in "{path}".')
                         elif isinstance(value, dict):
                             if isinstance(data[key], dict):
-                                data[key].update(value)
+                                data[key].write_data(value)
                             else:
                                 log_error(f'Ignoring non-dictionary value'
                                           f' for "{key}" in "{path}".')

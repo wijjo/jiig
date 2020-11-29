@@ -2,37 +2,37 @@
 
 import os
 
-from jiig import arg, task, sub_task, TaskRunner, argument
-
-from jiig.globals import global_data
+import jiig
 
 from jiig.utility.console import log_heading, log_message, abort
 from jiig.utility.filesystem import expand_template
 
 
-@task('task',
-      description='Manage task modules',
-      hidden_task=True)
-def task_task(runner: TaskRunner):
+@jiig.task('task',
+           description='Manage task modules',
+           hidden_task=True)
+def task_task(runner: jiig.TaskRunner):
     if os.getcwd() == runner.params.CORE_ROOT:
         abort('Please run this command from an application folder.')
 
 
-@sub_task(task_task, 'create',
-          argument('OUTPUT_FOLDER', arg.folder_path(must_exist=True),
-                   description='Generated module(s) folder',
-                   default_value='.',
-                   flags='-o'),
-          argument('NEW_TASK_NAME', arg.text,
-                   description='Task/module name(s)',
-                   cardinality='+'),
-          description='Create task module(s)')
-def task_task_create(runner: TaskRunner):
+@jiig.sub_task(task_task,
+               'create',
+               jiig.option('OUTPUT_FOLDER',
+                           ('-o', '--output-folder'),
+                           jiig.adapters.folder_path,
+                           description='Generated module(s) folder',
+                           default_value='.'),
+               jiig.argument('NEW_TASK_NAME',
+                             description='Task/module name(s)',
+                             cardinality='+'),
+               description='Create task module(s)')
+def task_task_create(runner: jiig.TaskRunner):
     log_heading(1, 'Create task module(s)')
     output_folder = runner.params.OUTPUT_FOLDER or os.getcwd()
     template_path = os.path.join(runner.params.JIIG_ROOT,
-                                 global_data.templates_folder,
-                                 global_data.task_template)
+                                 runner.params.JIIG_TEMPLATES_FOLDER,
+                                 runner.params.JIIG_TASK_TEMPLATE)
     for task_name in runner.args.NEW_TASK_NAME:
         module_name = f'{task_name}.py'
         module_path = os.path.join(output_folder, module_name)

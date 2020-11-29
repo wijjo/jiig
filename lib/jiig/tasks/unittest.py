@@ -4,9 +4,7 @@ import os
 import unittest
 from glob import glob
 
-from jiig import arg, task, TaskRunner, argument
-
-from jiig.globals import global_data
+import jiig
 
 from jiig.utility.console import abort, log_error
 from jiig.utility.filesystem import check_folder_exists
@@ -14,16 +12,15 @@ from jiig.utility.python import import_module_path
 
 
 # TODO: Support tool tests, e.g. with TOOL specifier option.
-@task(
+@jiig.task(
     'unittest',
-    argument('TESTS', arg.text,
-             description='Unit test module name(s) to load and run (default: <all>)',
-             cardinality='*'),
+    jiig.argument('TESTS',
+                  description='Unit test module name(s) to load/run (default: <all>)',
+                  cardinality='*'),
     hidden_task=True,
-    description='Run unit tests using Python standard library unittest module',
-)
-def task_unittest(runner: TaskRunner):
-    test_root = runner.params.TEST_ROOT or global_data.default_test_folder
+    description='Run unit tests using Python standard library unittest module')
+def task_unittest(runner: jiig.TaskRunner):
+    test_root = runner.params.TEST_ROOT or runner.params.DEFAULT_TEST_FOLDER
     check_folder_exists(test_root)
     module_map = {
         os.path.splitext(os.path.basename(file_path))[0]: file_path

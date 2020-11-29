@@ -2,10 +2,39 @@
 One-stop-shopping for commonly-needed public symbols.
 """
 
-from jiig.external.task_runner import RunnerData, TaskRunner
-from jiig.external.tool import tool
-from jiig.external.task import task, sub_task
-from jiig.external.runner import runner_factory
-from jiig.external.argument import argument, arg_type
-from .typing import Cardinality, Description, Argument
-from . import arg, scanner, tasks, utility
+# Public task runner data types.
+from .task_runner import \
+    RunnerData, \
+    TaskRunner
+
+# Public declaration functions, including argument and option functions, plus
+# tool, task, and runner factory decorators.
+from .declarations import \
+    argument, \
+    bool_option, \
+    option, \
+    runner_factory, \
+    sub_task, \
+    task, \
+    tool
+
+# Public registry data types.
+from .registry.data import \
+    ArgName, \
+    Argument, \
+    ArgumentAdapter, \
+    Cardinality, \
+    Description, \
+    OptionFlagSpec, \
+    RegisteredTask, \
+    RegisteredTool, \
+    RunnerFactoryFunction, \
+    TaskFunction, \
+    TaskFunctionsSpec
+
+# Public packages.
+from . import \
+    adapters, \
+    scanner, \
+    tasks, \
+    utility

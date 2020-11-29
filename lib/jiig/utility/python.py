@@ -6,22 +6,21 @@ import sys
 import traceback
 from typing import Text, List, Tuple, Optional, IO, Dict
 
-from jiig.globals import global_data
-
 from .console import abort, log_error, log_message
 from .filesystem import delete_folder, short_path
+from .options import DEBUG
 from .process import run
 from .stream import open_text
 
 
-def format_call_string(name: Text, *args, **kwargs) -> Text:
+def format_call_string(call_name: Text, *args, **kwargs) -> Text:
     parts = []
     if args:
         parts.append(str(list(args))[1:-1])
     if kwargs:
         parts.append(str(kwargs)[1:-1])
     arg_body = ', '.join(parts)
-    return f'{name}({arg_body})'
+    return f'{call_name}({arg_body})'
 
 
 def import_module_path(module_name: Text, module_path: Text):
@@ -82,11 +81,11 @@ def import_modules_from_folder(folder: Text,
                 if retry:
                     to_retry.append((module_name, module_path))
                 exceptions.append((module_name, module_path, exc))
-                if global_data.debug:
+                if DEBUG:
                     raise
             except Exception as exc:
                 exceptions.append((module_name, module_path, exc))
-                if global_data.debug:
+                if DEBUG:
                     raise
         to_import = []
         if to_retry:

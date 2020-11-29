@@ -1,8 +1,6 @@
 import os
 from typing import Text, Any, Dict, Optional, Union, List, Tuple
 
-from jiig.globals import global_data
-
 from .console import abort
 from .filesystem import chdir
 
@@ -36,7 +34,7 @@ class Param:
 
         :param message: error message
         """
-        abort(f'{global_data.init_file_name}: {self.name}: {message}')
+        abort(f'init file: {self.name}: {message}')
 
     def merge_payload_value(self, payload: ParamPayload, value: Any):
         """
@@ -75,6 +73,21 @@ class ParamString(Param):
             payload.value = value
         else:
             self.error(f'Value is not a string: {value}')
+
+
+class ParamBoolean(Param):
+    """Parameter with a boolean value."""
+
+    def __init__(self,
+                 name: Text,
+                 default_value: Any = NoDefault):
+        super().__init__(name, default_value=default_value)
+
+    def merge_payload_value(self, payload: ParamPayload, value: bool):
+        if isinstance(value, bool):
+            payload.value = value
+        else:
+            self.error(f'Value is not a boolean: {value}')
 
 
 class ParamFolder(ParamString):
@@ -140,7 +153,7 @@ class ParamList(Param):
                 payload.value.extend((
                     item for item in list_value
                     if item not in self.unique_values))
-                self.unique_values.update(list_value)
+                self.unique_values.write_data(list_value)
             else:
                 payload.value.extend(list_value)
 
@@ -204,25 +217,24 @@ class ParamLoader:
         :param path: path of init file to load
         """
         # Be forgiving about missing files. Do nothing.
-        if not os.path.isfile(path):
-            return
-        # Change the work folder to properly handle relative paths.
-        with chdir(os.path.dirname(path), quiet=True):
-            symbols = {}
-            try:
-                with open(os.path.basename(path), encoding='utf-8') as init_file:
-                    init_text = init_file.read()
-            except (IOError, OSError) as exc:
-                abort('Unable to read configuration file.',
-                      file=os.path.basename(path),
-                      exception=exc)
-            exec(init_text, symbols)
-            for name, value in symbols.items():
-                if name and name[0].isupper():
-                    if name not in self._params:
-                        self._params[name] = Param(name)
-                        self._payloads[name] = ParamPayload()
-                    if value is not None:
-                        self._params[name].merge_payload_value(self._payloads[name], value)
-            for name, payload in self._payloads.items():
-                self._params[name].finalize_payload(payload)
+        if os.path.isfile(path):
+            # Change the work folder to properly handle relative paths.
+            with chdir(os.path.dirname(path), quiet=True):
+                symbols = {}
+                try:
+                    with open(os.path.basename(path), encoding='utf-8') as init_file:
+                        init_text = init_file.read()
+                except (IOError, OSError) as exc:
+                    abort('Unable to read configuration file.',
+                          file=os.path.basename(path),
+                          exception=exc)
+                exec(init_text, symbols)
+                for name, value in symbols.items():
+                    if name and name[0].isupper():
+                        if name not in self._params:
+                            self._params[name] = Param(name)
+                            self._payloads[name] = ParamPayload()
+                        if value is not None:
+                            self._params[name].merge_payload_value(self._payloads[name], value)
+        for name, payload in self._payloads.items():
+            self._params[name].finalize_payload(payload)

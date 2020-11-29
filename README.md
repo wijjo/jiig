@@ -54,8 +54,8 @@ An optional `init.jiig` file configures the following information for one or
 more Jiig tools in a folder.
 
 * LIB_FOLDERS: Library folders for access to additional modules.
-* VENV_ROOT: Virtual environment root folder, if a virtual environment is
-  needed. Jiig will automatically build the environment with dependencies.
+* VENV_ROOT: Virtual environment root folder, defaults to 'venv'.
+* VENV_ENABLED: Enables virtual environment when True.
 * PIP_PACKAGES: Pip package names for installing in the virtual environment.
 
 Paths should be relative, allowing the file to be part of a source repository.

@@ -1,6 +1,7 @@
 """Path manipulation utilities."""
 
 import os
+import re
 import stat
 from contextlib import contextmanager
 from glob import glob
@@ -9,11 +10,18 @@ from typing import Text, List, Optional, Dict, Iterator, Any
 
 from thirdparty.gitignore_parser.gitignore_parser import parse_gitignore, prepare_ignore_patterns
 
-from jiig.globals import global_data
-
 from .console import abort, log_error, log_heading, log_message, log_warning
 from .general import make_list
+from .options import DRY_RUN
 from .process import run
+
+REMOTE_PATH_REGEX = re.compile(r'^([\w\d.@-]+):([\w\d_-~/]+)$')
+TEMPLATE_FOLDER_SYMBOL_REGEX = re.compile(r'\(=(\w+)=\)')
+
+TEMPLATE_EXTENSION = '.template'
+TEMPLATE_EXTENSION_EXE = '.template_exe'
+TEMPLATE_EXTENSION_DOT = '.template_dot'
+TEMPLATE_EXTENSIONS_ALL = [TEMPLATE_EXTENSION, TEMPLATE_EXTENSION_EXE, TEMPLATE_EXTENSION_DOT]
 
 
 def folder_path(path):
@@ -23,7 +31,7 @@ def folder_path(path):
 
 
 def is_remote_path(path: Text) -> bool:
-    return bool(global_data.remote_path_regex.match(path))
+    return bool(REMOTE_PATH_REGEX.match(path))
 
 
 def short_path(path, is_folder=None, real_path=False, is_local=False):
@@ -114,7 +122,7 @@ def copy_folder(src_path: Text,
                 quiet: bool = False):
     src_folder_path = short_path(src_path, is_folder=True)
     dst_folder_path = short_path(dst_path, is_folder=True)
-    if not global_data.dry_run:
+    if not DRY_RUN:
         check_folder_exists(src_folder_path)
     if not merge:
         delete_folder(dst_path, quiet=quiet)
@@ -152,15 +160,15 @@ def move_file(src_path: Text,
     """Move a file to a fully-specified file path, not a folder."""
     src_path_short = short_path(src_path, is_folder=False)
     dst_path_short = short_path(dst_path, is_folder=False)
-    if not global_data.dry_run:
+    if not DRY_RUN:
         check_file_exists(src_path_short)
     if overwrite:
         # If overwriting is allowed a file (only) can be clobbered.
-        if os.path.exists(dst_path) and not global_data.dry_run:
+        if os.path.exists(dst_path) and not DRY_RUN:
             check_file_exists(dst_path)
     else:
         # If overwriting is prohibited don't clobber anything.
-        if not global_data.dry_run:
+        if not DRY_RUN:
             check_file_not_exists(dst_path_short)
     parent_folder = os.path.dirname(dst_path)
     if not os.path.exists(parent_folder):
@@ -175,12 +183,12 @@ def move_folder(src_path: Text,
     """Move a folder to a fully-specified folder path, not a parent folder."""
     src_path_short = short_path(src_path, is_folder=True)
     dst_path_short = short_path(dst_path, is_folder=True)
-    if not global_data.dry_run:
+    if not DRY_RUN:
         check_folder_exists(src_path_short)
     if overwrite:
         delete_folder(dst_path, quiet=quiet)
     else:
-        if not global_data.dry_run:
+        if not DRY_RUN:
             check_folder_not_exists(dst_path_short)
     parent_folder = os.path.dirname(dst_path)
     if not os.path.exists(parent_folder):
@@ -197,7 +205,7 @@ def sync_folders(src_folder: Text,
     # Add the trailing slash for rsync. This works for remote paths too.
     src_folder = folder_path(src_folder)
     dst_folder = folder_path(dst_folder)
-    if not global_data.dry_run:
+    if not DRY_RUN:
         check_folder_exists(src_folder)
     if not quiet:
         log_message('Folder sync.',
@@ -205,7 +213,7 @@ def sync_folders(src_folder: Text,
                     target=dst_folder,
                     exclude=exclude or [])
     cmd_args = ['rsync']
-    if global_data.dry_run:
+    if DRY_RUN:
         cmd_args.append('--dry-run')
     cmd_args.extend(['-a', '--stats', '-h'])
     if check_contents:
@@ -253,7 +261,7 @@ def expand_template(source_path: Text,
     else:
         short_target_path = short_path(target_path)
     symbols = symbols or {}
-    if not global_data.dry_run:
+    if not DRY_RUN:
         check_file_exists(source_path)
     if os.path.exists(target_path):
         if not os.path.isfile(target_path):
@@ -266,7 +274,7 @@ def expand_template(source_path: Text,
     log_message('Generate from template.',
                 source=short_source_path,
                 target=short_target_path)
-    if not global_data.dry_run:
+    if not DRY_RUN:
         try:
             with open(source_path, encoding='utf-8') as src_file:
                 with open(target_path, 'w', encoding='utf-8') as target_file:
@@ -316,7 +324,7 @@ def expand_template_path(source_path: Text, symbols: Dict) -> Text:
     """
     name_parts = []
     pos = 0
-    for match in global_data.templates_folder_symbol_regex.finditer(source_path):
+    for match in TEMPLATE_FOLDER_SYMBOL_REGEX.finditer(source_path):
         name = match.group(1)
         start_pos, end_pos = match.span()
         if start_pos > pos:
@@ -371,12 +379,12 @@ def expand_template_folder(template_folder: Text,
         for file_name in walk_file_names:
             source_path = os.path.join(walk_source_folder, file_name)
             stripped_file_name, extension = os.path.splitext(file_name)
-            if extension in global_data.all_template_extensions:
-                if extension == global_data.template_extension_dot:
+            if extension in TEMPLATE_EXTENSIONS_ALL:
+                if extension == TEMPLATE_EXTENSION_DOT:
                     stripped_file_name = '.' + stripped_file_name
                 expanded_file_name = expand_template_path(stripped_file_name, symbols)
                 target_path = os.path.join(walk_target_folder, expanded_file_name)
-                executable = extension == global_data.template_extension_exe
+                executable = extension == TEMPLATE_EXTENSION_EXE
                 expand_template(source_path,
                                 target_path,
                                 overwrite=overwrite,

@@ -5,14 +5,13 @@ Object passed to task functions for task execution.
 """
 
 import os
-from typing import Dict, Text, Any, List
+from contextlib import contextmanager
+from typing import Dict, Text, Any, List, Iterator
 
-from jiig.globals import global_data
-from jiig.internal.help_formatter import HelpFormatter
-
-from jiig.utility.cli import make_dest_name
-from jiig.utility.console import log_error
+from jiig.utility import alias_catalog
+from jiig.utility.console import log_error, log_message
 from jiig.utility.general import AttrDict
+from jiig.utility.help_formatter import HelpFormatter
 
 
 class RunnerData:
@@ -26,10 +25,6 @@ class RunnerData:
         self.trailing_args = trailing_args
         self.help_formatters = help_formatters
         self.params = params
-        # Make global flags available to applications.
-        self.debug = global_data.debug
-        self.dry_run = global_data.dry_run
-        self.verbose = global_data.verbose
 
 
 class TaskRunner:
@@ -48,17 +43,18 @@ class TaskRunner:
         self.trailing_args = data.trailing_args
         self.params = AttrDict(data.params)
         self.help_formatters = data.help_formatters
-        self.debug = data.debug
-        self.dry_run = data.dry_run
-        self.verbose = data.verbose
 
     # === Public methods.
 
     def format_help(self, *task_names: Text, show_hidden: bool = False):
-        dest_name = make_dest_name(*task_names)
-        help_formatter = self.help_formatters.get(dest_name, None)
+        task_full_name = self.params.FULL_NAME_SEPARATOR.join(task_names)
+        help_formatter = self.help_formatters.get(task_full_name, None)
         if not help_formatter:
-            log_error(f'No help available for: {" ".join(task_names)}')
+            log_error(f'No help available for "{task_full_name}".')
+            if self.params.VERBOSE:
+                full_names = [f'"{key.replace(self.params.FULL_NAME_SEPARATOR, " ")}"'
+                              for key in self.help_formatters.keys()]
+                log_message(f'Available help:', *full_names)
             return None
         return help_formatter.format_help(show_hidden=show_hidden)
 
@@ -71,3 +67,10 @@ class TaskRunner:
         if os.path.sep != '/':
             path = path.replace('/', os.path.sep)
         return self.expand_string(path, **more_params)
+
+    @contextmanager
+    def open_alias_catalog(self) -> Iterator[alias_catalog.AliasCatalog]:
+        with alias_catalog.open_alias_catalog(
+                self.params.TOOL_NAME,
+                self.params.ALIASES_PATH) as catalog:
+            yield catalog

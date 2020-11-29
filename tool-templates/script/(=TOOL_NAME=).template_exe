@@ -35,5 +35,5 @@ def task_hello(runner: jiig.TaskRunner):
 
 Sample task script: "${TOOL_NAME}"
 
-The code in the above module demonstrates how to define a mapped task, with
+The code in the above module demonstrates how to define a registered task, with
 options and arguments. Feel free to delete when you no longer need it.''')

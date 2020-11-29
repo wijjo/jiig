@@ -237,3 +237,58 @@ def format_exception(exc: Exception,
     parts.append(exc.__class__.__name__)
     parts.append(str(exc))
     return ': '.join(parts)
+
+
+def format_message_lines(text: Any, *args, **kwargs) -> Iterator[Text]:
+    """
+    Generate message line(s) and indented lines for relevant keyword data.
+
+    "tag" is a special string keyword argument that prefixes all lines with an
+    uppercase tag string.
+
+    :param text: primary text
+    :param args: positional arguments to format as data lines
+    :param kwargs: keyword arguments to format as data lines
+    :return: line iterator
+    """
+    tag = kwargs.pop('tag', None)
+
+    def _generate_raw_lines():
+        if text:
+            if isinstance(text, (list, tuple)):
+                for seq_line in text:
+                    yield seq_line
+            else:
+                yield str(text)
+        for value in args:
+            if isinstance(value, Exception):
+                value = f"Exception: {format_exception(value)}')"
+            yield '  {}'.format(value)
+        for key, value in kwargs.items():
+            if isinstance(value, (list, tuple)):
+                for idx, sub_value in enumerate(value):
+                    yield '  {}[{}]: {}'.format(key, idx + 1, sub_value)
+            else:
+                yield '  {}: {}'.format(key, value)
+
+    if not tag:
+        for line in _generate_raw_lines():
+            yield line
+    else:
+        for line in _generate_raw_lines():
+            yield'{}: {}'.format(tag.upper(), line)
+
+
+def format_message_block(message: Any, *args, **kwargs) -> Text:
+    """
+    Format multi-line message text with positional and keyword arguments.
+
+    "tag" is a special string keyword argument that prefixes all lines with an
+    uppercase tag string.
+
+    :param message: primary message text
+    :param args: positional arguments to format as data lines
+    :param kwargs: keyword arguments to format as data lines
+    :return: formatted multiline message text block
+    """
+    return os.linesep.join(format_message_lines(message, *args, **kwargs))

@@ -4,14 +4,16 @@ import os
 from dataclasses import dataclass
 from shutil import get_terminal_size
 from textwrap import wrap
-from typing import Text, List, Tuple, Optional, Iterator, Dict, Any, Sequence
+from typing import Text, List, Tuple, Optional, Iterator, Dict, Any, Sequence, Union
 
-from jiig.typing import ArgName, Description, Cardinality, OptionFlagSpec, NotesList, NoteDict
+from .footnotes import FootnoteBuilder
+from .general import format_table
 
-from jiig.utility.footnotes import FootnoteBuilder
-from jiig.utility.general import format_table
 
-from jiig.constants import HelpTaskVisibility
+class HelpTaskVisibility:
+    NORMAL = 0
+    AUXILIARY = 1
+    HIDDEN = 2
 
 
 class Footnote:
@@ -30,10 +32,10 @@ class HelpSubTaskData:
 
 @dataclass
 class HelpArgument:
-    name: ArgName
-    description: Description = None,
-    cardinality: Cardinality = None,
-    flags: OptionFlagSpec = None,
+    name: Text
+    description: Text = None,
+    cardinality: Union[Text, int] = None,
+    flags: List[Text] = None,
     default_value: Any = None,
     choices: Sequence = None
 
@@ -50,8 +52,8 @@ class HelpFormatter:
                  description: Text,
                  sub_tasks: List[HelpSubTaskData] = None,
                  arguments: List[HelpArgument] = None,
-                 notes: NotesList = None,
-                 footnote_dictionaries: List[Optional[NoteDict]] = None):
+                 notes: List[Text] = None,
+                 footnote_dictionaries: List[Optional[Dict[Text, Text]]] = None):
         """
         Help formatter constructor.
 
