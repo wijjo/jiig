@@ -8,7 +8,7 @@ from typing import Text, List, Tuple, Optional, IO, Dict
 
 from .console import abort, log_error, log_message
 from .filesystem import delete_folder, short_path
-from .options import DEBUG
+from . import options
 from .process import run
 from .stream import open_text
 
@@ -81,11 +81,11 @@ def import_modules_from_folder(folder: Text,
                 if retry:
                     to_retry.append((module_name, module_path))
                 exceptions.append((module_name, module_path, exc))
-                if DEBUG:
+                if options.DEBUG:
                     raise
             except Exception as exc:
                 exceptions.append((module_name, module_path, exc))
-                if DEBUG:
+                if options.DEBUG:
                     raise
         to_import = []
         if to_retry:

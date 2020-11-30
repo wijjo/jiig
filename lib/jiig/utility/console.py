@@ -1,5 +1,6 @@
 """Console i/o utilities."""
 
+import os
 import sys
 import traceback
 from typing import Any, Text, Set
@@ -32,14 +33,15 @@ def log_message(text: Any, *args, **kwargs):
             return
         MESSAGES_ISSUED_ONCE.add(issue_once_tag)
     for line in format_message_lines(text, *args, **kwargs):
-        print(line)
+        sys.stdout.write(line)
+        sys.stdout.write(os.linesep)
 
 
 def print_call_stack(skip: int = None,
                      limit: int = None,
                      tb: object = None,
                      label: Text = None):
-    print(f'  ::{label or "Call"} Stack::')
+    sys.stderr.write(f'{options.MESSAGE_INDENT}::{label or "Call"} Stack::{os.linesep}')
     if tb:
         stack = traceback.extract_tb(tb, limit=limit)
     else:
@@ -47,11 +49,12 @@ def print_call_stack(skip: int = None,
     if skip is not None:
         stack = stack[:-skip]
     for file, line, function, source in stack:
-        print('  {}.{}, {}()'.format(file, line, function))
+        sys.stderr.write(f'{options.MESSAGE_INDENT}{file}.{line}, {function}(){os.linesep}')
 
 
 def abort(text: Any, *args, **kwargs):
     """Display, and in the future log, a fatal _error message (to stderr) and quit."""
+    from . import options
     skip = kwargs.pop('skip', 0)
     kwargs['tag'] = 'FATAL'
     log_message(text, *args, **kwargs)
@@ -75,4 +78,4 @@ def log_error(text: Any, *args, **kwargs):
 def log_heading(level: int, heading: Text):
     """Display, and in the future log, a heading message to delineate blocks."""
     decoration = '=====' if level == 1 else '---'
-    print(f'{decoration} {heading} {decoration}')
+    sys.stdout.write(f'{decoration} {heading} {decoration}{os.linesep}')

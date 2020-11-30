@@ -10,9 +10,9 @@ from typing import Text, List, Optional, Dict, Iterator, Any
 
 from thirdparty.gitignore_parser.gitignore_parser import parse_gitignore, prepare_ignore_patterns
 
+from . import options
 from .console import abort, log_error, log_heading, log_message, log_warning
 from .general import make_list
-from .options import DRY_RUN
 from .process import run
 
 REMOTE_PATH_REGEX = re.compile(r'^([\w\d.@-]+):([\w\d_-~/]+)$')
@@ -122,7 +122,7 @@ def copy_folder(src_path: Text,
                 quiet: bool = False):
     src_folder_path = short_path(src_path, is_folder=True)
     dst_folder_path = short_path(dst_path, is_folder=True)
-    if not DRY_RUN:
+    if not options.DRY_RUN:
         check_folder_exists(src_folder_path)
     if not merge:
         delete_folder(dst_path, quiet=quiet)
@@ -160,15 +160,15 @@ def move_file(src_path: Text,
     """Move a file to a fully-specified file path, not a folder."""
     src_path_short = short_path(src_path, is_folder=False)
     dst_path_short = short_path(dst_path, is_folder=False)
-    if not DRY_RUN:
+    if not options.DRY_RUN:
         check_file_exists(src_path_short)
     if overwrite:
         # If overwriting is allowed a file (only) can be clobbered.
-        if os.path.exists(dst_path) and not DRY_RUN:
+        if os.path.exists(dst_path) and not options.DRY_RUN:
             check_file_exists(dst_path)
     else:
         # If overwriting is prohibited don't clobber anything.
-        if not DRY_RUN:
+        if not options.DRY_RUN:
             check_file_not_exists(dst_path_short)
     parent_folder = os.path.dirname(dst_path)
     if not os.path.exists(parent_folder):
@@ -183,12 +183,12 @@ def move_folder(src_path: Text,
     """Move a folder to a fully-specified folder path, not a parent folder."""
     src_path_short = short_path(src_path, is_folder=True)
     dst_path_short = short_path(dst_path, is_folder=True)
-    if not DRY_RUN:
+    if not options.DRY_RUN:
         check_folder_exists(src_path_short)
     if overwrite:
         delete_folder(dst_path, quiet=quiet)
     else:
-        if not DRY_RUN:
+        if not options.DRY_RUN:
             check_folder_not_exists(dst_path_short)
     parent_folder = os.path.dirname(dst_path)
     if not os.path.exists(parent_folder):
@@ -205,7 +205,7 @@ def sync_folders(src_folder: Text,
     # Add the trailing slash for rsync. This works for remote paths too.
     src_folder = folder_path(src_folder)
     dst_folder = folder_path(dst_folder)
-    if not DRY_RUN:
+    if not options.DRY_RUN:
         check_folder_exists(src_folder)
     if not quiet:
         log_message('Folder sync.',
@@ -213,7 +213,7 @@ def sync_folders(src_folder: Text,
                     target=dst_folder,
                     exclude=exclude or [])
     cmd_args = ['rsync']
-    if DRY_RUN:
+    if options.DRY_RUN:
         cmd_args.append('--dry-run')
     cmd_args.extend(['-a', '--stats', '-h'])
     if check_contents:
@@ -261,7 +261,7 @@ def expand_template(source_path: Text,
     else:
         short_target_path = short_path(target_path)
     symbols = symbols or {}
-    if not DRY_RUN:
+    if not options.DRY_RUN:
         check_file_exists(source_path)
     if os.path.exists(target_path):
         if not os.path.isfile(target_path):
@@ -274,7 +274,7 @@ def expand_template(source_path: Text,
     log_message('Generate from template.',
                 source=short_source_path,
                 target=short_target_path)
-    if not DRY_RUN:
+    if not options.DRY_RUN:
         try:
             with open(source_path, encoding='utf-8') as src_file:
                 with open(target_path, 'w', encoding='utf-8') as target_file:

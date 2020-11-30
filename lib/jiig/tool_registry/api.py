@@ -7,7 +7,7 @@ from jiig.utility.console import abort
 from jiig.utility.footnotes import NoteDict, NotesSpec
 from jiig.utility.general import make_list
 
-from . import data
+from . import data, options
 
 
 def register_tool(name: Text = None,
@@ -41,7 +41,6 @@ class _RegisteredTaskFinalizer:
                  arguments: Sequence[data.Argument]):
         self.task_function = task_function
         self.arguments = list(arguments)
-        self.registered_tool = get_tool()
         self.execution_tasks: List[data.RegisteredTask] = []
         self.parent_task: Optional[data.RegisteredTask] = None
         self.footnote_labels: List[Text] = []
@@ -114,7 +113,7 @@ class _RegisteredTaskFinalizer:
 
         # Derive the task full name.
         if self.parent_task:
-            self.task_full_name = data.FULL_NAME_SEPARATOR.join(
+            self.task_full_name = options.FULL_NAME_SEPARATOR.join(
                 [self.parent_task.full_name, self.task_name])
         else:
             self.task_full_name = self.task_name
@@ -138,7 +137,7 @@ class _RegisteredTaskFinalizer:
                             self._unique_argument_names.add(argument.name)
 
         # Derive the help visibility from the auxiliary and hidden flags
-        if hidden_task and not self.registered_tool.expose_hidden_tasks:
+        if hidden_task:
             self.help_visibility = HelpTaskVisibility.HIDDEN
         elif auxiliary_task:
             self.help_visibility = HelpTaskVisibility.AUXILIARY
@@ -217,18 +216,6 @@ def get_task_by_name(name: Text) -> Optional[data.RegisteredTask]:
 
 def get_tasks_by_name() -> Dict[Text, data.RegisteredTask]:
     return data.REGISTERED_TASKS_BY_NAME
-
-
-def set_options(full_name_separator: Text = None):
-    """
-    Set registry package options.
-
-    Just one for now, the name separator.
-
-    :param full_name_separator: separator character string for multi-part names
-    """
-    if full_name_separator is not None:
-        data.FULL_NAME_SEPARATOR = full_name_separator
 
 
 def get_tool() -> data.RegisteredTool:

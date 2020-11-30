@@ -3,7 +3,7 @@ Tool execution initialization.
 """
 
 from jiig.task_runner import RunnerData, TaskRunner
-from .. import registry
+from .. import tool_registry
 from jiig.utility.console import abort
 from jiig.utility.init_file import ParamData
 
@@ -46,18 +46,21 @@ def initialize(param_data: ParameterData,
                              ))
 
     # Run the tool to invoke the specified task.
-    runner_factory = registry.get_runner_factory()
+    runner_factory = tool_registry.get_runner_factory()
     if runner_factory:
         runner = runner_factory(runner_data)
     else:
         runner = TaskRunner(runner_data)
+    task_name = '???'
     try:
         # Execute task dependencies first.
         for dependency_task in arg_data.registered_task.execution_tasks:
+            task_name = dependency_task.name
             dependency_task.task_function(runner)
         # Then execute the primary task.
+        task_name = arg_data.registered_task.name
         arg_data.registered_task.task_function(runner)
-    except RuntimeError as exc:
-        abort(f'{exc.__class__.__name__}("{exc}")', runner_data.args)
     except KeyboardInterrupt:
         print('')
+    except Exception as exc:
+        abort(f'Task "{task_name}" execution failed.', exc)

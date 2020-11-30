@@ -6,11 +6,12 @@ import os
 from dataclasses import dataclass
 from typing import Dict, List, Text, Iterator
 
-from jiig import registry
+from jiig import tool_registry
 from jiig.utility.console import abort
 from jiig.utility.general import make_list
 from jiig.utility.footnotes import NoteDict, NotesList
 from jiig.utility.help_formatter import HelpFormatter, HelpArgument, HelpSubTaskData
+from jiig.utility.options import set_options
 from jiig.utility.stream import open_text
 
 from .parameters_initializer import ParameterData
@@ -18,8 +19,8 @@ from .parameters_initializer import ParameterData
 
 @dataclass
 class ToolData:
-    all_tasks: List[registry.RegisteredTask]
-    tasks_by_name: Dict[Text, registry.RegisteredTask]
+    all_tasks: List[tool_registry.RegisteredTask]
+    tasks_by_name: Dict[Text, tool_registry.RegisteredTask]
     capture_trailing: bool
     help_formatters: Dict[Text, HelpFormatter]
     name: Text
@@ -33,19 +34,19 @@ class ToolData:
     footnotes: NoteDict
 
 
-def _get_top_level_sub_tasks_help(all_tasks: List[registry.RegisteredTask],
+def _get_top_level_sub_tasks_help(all_tasks: List[tool_registry.RegisteredTask],
                                   ) -> Iterator[HelpSubTaskData]:
     for task in filter(lambda t: t.parent is None, all_tasks):
         yield HelpSubTaskData(task.name, task.help_visibility, task.description)
 
 
-def _get_task_sub_tasks_help(registered_task: registry.RegisteredTask,
+def _get_task_sub_tasks_help(registered_task: tool_registry.RegisteredTask,
                              ) -> Iterator[HelpSubTaskData]:
     for sub_task in sorted(registered_task.sub_tasks, key=lambda task: task.name):
         yield HelpSubTaskData(sub_task.name, sub_task.help_visibility, sub_task.description)
 
 
-def _get_task_arguments_help(registered_task: registry.RegisteredTask,
+def _get_task_arguments_help(registered_task: tool_registry.RegisteredTask,
                              ) -> Iterator[HelpArgument]:
     for argument in sorted(registered_task.arguments, key=lambda arg: arg.name):
         yield HelpArgument(argument.name,
@@ -56,7 +57,7 @@ def _get_task_arguments_help(registered_task: registry.RegisteredTask,
                            argument.choices)
 
 
-def _build_formatters_dictionary(all_tasks: List[registry.RegisteredTask],
+def _build_formatters_dictionary(all_tasks: List[tool_registry.RegisteredTask],
                                  tool_description: Text,
                                  tool_notes: NotesList,
                                  tool_footnotes: NoteDict,
@@ -73,7 +74,7 @@ def _build_formatters_dictionary(all_tasks: List[registry.RegisteredTask],
         ),
     }
 
-    def _add_task_help_recursive(registered_task: registry.RegisteredTask,
+    def _add_task_help_recursive(registered_task: tool_registry.RegisteredTask,
                                  names: List[Text] = None,
                                  ):
         names = names or []
@@ -110,7 +111,7 @@ def initialize(param_data: ParameterData) -> ToolData:
         with open_text(file=param_data.tool_script_path) as text_stream:
             exec(text_stream.read(), script_symbols)
 
-        registered_tool = registry.get_tool()
+        registered_tool = tool_registry.get_tool()
 
         # If no name was provided use the script base name.
         tool_name = registered_tool.name
@@ -129,10 +130,10 @@ def initialize(param_data: ParameterData) -> ToolData:
             import jiig.tasks.help      # noqa
         if not registered_tool.disable_alias:
             import jiig.tasks.alias     # noqa
-        all_tasks = registry.api.get_sorted_tasks()
+        all_tasks = tool_registry.api.get_sorted_tasks()
         capture_trailing = False
         if param_data.raw_arguments:
-            top_task = registry.api.get_task_by_name(
+            top_task = tool_registry.api.get_task_by_name(
                 param_data.raw_arguments[0])
             if top_task:
                 capture_trailing = top_task.capture_trailing_arguments
@@ -142,8 +143,12 @@ def initialize(param_data: ParameterData) -> ToolData:
                                                        registered_tool.footnotes,
                                                        param_data)
 
+        # Apply the tool flag to expose hidden tasks in the help output.
+        if registered_tool.expose_hidden_tasks:
+            set_options(expose_hidden_tasks=True)
+
         return ToolData(all_tasks=all_tasks,
-                        tasks_by_name=registry.api.get_tasks_by_name(),
+                        tasks_by_name=tool_registry.api.get_tasks_by_name(),
                         capture_trailing=capture_trailing,
                         help_formatters=help_formatters,
                         name=tool_name,

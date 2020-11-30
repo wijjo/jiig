@@ -93,7 +93,3 @@ REGISTERED_TASKS_BY_ID: Dict[int, RegisteredTask] = {}
 
 # Registered tasks indexed by name.
 REGISTERED_TASKS_BY_NAME: Dict[Text, RegisteredTask] = {}
-
-# Package-global setting: Separator for concatenating full task names,
-# initialized through api.set_options().
-FULL_NAME_SEPARATOR = '(no separator)'

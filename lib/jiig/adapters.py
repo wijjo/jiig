@@ -18,7 +18,7 @@ import os
 from time import mktime
 from typing import Optional
 
-from jiig.registry import ArgumentAdapter
+from jiig.tool_registry import ArgumentAdapter
 from jiig.utility.date_time import parse_date_time, parse_time_interval
 
 

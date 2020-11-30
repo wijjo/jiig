@@ -17,9 +17,9 @@ def task_hello(runner: jiig.TaskRunner):
     if runner.args.NAME:
         greeting = f'{greeting} {runner.args.NAME}'
     process.run(['date'], quiet=True)
-    print(f'''{greeting}:
-
-Sample task module: "{__file__}"
-
-The code in the above module demonstrates how to define a mapped task, with
-options and arguments. Feel free to delete when you no longer need it.''')
+    print(f'{greeting}:')
+    print('')
+    print(f'Sample task module: "{__file__}"')
+    print('')
+    print('Use the sample code as a basis for defining your own custom')
+    print('tool, tasks, options, and arguments.')

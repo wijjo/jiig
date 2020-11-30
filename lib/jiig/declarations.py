@@ -5,12 +5,12 @@ Jiig tool declaration support.
 from inspect import isfunction, signature
 from typing import Text, Any, Sequence, Callable
 
-from jiig.registry import register_tool, register_task, register_runner_factory, \
+from jiig.tool_registry import register_tool, register_task, register_runner_factory, \
     RunnerFactoryFunction, Argument, TaskFunction, TaskFunctionsSpec, Description, \
     ArgName, ArgumentAdapter, Cardinality, OptionFlagSpec
 from jiig.utility.console import abort
 from jiig.utility.footnotes import NoteDict, NotesSpec
-from jiig.utility.general import make_list
+from jiig.utility.general import make_list, plural
 
 
 def runner_factory() -> Callable[[RunnerFactoryFunction], RunnerFactoryFunction]:
@@ -66,7 +66,8 @@ def task(name: Text,
          receive_trailing_arguments: bool = False,
          footnotes: NoteDict = None,
          hidden_task: bool = False,
-         auxiliary_task: bool = False):
+         auxiliary_task: bool = False,
+         **_unexpected_kwargs):
     """
     Decorator for declaring a task function.
 
@@ -91,8 +92,13 @@ def task(name: Text,
     # because any solution would have to accept, with no type checking, any and
     # all arguments in order to support both ways of using the decorator.
     if isfunction(name) and parent is None and dependencies is None:
-        abort(f'@task decorator for function "{name.__name__}" must'
-              f' have parentheses, even if empty')
+        abort(f'@task("{name}" ...) must have parentheses, even if empty')
+
+    # Receiving **_unexpected_kwargs helps build a more informative error message.
+    if _unexpected_kwargs:
+        abort(f'@task("{name}" ...) received unexpected keyword'
+              f' {plural("argument", _unexpected_kwargs)}:',
+              ' '.join(_unexpected_kwargs.keys()))
 
     # Called after the outer function returns to provide the task function.
     def inner(task_function: TaskFunction) -> TaskFunction:
@@ -121,7 +127,8 @@ def sub_task(parent: TaskFunction,
              receive_trailing_arguments: bool = False,
              footnotes: NoteDict = None,
              hidden_task: bool = False,
-             auxiliary_task: bool = False):
+             auxiliary_task: bool = False,
+             **_unexpected_kwargs):
     """
     Decorator for declaring a sub-task function.
 
@@ -151,7 +158,8 @@ def sub_task(parent: TaskFunction,
                 receive_trailing_arguments=receive_trailing_arguments,
                 footnotes=footnotes,
                 hidden_task=hidden_task,
-                auxiliary_task=auxiliary_task)
+                auxiliary_task=auxiliary_task,
+                **_unexpected_kwargs)
 
 
 def _make_argument(name: ArgName,

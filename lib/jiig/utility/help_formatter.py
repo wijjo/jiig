@@ -6,6 +6,7 @@ from shutil import get_terminal_size
 from textwrap import wrap
 from typing import Text, List, Tuple, Optional, Iterator, Dict, Any, Sequence, Union
 
+from . import options
 from .footnotes import FootnoteBuilder
 from .general import format_table
 
@@ -160,7 +161,7 @@ class HelpFormatter:
             hidden_tasks = filter(
                 lambda st: st.visibility == HelpTaskVisibility.HIDDEN,
                 self.sub_tasks)
-            if show_hidden and hidden_tasks:
+            if hidden_tasks and (show_hidden or options.EXPOSE_HIDDEN_TASKS):
                 table_builder.start_block()
                 for task in hidden_tasks:
                     table_builder.add_row(task.name,

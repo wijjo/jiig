@@ -19,7 +19,7 @@ from .declarations import \
     tool
 
 # Public registry data types.
-from .registry.data import \
+from .tool_registry.data import \
     ArgName, \
     Argument, \
     ArgumentAdapter, \

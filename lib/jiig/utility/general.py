@@ -14,6 +14,8 @@ import traceback
 from textwrap import wrap
 from typing import Iterable, Any, Text, Iterator, List, Optional, Tuple
 
+from . import options
+
 
 class AttrDict(dict):
 
@@ -130,9 +132,6 @@ def format_human_byte_count(byte_count: int,
         *human_byte_count(byte_count, unit_format))
 
 
-TABLE_COLUMN_SEPARATOR = '  '
-
-
 def format_table(*rows: Iterable[Any],
                  headers: Iterable[Text] = None,
                  formats: Iterable[Text] = None,
@@ -185,7 +184,7 @@ def format_table(*rows: Iterable[Any],
     last_width: Optional[int] = None
     if max_width is not None:
         left_columns_width = sum(widths[:-1])
-        left_separators_width = len(TABLE_COLUMN_SEPARATOR) * (len(widths) - 1)
+        left_separators_width = len(options.COLUMN_SEPARATOR) * (len(widths) - 1)
         last_width = max_width - left_separators_width - left_columns_width
         if last_width < 20:
             last_width = None
@@ -194,10 +193,10 @@ def format_table(*rows: Iterable[Any],
 
         format_strings = ['{:%d}' % w for w in widths[:-1]]
         format_strings.append('{}')
-        format_string = TABLE_COLUMN_SEPARATOR.join(format_strings)
+        format_string = options.COLUMN_SEPARATOR.join(format_strings)
         if headers is not None:
             yield format_string.format(*_get_strings(headers, padded=True))
-            yield TABLE_COLUMN_SEPARATOR.join(['-' * width for width in widths])
+            yield options.COLUMN_SEPARATOR.join(['-' * width for width in widths])
 
         for row in rows:
             if last_width is None:
@@ -263,20 +262,26 @@ def format_message_lines(text: Any, *args, **kwargs) -> Iterator[Text]:
         for value in args:
             if isinstance(value, Exception):
                 value = f"Exception: {format_exception(value)}')"
-            yield '  {}'.format(value)
+            yield f'{options.MESSAGE_INDENT}{value}'
         for key, value in kwargs.items():
             if isinstance(value, (list, tuple)):
                 for idx, sub_value in enumerate(value):
-                    yield '  {}[{}]: {}'.format(key, idx + 1, sub_value)
+                    if isinstance(sub_value, Exception):
+                        sub_value = format_exception(sub_value)
+                    yield f'{options.MESSAGE_INDENT}{key}[{idx + 1}]: {sub_value}'
+            elif isinstance(value, Exception):
+                if isinstance(value, Exception):
+                    value = f"Exception: {format_exception(value)}')"
+                yield f'{options.MESSAGE_INDENT}{value}'
             else:
-                yield '  {}: {}'.format(key, value)
+                yield f'{options.MESSAGE_INDENT}{key}: {value}'
 
     if not tag:
         for line in _generate_raw_lines():
             yield line
     else:
         for line in _generate_raw_lines():
-            yield'{}: {}'.format(tag.upper(), line)
+            yield f'{tag.upper()}: {line}'
 
 
 def format_message_block(message: Any, *args, **kwargs) -> Text:
@@ -292,3 +297,19 @@ def format_message_block(message: Any, *args, **kwargs) -> Text:
     :return: formatted multiline message text block
     """
     return os.linesep.join(format_message_lines(message, *args, **kwargs))
+
+
+def plural(text: Any, countable: Any):
+    """
+    Simple text pluralization adds "s" if `countable` has a length that is not one.
+
+    :param text: text to pluralize
+    :param countable: item with a length that determines if it is pluralized
+    :return: pluralized text
+    """
+    try:
+        if len(countable) != 1:
+            return f'{text}s'
+    except TypeError:
+        pass
+    return text

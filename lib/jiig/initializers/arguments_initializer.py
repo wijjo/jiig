@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import List, Text
 
 from jiig.cli_parse import ParserCommand, CommandLineParserDriver, get_parser_driver
-from jiig.registry import RegisteredTask
+from jiig.tool_registry import RegisteredTask
 from jiig.utility.alias_catalog import expand_alias_name, open_alias_catalog
 from jiig.utility.console import abort
 from jiig.utility.general import format_exception, make_list
