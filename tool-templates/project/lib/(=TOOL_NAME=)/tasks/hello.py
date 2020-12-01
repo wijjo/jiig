@@ -1,17 +1,15 @@
-"""Sample Jiig "hello world" program."""
+"""Sample Jiig "hello world" task module."""
 
 import jiig
 from jiig.utility import process
 
 
-@jiig.task('hello',
-           jiig.bool_option('TEXAS_STYLE',
-                            '-t',
-                            description='Greet with a drawl'),
-           jiig.argument('NAME',
-                         description='Optional name',
-                         cardinality='?'),
-           description='Display hello message', )
+@jiig.task(
+    'hello',
+    jiig.option('TEXAS_STYLE', '-t', description='greet with a drawl'),
+    jiig.argument('NAME', cardinality='?', description='optional name'),
+    description='Display hello message',
+)
 def task_hello(runner: jiig.TaskRunner):
     greeting = 'Howdy' if runner.args.TEXAS_STYLE else 'Hello'
     if runner.args.NAME:

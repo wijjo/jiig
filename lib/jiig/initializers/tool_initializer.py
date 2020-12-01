@@ -49,12 +49,13 @@ def _get_task_sub_tasks_help(registered_task: tool_registry.RegisteredTask,
 def _get_task_arguments_help(registered_task: tool_registry.RegisteredTask,
                              ) -> Iterator[HelpArgument]:
     for argument in sorted(registered_task.arguments, key=lambda arg: arg.name):
-        yield HelpArgument(argument.name,
-                           argument.description,
-                           argument.cardinality,
-                           make_list(argument.flags),
-                           argument.default_value,
-                           argument.choices)
+        yield HelpArgument(name=argument.name,
+                           description=argument.description,
+                           cardinality=argument.cardinality,
+                           flags=make_list(argument.flags),
+                           default_value=argument.default_value,
+                           choices=argument.choices,
+                           is_boolean_option=argument.is_boolean)
 
 
 def _build_formatters_dictionary(all_tasks: List[tool_registry.RegisteredTask],

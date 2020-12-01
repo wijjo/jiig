@@ -56,7 +56,7 @@ class TaskRunner:
                               for key in self.help_formatters.keys()]
                 log_message(f'Available help:', *full_names)
             return None
-        return help_formatter.format_help(show_hidden=show_hidden)
+        return help_formatter.format_help(self.params.TOOL_NAME, show_hidden=show_hidden)
 
     def expand_string(self, text: Text, **more_params) -> Text:
         """Expands string template against symbols from self.params and more_params."""

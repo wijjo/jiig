@@ -16,25 +16,24 @@ def task_tool(runner: jiig.TaskRunner):
         abort('Please run this command from an application folder.')
 
 
-def expand_tool_template(runner: jiig.TaskRunner, template_name: Text):
-    log_heading(1, f'Create tool {template_name}')
-    symbols = dict(runner.params)
+def expand_tool_template(runner: jiig.TaskRunner, template_type_name: Text):
+    log_heading(1, f'Create tool {template_type_name}')
     target_folder = os.path.realpath(runner.args.TOOL_FOLDER)
-    symbols['TOOL_NAME'] = runner.args.TOOL_NAME or os.path.basename(target_folder)
     source_folder = os.path.join(runner.params.JIIG_ROOT,
                                  runner.params.TOOL_TEMPLATES_FOLDER,
-                                 template_name)
+                                 template_type_name)
+    tool_name = runner.args.TOOL_NAME or os.path.basename(target_folder)
     expand_template_folder(source_folder,
                            target_folder,
                            overwrite=runner.args.OVERWRITE,
-                           symbols=symbols)
+                           symbols=dict(runner.params, TOOL_NAME=tool_name))
 
 
 @jiig.sub_task(task_tool,
                'project',
-               jiig.bool_option('OVERWRITE',
-                                ('-o', '--overwrite'),
-                                description='Overwrite target files'),
+               jiig.bool_option('FORCE',
+                                ('-f', '--force'),
+                                description='Force overwriting of target files'),
                jiig.option('TOOL_NAME',
                            ('-n', '--name'),
                            description='Tool name (default: <folder name>)'),
@@ -50,7 +49,7 @@ def task_tool_project(runner: jiig.TaskRunner):
 
 @jiig.sub_task(task_tool,
                'script',
-               jiig.bool_option('OVERWRITE',
+               jiig.bool_option('FORCE',
                                 ('-o', '--overwrite'),
                                 description='Overwrite existing script'),
                jiig.option('TOOL_NAME',

@@ -34,11 +34,12 @@ class HelpSubTaskData:
 @dataclass
 class HelpArgument:
     name: Text
-    description: Text = None,
-    cardinality: Union[Text, int] = None,
-    flags: List[Text] = None,
-    default_value: Any = None,
+    description: Text = None
+    cardinality: Union[Text, int] = None
+    flags: List[Text] = None
+    default_value: Any = None
     choices: Sequence = None
+    is_boolean_option: bool = False
 
 
 HELP_TABLE_INDENT_SIZE = 2
@@ -111,21 +112,23 @@ class HelpFormatter:
             self._positional_arguments = list(filter(lambda a: not a.flags, self.arguments))
         return self._positional_arguments
 
-    def _format_usage(self) -> Iterator[Text]:
-        parts: List[Text] = ['Usage:']
+    def _format_usage(self, tool_name: Text) -> Iterator[Text]:
+        parts: List[Text] = ['Usage:', tool_name]
         parts.extend(self.command_names)
         if self.option_arguments:
             parts.append('[OPTION ...]')
         for argument in self.arguments:
-            if not argument.cardinality or argument.cardinality == '?':
-                parts.append(f'[{argument.name}]')
-            elif argument.cardinality == 1 or argument.cardinality == '1':
-                parts.append(argument.name)
-            elif argument.cardinality == '*':
-                parts.append(f'[{argument.name} ...]')
-            else:
-                parts.append(f'{argument.name} [{argument.name} ...]')
-        parts.extend([self.task_type_label, '...'])
+            if not argument.flags:
+                if not argument.cardinality or argument.cardinality == '?':
+                    parts.append(f'[{argument.name}]')
+                elif argument.cardinality == 1 or argument.cardinality == '1':
+                    parts.append(argument.name)
+                elif argument.cardinality == '*':
+                    parts.append(f'[{argument.name} ...]')
+                else:
+                    parts.append(f'{argument.name} [{argument.name} ...]')
+        if self.sub_tasks:
+            parts.extend([self.task_type_label, '...'])
         yield ' '.join(parts)
 
     def _format_help_text(self, help_text: Optional[Text]) -> Text:
@@ -178,8 +181,12 @@ class HelpFormatter:
         if self.option_arguments:
             table_builder.start_block(heading='OPTION')
             for argument in self.option_arguments:
-                table_builder.add_row(', '.join(argument.flags),
-                                      self._format_help_text(argument.description))
+                if argument.is_boolean_option:
+                    table_builder.add_row(f'{"|".join(argument.flags)}',
+                                          self._format_help_text(argument.description))
+                else:
+                    table_builder.add_row(f'{"|".join(argument.flags)} {argument.name}',
+                                          self._format_help_text(argument.description))
 
     def _format_tables(self, show_hidden: bool, width: int) -> Iterator[Text]:
         table_builder = self.TableFormatter(width)
@@ -214,12 +221,12 @@ class HelpFormatter:
         def format_help(self) -> Text:
             return os.linesep.join(self.chunks)
 
-    def format_help(self, show_hidden: bool = False) -> Text:
+    def format_help(self, tool_name: Text, show_hidden: bool = False) -> Text:
         terminal_size = get_terminal_size()
         max_width = max(HELP_MINIMUM_WRAP_WIDTH,
                         terminal_size.columns - HELP_TABLE_INDENT_SIZE)
         builder = self.OutputFormatter()
-        builder.add_block(*self._format_usage())
+        builder.add_block(*self._format_usage(tool_name))
         builder.add_block(*self._format_description())
         builder.add_block(*self._format_tables(show_hidden, max_width))
         builder.add_block(*self._format_epilog(max_width))

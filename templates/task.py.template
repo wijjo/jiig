@@ -1,15 +1,19 @@
-from jiig import task, TaskRunner
+"""
+task ${TASK_NAME} module
+
+Refer to documentation for more information about the @jiig.task() decorator and
+how to specify options and arguments.
+"""
+
+import jiig
 
 
-@task(
+@jiig.task(
     '${TASK_NAME}',
-    help='${TASK_NAME} help',
-    # Each option value or argument item is a dictionary of
-    # ArgumentParser.add_argument() keyword arguments.
-    options={
-    },
-    arguments=[
-    ],
+    jiig.bool_option('${ARG_PREFIX}_BOOL', '-b', description='a boolean option'),
+    jiig.option('${ARG_PREFIX}_STRING', '-s', description='a string option'),
+    jiig.argument('${ARG_PREFIX}_ARG', description='an argument'),
+    description='${TASK_NAME} help description',
 )
-def task_${TASK_NAME}(runner: TaskRunner):
+def task_${TASK_NAME}(runner: jiig.TaskRunner):
     pass
