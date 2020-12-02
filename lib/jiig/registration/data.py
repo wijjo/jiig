@@ -6,7 +6,7 @@ and a limited set of global (to this package) options.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Text, Any, Sequence, Tuple, Callable, Union
+from typing import Optional, List, Dict, Text, Any, Sequence, Tuple, Callable, Union, Type
 
 from jiig.utility.footnotes import NoteDict, NotesList
 
@@ -20,9 +20,20 @@ OptionFlagSpec = Union[OptionFlag, List[OptionFlag], Tuple[OptionFlag, OptionFla
 
 ArgumentAdapter = Callable[..., Any]
 
-TaskFunction = Callable[['TaskRunner'], None]
+
+class RegisteredRunnerData:
+    """Base class for data passed to runner constructors."""
+    pass
+
+
+class RegisteredRunner:
+    """Base class for runners."""
+    def __init__(self, data: RegisteredRunnerData):
+        self.runner_data = data
+
+
+TaskFunction = Callable[[RegisteredRunner], None]
 TaskFunctionsSpec = List[TaskFunction]
-RunnerFactoryFunction = Callable[['RunnerData'], 'TaskRunner']
 
 
 @dataclass
@@ -37,6 +48,7 @@ class RegisteredTool:
     expose_hidden_tasks: bool
     notes: NotesList
     footnotes: NoteDict
+    runner_cls: Optional[Type[RegisteredRunner]]
 
 
 @dataclass
@@ -75,9 +87,6 @@ class RegisteredTask:
     # Sub-tasks are added later when discovered child tasks reference as parent.
     sub_tasks: List['RegisteredTask'] = field(default_factory=list)
 
-
-# Runner factory registered by @runner_factory decorator. Last registered one wins.
-RUNNER_FACTORY: Optional[RunnerFactoryFunction] = None
 
 # Registered tool (only one).
 REGISTERED_TOOL: Optional[RegisteredTool] = None

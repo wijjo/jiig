@@ -8,13 +8,14 @@ import os
 from contextlib import contextmanager
 from typing import Dict, Text, Any, List, Iterator
 
+from jiig.registration import RegisteredRunner, RegisteredRunnerData
 from jiig.utility import alias_catalog
 from jiig.utility.console import log_error, log_message
 from jiig.utility.general import AttrDict
 from jiig.utility.help_formatter import HelpFormatter
 
 
-class RunnerData:
+class RunnerData(RegisteredRunnerData):
     """Results returned after parsing the command line."""
     def __init__(self,
                  args: Any,
@@ -25,9 +26,10 @@ class RunnerData:
         self.trailing_args = trailing_args
         self.help_formatters = help_formatters
         self.params = params
+        super().__init__()
 
 
-class TaskRunner:
+class TaskRunner(RegisteredRunner):
     """
     Task runner.
 
@@ -43,6 +45,7 @@ class TaskRunner:
         self.trailing_args = data.trailing_args
         self.params = AttrDict(data.params)
         self.help_formatters = data.help_formatters
+        super().__init__(data)
 
     # === Public methods.
 

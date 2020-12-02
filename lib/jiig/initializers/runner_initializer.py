@@ -3,7 +3,6 @@ Tool execution initialization.
 """
 
 from jiig.task_runner import RunnerData, TaskRunner
-from .. import tool_registry
 from jiig.utility.console import abort
 from jiig.utility.init_file import ParamData
 
@@ -46,9 +45,8 @@ def initialize(param_data: ParameterData,
                              ))
 
     # Run the tool to invoke the specified task.
-    runner_factory = tool_registry.get_runner_factory()
-    if runner_factory:
-        runner = runner_factory(runner_data)
+    if tool_data.runner_cls is not None:
+        runner = tool_data.runner_cls(runner_data)
     else:
         runner = TaskRunner(runner_data)
     task_name = '???'

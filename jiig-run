@@ -13,7 +13,7 @@ import sys
 _LIB_FOLDER = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lib')
 if _LIB_FOLDER not in sys.path:
     sys.path.insert(0, _LIB_FOLDER)
-# Now it is possible to import Jiig main.
+# Now it is possible to import Jiig initialization.
 from jiig.initialization import initialize
 
 if __name__ == '__main__':

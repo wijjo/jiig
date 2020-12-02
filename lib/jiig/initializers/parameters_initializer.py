@@ -7,7 +7,7 @@ import sys
 from dataclasses import dataclass
 from typing import Text, List
 
-from jiig.cli_parse import get_parser_driver, ParserImplementations
+from jiig.cli_parsing import get_parser_driver, ParserImplementations
 from jiig.utility.console import log_message
 from jiig.utility.init_file import ParamLoader, ParamList, ParamFolder, ParamFolderList, ParamBoolean
 

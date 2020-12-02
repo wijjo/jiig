@@ -16,7 +16,7 @@ def _get_implementation(implementation: Text) -> CommandLineParserImplementation
     else:
         if not hasattr(ParserImplementations, implementation):
             raise ValueError(f'Unsupported CLI parser implementation "{implementation}".')
-        from jiig.cli_parse.implementations import argparse
+        from jiig.cli_parsing.implementations import argparse
         parser_module = argparse
     return parser_module.get_implementation()
 

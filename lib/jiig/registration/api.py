@@ -1,6 +1,6 @@
 """Task and associated tool data registry."""
 
-from typing import Text, Optional, List, Set, Sequence, Dict
+from typing import Text, Optional, List, Set, Sequence, Dict, Type
 
 from jiig.utility.help_formatter import HelpTaskVisibility
 from jiig.utility.console import abort
@@ -20,6 +20,7 @@ def register_tool(name: Text = None,
                   expose_hidden_tasks: bool = None,
                   notes: NotesSpec = None,
                   footnotes: NoteDict = None,
+                  runner_cls: Type[data.RegisteredRunner] = None,
                   ):
     data.REGISTERED_TOOL = data.RegisteredTool(
         name=name,
@@ -32,6 +33,7 @@ def register_tool(name: Text = None,
         expose_hidden_tasks=expose_hidden_tasks or False,
         notes=make_list(notes),
         footnotes=footnotes or {},
+        runner_cls=runner_cls,
     )
 
 
@@ -156,24 +158,24 @@ def register_task(task_function: data.TaskFunction,
                   auxiliary_task: bool = False):
 
     # Merge and generate all the data needed for creating a registered task.
-    mt_data = _RegisteredTaskFinalizer(task_function, arguments)
-    mt_data.merge_parent(parent)
-    mt_data.merge_dependencies(dependencies)
-    mt_data.finalize_data(name, description, hidden_task, auxiliary_task)
+    finalized_data = _RegisteredTaskFinalizer(task_function, arguments)
+    finalized_data.merge_parent(parent)
+    finalized_data.merge_dependencies(dependencies)
+    finalized_data.finalize_data(name, description, hidden_task, auxiliary_task)
 
     # Create new registered task using input and prepared data.
     registered_task = data.RegisteredTask(
         task_function=task_function,
-        name=mt_data.task_name,
-        full_name=mt_data.task_full_name,
-        parent=mt_data.parent_task,
-        description=mt_data.description,
-        arguments=mt_data.arguments,
+        name=finalized_data.task_name,
+        full_name=finalized_data.task_full_name,
+        parent=finalized_data.parent_task,
+        description=finalized_data.description,
+        arguments=finalized_data.arguments,
         notes=make_list(notes),
         footnotes=footnotes,
         receive_trailing_arguments=receive_trailing_arguments,
-        execution_tasks=mt_data.execution_tasks,
-        help_visibility=mt_data.help_visibility)
+        execution_tasks=finalized_data.execution_tasks,
+        help_visibility=finalized_data.help_visibility)
 
     # Cascade trailing arguments flag upwards to signal need for capture.
     if receive_trailing_arguments:
@@ -194,14 +196,6 @@ def register_task(task_function: data.TaskFunction,
     else:
         data.REGISTERED_TASKS.append(registered_task)
     return registered_task
-
-
-def register_runner_factory(runner_factory: data.RunnerFactoryFunction):
-    data.RUNNER_FACTORY = runner_factory
-
-
-def get_runner_factory() -> Optional[data.RunnerFactoryFunction]:
-    return data.RUNNER_FACTORY
 
 
 def get_sorted_tasks() -> List[data.RegisteredTask]:
