@@ -49,13 +49,14 @@ def _make_argument(name: ArgName,
 
     # Sanity-check adapter function signatures.
     for adapter in adapters:
-        if not isfunction(adapter):
-            _type_error('non-function adapter', str(adapter))
-        sig = signature(adapter)
-        if not sig.parameters:
-            _type_error('adapter function missing value parameter', adapter.__name__)
-        elif len(sig.parameters) > 1:
-            _type_error('adapter function has more than one parameter', adapter.__name__)
+        if adapter not in (int, bool, float, str):
+            if not isfunction(adapter):
+                _type_error('non-function adapter', str(adapter))
+            sig = signature(adapter)
+            if not sig.parameters:
+                _type_error('adapter function missing value parameter', adapter.__name__)
+            elif len(sig.parameters) > 1:
+                _type_error('adapter function has more than one parameter', adapter.__name__)
 
     return Argument(name,
                     list(adapters),
