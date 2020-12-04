@@ -26,7 +26,7 @@ SUB_TASK_LABEL = 'SUB_TASK'
 
 # Init file parameter field definitions.
 INIT_PARAM_TYPES = [
-    ParamFolderList('LIB_FOLDERS', default_value=['lib']),
+    ParamFolderList('LIB_FOLDERS', default_value=[]),
     ParamFolder('TEST_ROOT', default_value='test'),
     ParamFolder('VENV_ROOT', default_value='venv'),
     ParamBoolean('VENV_ENABLED', default_value=False),
@@ -108,6 +108,10 @@ def initialize(command_line_arguments: List[Text]) -> ParameterData:
         for tool_lib_folder in reversed(init_params.LIB_FOLDERS):
             if tool_lib_folder not in sys.path:
                 library_folders.insert(0, tool_lib_folder)
+    else:
+        tool_lib = os.path.join(tool_root, 'lib')
+        if os.path.exists(os.path.join(tool_lib, '__init__.py')):
+            library_folders.append(tool_lib)
 
     # Package and return initialized data.
     return ParameterData(jiig_run_script_path=jiig_run_script_path,

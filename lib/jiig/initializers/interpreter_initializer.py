@@ -45,6 +45,7 @@ def initialize(param_data: ParameterData):
     # Add the Jiig library path if missing.
     if param_data.jiig_lib not in sys.path:
         sys.path.insert(0, param_data.jiig_lib)
+    # Add tool library folders.
     for lib_folder in reversed(param_data.library_folders):
         sys.path.insert(0, lib_folder)
     # The automatically-added Jiig root path (added due to this script) is not used, so lose it.

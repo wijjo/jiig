@@ -41,9 +41,9 @@ class RegisteredTool:
     name: Optional[Text]
     description: Optional[Text]
     disable_alias: bool
-    disable_help: bool
     disable_debug: bool
     disable_dry_run: bool
+    disable_help: bool
     disable_verbose: bool
     expose_hidden_tasks: bool
     notes: NotesList
