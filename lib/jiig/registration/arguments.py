@@ -80,6 +80,19 @@ class Arg:
         self.default_value = default_value
         self.choices = choices
 
+    @property
+    def multi_value(self) -> bool:
+        """
+        Determine if argument cardinality results in value being a list.
+
+        :return: True if argument value is a list.
+        """
+        if self.cardinality is not None:
+            if isinstance(self.cardinality, int):
+                return self.cardinality > 1
+            return self.cardinality in ('*', '+')
+        return False
+
 
 class Opt(Arg):
     def __init__(self,

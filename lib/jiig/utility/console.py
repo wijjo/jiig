@@ -25,6 +25,7 @@ def log_message(text: Any, *args, **kwargs):
     verbose = kwargs.pop('verbose', None)
     debug = kwargs.pop('debug', None)
     issue_once_tag = kwargs.pop('issue_once_tag', None)
+    stream = kwargs.pop('log_stream', sys.stdout)
     if verbose and not options.VERBOSE:
         return
     if debug and not options.DEBUG:
@@ -34,8 +35,8 @@ def log_message(text: Any, *args, **kwargs):
             return
         MESSAGES_ISSUED_ONCE.add(issue_once_tag)
     for line in format_message_lines(text, *args, **kwargs):
-        sys.stdout.write(line)
-        sys.stdout.write(os.linesep)
+        stream.write(line)
+        stream.write(os.linesep)
 
 
 def abort(text: Any, *args, **kwargs):
@@ -43,6 +44,7 @@ def abort(text: Any, *args, **kwargs):
     from . import options
     skip = kwargs.pop('skip', 0)
     kwargs['tag'] = 'FATAL'
+    kwargs['log_stream'] = sys.stderr
     log_message(text, *args, **kwargs)
     # If an exception seems to be the trigger, dump a stack and exist.
     for value in list(args) + list(kwargs.values()):
@@ -60,12 +62,14 @@ def abort(text: Any, *args, **kwargs):
 def log_warning(text: Any, *args, **kwargs):
     """Display, and in the future log, a warning message (to stderr)."""
     kwargs['tag'] = 'WARNING'
+    kwargs['log_stream'] = sys.stderr
     log_message(text, *args, **kwargs)
 
 
 def log_error(text: Any, *args, **kwargs):
     """Display, and in the future log, an _error message (to stderr)."""
     kwargs['tag'] = 'ERROR'
+    kwargs['log_stream'] = sys.stderr
     log_message(text, *args, **kwargs)
 
 

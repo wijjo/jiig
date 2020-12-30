@@ -14,13 +14,18 @@ from .stream import open_text_source
 
 
 def format_call_string(call_name: Text, *args, **kwargs) -> Text:
+    returned = kwargs.pop('returned', None)
     parts = []
     if args:
         parts.append(str(list(args))[1:-1])
     if kwargs:
         parts.append(str(kwargs)[1:-1])
     arg_body = ', '.join(parts)
-    return f'{call_name}({arg_body})'
+    if returned is not None:
+        return_string = f' -> {returned}'
+    else:
+        return_string = ''
+    return f'{call_name}({arg_body}){return_string}'
 
 
 def import_module_path(module_name: Text, module_path: Text):

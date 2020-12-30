@@ -1,1 +1,1 @@
-from . import base64, boolean, number, path, time
+from . import base64, boolean, number, path, text, time

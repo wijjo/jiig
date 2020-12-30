@@ -244,7 +244,6 @@ def parse_time_interval(interval_string: Optional[Text]) -> Optional[int]:
     if not interval_string:
         return None
     delta = parse_date_time_delta(interval_string, time_only=True)
-    print(f'interval_string: "{interval_string}"  delta: ({delta.hours}, {delta.minutes}, {delta.seconds})')
     if delta is None:
         return None
     return (delta.hours * 3600) + (delta.minutes * 60) + delta.seconds

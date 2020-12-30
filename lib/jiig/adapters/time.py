@@ -4,7 +4,8 @@ Jiig time adapter functions.
 
 from time import mktime
 
-from jiig.utility.date_time import parse_date_time, parse_time_interval
+from jiig.utility.date_time import parse_date_time, parse_time_interval, \
+    apply_date_time_delta_string
 
 
 def timestamp(value: str) -> float:
@@ -28,3 +29,16 @@ def interval(value: str) -> int:
     :return: returned interval integer
     """
     return parse_time_interval(value)
+
+
+def age(value: str) -> float:
+    """
+    Adapter for age, i.e. negative time delta.
+
+    See jiig.utility.date_time.parse_date_time_delta() for more information
+    about delta strings.
+
+    :param value: time delta string
+    :return: timestamp float
+    """
+    return mktime(apply_date_time_delta_string(value, negative=True))

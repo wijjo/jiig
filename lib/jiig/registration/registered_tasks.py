@@ -138,9 +138,13 @@ class RegisteredTask:
                     adapter_name = '???'
                     try:
                         # Call all adapters to validate and convert as appropriate.
-                        for adapter in arg.adapters:
-                            adapter_name = adapter.__name__
-                            value = adapter(value)
+                        if value is not None:
+                            for adapter in arg.adapters:
+                                adapter_name = adapter.__name__
+                                if arg.multi_value:
+                                    value = [adapter(value_item) for value_item in value]
+                                else:
+                                    value = adapter(value)
                         setattr(prepared_data, arg.name, value)
                     except (TypeError, ValueError) as exc:
                         results.errors.append(

@@ -28,9 +28,9 @@ class _ArgumentParser(argparse.ArgumentParser):
                  description: Text = None,
                  add_help: bool = False,
                  ):
-        self._dump('ArgumentParser', prog=prog, description=description)
         try:
             super().__init__(prog=prog, description=description, add_help=add_help)
+            self._dump('ArgumentParser', prog=prog, description=description)
         except Exception as exc:
             self._abort('ArgumentParser', exc)
 
@@ -50,9 +50,11 @@ class _ArgumentParser(argparse.ArgumentParser):
 
                 @staticmethod
                 def add_parser(*group_args, **group_kwargs):
+                    sub_parser = _group.add_parser(*group_args, **group_kwargs)
                     if options.DEBUG:
-                        _parser._dump('add_parser', *args, **kwargs)
-                    return _group.add_parser(*group_args, **group_kwargs)
+                        _parser._dump('add_parser', *args, **kwargs,
+                                      returned=f'ArgumentParser({id(sub_parser)})')
+                    return sub_parser
 
                 def __getattr__(self, name):
                     return getattr(_group, name)
@@ -155,10 +157,9 @@ class _ArgumentParser(argparse.ArgumentParser):
     def format_help(self):
         return super().format_help()
 
-    @staticmethod
-    def _dump(method_name, *args, **kwargs):
+    def _dump(self, method_name, *args, **kwargs):
         if options.DEBUG:
-            log_message(f'argparse: {format_call_string(method_name, *args, **kwargs)})')
+            log_message(f'ArgumentParser[{id(self)}]: {format_call_string(method_name, *args, **kwargs)}')
 
     @staticmethod
     def _abort(method_name, exc, *args, **kwargs):
