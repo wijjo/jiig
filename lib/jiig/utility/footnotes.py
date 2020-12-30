@@ -16,7 +16,7 @@ from typing import Text, List, Optional, Iterator, Sequence, Dict, Union
 
 NotesSpec = Union[Text, List[Text]]
 NotesList = List[Text]
-NoteDict = Dict[Text, Text]
+NotesDict = Dict[Text, Text]
 
 # noinspection RegExpRedundantEscape
 TRAILING_FOOTNOTE_REFERENCES_REGEX = re.compile(r'((?:\[\w*\]\s*)+)$')
@@ -25,13 +25,13 @@ TRAILING_FOOTNOTE_REFERENCES_REGEX = re.compile(r'((?:\[\w*\]\s*)+)$')
 class FootnoteBuilder:
     """Scrapes footnote labels from text blocks."""
 
-    def __init__(self, *footnotes: NoteDict):
+    def __init__(self, *footnotes: NotesDict):
         self.labels: List[Text] = []
         self.context_labels: Dict[Text, List[Text]] = {}
-        self.footnotes: NoteDict = {}
+        self.footnotes: NotesDict = {}
         self.add_footnotes(*footnotes)
 
-    def add_footnotes(self, *footnotes: Optional[NoteDict]):
+    def add_footnotes(self, *footnotes: Optional[NotesDict]):
         for footnote_dictionary in footnotes:
             if footnote_dictionary:
                 self.footnotes.update(footnote_dictionary)

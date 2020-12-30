@@ -15,7 +15,7 @@ from typing import Text, List, Optional, Iterator, Any, Iterable, Dict
 
 from .console import abort, log_error, log_message, log_warning
 from .process import shell_command_string
-from .stream import open_json
+from .stream import read_json_source
 
 
 # JSON schema:
@@ -230,7 +230,7 @@ class AliasCatalog:
         self.disable_saving = False
         self.modified = False
         if os.path.exists(self.catalog_path):
-            raw_catalog = open_json(file=self.catalog_path, check=True)
+            raw_catalog = read_json_source(file=self.catalog_path, check=True)
             scrubber = _AliasCatalogScrubber(raw_catalog)
             self.catalog = scrubber.scrubbed_data
             if scrubber.errors > 0:
@@ -259,7 +259,7 @@ class AliasCatalog:
         """
         Create a new alias.
 
-        :param alias_name: name of alias to set or write_data
+        :param alias_name: name of alias to create
         :param command: command arguments for alias (required)
         :param description: description of alias, e.g. for help screen
         """
@@ -289,13 +289,13 @@ class AliasCatalog:
         """
         Update an existing alias.
 
-        :param alias_name: name of alias to set or write_data
-        :param command: command arguments for alias (may omit to not write_data it)
-        :param description: description of alias (may omit to not write_data it)
+        :param alias_name: name of alias to update
+        :param command: command arguments for alias (optional, or not updated)
+        :param description: description of alias (optional, or not updated)
         """
         full_name = expand_alias_name(alias_name)
         if not full_name:
-            abort(f'Bad alias name "{alias_name}" for write_data.')
+            abort(f'Bad alias name "{alias_name}" for update.')
         if command is not None and not list(command):
             abort(f'Alias "{alias_name}" command is empty.')
         tool_alias_map = self.catalog.get(self.tool_name)
@@ -312,7 +312,7 @@ class AliasCatalog:
             existing_alias_data['description'] = description
             updated = True
         if not updated:
-            log_warning(f'No alias "{alias_name}" information supplied for write_data.')
+            log_warning(f'No alias "{alias_name}" information supplied for update.')
             return
         log_message(f'Alias "{alias_name}" updated.')
         self.modified = True

@@ -1,0 +1,10 @@
+{
+  "templates": [
+    {
+      "path": "template_tool_name",
+      "output_path": "$template_tool_name",
+      "expansion": "word",
+      "executable": true
+    }
+  ]
+}

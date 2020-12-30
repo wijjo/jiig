@@ -265,17 +265,17 @@ class ArgparseImplementation(CommandLineParserImplementation):
                                 help='display additional (verbose) messages')
 
     @staticmethod
-    def _add_argument(parser: argparse.ArgumentParser,
-                      name: Text,
-                      description: Text,
-                      flags: Sequence[Text] = None,
-                      is_boolean: bool = False,
-                      cardinality: Union[int, Text] = None,
-                      default_value: Any = None,
-                      choices: Sequence = None,
-                      ):
+    def _add_option_or_argument(parser: argparse.ArgumentParser,
+                                name: Text,
+                                description: Text,
+                                flags: Sequence[Text] = None,
+                                is_boolean_option: bool = False,
+                                cardinality: Union[int, Text] = None,
+                                default_value: Any = None,
+                                choices: Sequence = None,
+                                ):
         kwargs = {'dest': name, 'help': description}
-        if is_boolean:
+        if is_boolean_option:
             kwargs['action'] = 'store_true'
         if cardinality:
             kwargs['nargs'] = cardinality
@@ -292,21 +292,21 @@ class ArgparseImplementation(CommandLineParserImplementation):
                            parent_dest_name: Text,
                            ):
         for option in command.options:
-            cls._add_argument(parser,
-                              option.name,
-                              option.description,
-                              flags=option.flags,
-                              is_boolean=option.is_boolean,
-                              cardinality=option.cardinality,
-                              default_value=option.default_value,
-                              choices=option.choices)
+            cls._add_option_or_argument(parser,
+                                        option.name,
+                                        option.description,
+                                        flags=option.flags,
+                                        is_boolean_option=option.is_boolean,
+                                        cardinality=option.cardinality,
+                                        default_value=option.default_value,
+                                        choices=option.choices)
         for argument in command.positional_arguments:
-            cls._add_argument(parser,
-                              argument.name,
-                              argument.description,
-                              cardinality=argument.cardinality,
-                              default_value=argument.default_value,
-                              choices=argument.choices)
+            cls._add_option_or_argument(parser,
+                                        argument.name,
+                                        argument.description,
+                                        cardinality=argument.cardinality,
+                                        default_value=argument.default_value,
+                                        choices=argument.choices)
         if command.sub_commands:
             dest_name = DEST_NAME_SEPARATOR.join([parent_dest_name, command.name.upper()])
             sub_group = parser.add_subparsers(dest=dest_name,

@@ -5,23 +5,16 @@ import re
 import stat
 from contextlib import contextmanager
 from glob import glob
-from string import Template
-from typing import Text, List, Optional, Dict, Iterator, Any
+from typing import Text, List, Optional, Iterator, Any
 
-from thirdparty.gitignore_parser.gitignore_parser import parse_gitignore, prepare_ignore_patterns
+from thirdparty.gitignore_parser import gitignore_parser
 
 from . import options
-from .console import abort, log_error, log_heading, log_message, log_warning
+from .console import abort, log_message
 from .general import make_list
 from .process import run
 
 REMOTE_PATH_REGEX = re.compile(r'^([\w\d.@-]+):([\w\d_-~/]+)$')
-TEMPLATE_FOLDER_SYMBOL_REGEX = re.compile(r'\(=(\w+)=\)')
-
-TEMPLATE_EXTENSION = '.template'
-TEMPLATE_EXTENSION_EXE = '.template_exe'
-TEMPLATE_EXTENSION_DOT = '.template_dot'
-TEMPLATE_EXTENSIONS_ALL = [TEMPLATE_EXTENSION, TEMPLATE_EXTENSION_EXE, TEMPLATE_EXTENSION_DOT]
 
 
 def folder_path(path):
@@ -32,6 +25,23 @@ def folder_path(path):
 
 def is_remote_path(path: Text) -> bool:
     return bool(REMOTE_PATH_REGEX.match(path))
+
+
+def search_folder_stack_for_file(folder: Text, name: Text) -> Optional[Text]:
+    """
+    Look up folder stack for a specific file or folder name.
+
+    :param folder: starting folder path
+    :param name: file or folder name to look for
+    :return: found folder path or None if the name was not found
+    """
+    check_folder = folder
+    while True:
+        if os.path.exists(os.path.join(check_folder, name)):
+            return check_folder
+        if check_folder in ['', os.path.sep]:
+            return None
+        check_folder = os.path.dirname(check_folder)
 
 
 def short_path(path, is_folder=None, real_path=False, is_local=False):
@@ -137,6 +147,14 @@ def copy_folder(src_path: Text,
         run(['cp', '-a', src_folder_path, dst_folder_path])
 
 
+def copy_file(src_path: Text,
+              dst_path: Text,
+              overwrite: bool = False,
+              quiet: bool = False):
+    """Copy a file to a fully-specified file path, not a folder."""
+    _copy_or_move_file(src_path, dst_path, move=False, overwrite=overwrite, quiet=quiet)
+
+
 def copy_files(src_glob: Text,
                dst_path: Text,
                allow_empty: bool = False,
@@ -158,6 +176,14 @@ def move_file(src_path: Text,
               overwrite: bool = False,
               quiet: bool = False):
     """Move a file to a fully-specified file path, not a folder."""
+    _copy_or_move_file(src_path, dst_path, move=True, overwrite=overwrite, quiet=quiet)
+
+
+def _copy_or_move_file(src_path: Text,
+                       dst_path: Text,
+                       move: bool = False,
+                       overwrite: bool = False,
+                       quiet: bool = False):
     src_path_short = short_path(src_path, is_folder=False)
     dst_path_short = short_path(dst_path, is_folder=False)
     if not options.DRY_RUN:
@@ -173,7 +199,10 @@ def move_file(src_path: Text,
     parent_folder = os.path.dirname(dst_path)
     if not os.path.exists(parent_folder):
         create_folder(parent_folder, quiet=quiet)
-    run(['mv', '-f', src_path_short, dst_path_short])
+    if move:
+        run(['mv', '-f', src_path_short, dst_path_short])
+    else:
+        run(['cp', '-af', src_path_short, dst_path_short])
 
 
 def move_folder(src_path: Text,
@@ -245,157 +274,6 @@ def chdir(folder: Optional[Text], quiet: bool = False):
         os.chdir(restore_folder)
 
 
-def expand_template(source_path: Text,
-                    target_path: Text,
-                    overwrite: bool = False,
-                    executable: bool = False,
-                    symbols: Dict = None,
-                    source_relative_to: Text = None,
-                    target_relative_to: Text = None):
-    if source_relative_to:
-        short_source_path = source_path[len(source_relative_to) + 1:]
-    else:
-        short_source_path = short_path(source_path)
-    if target_relative_to:
-        short_target_path = target_path[len(target_relative_to) + 1:]
-    else:
-        short_target_path = short_path(target_path)
-    symbols = symbols or {}
-    if not options.DRY_RUN:
-        check_file_exists(source_path)
-    if os.path.exists(target_path):
-        if not os.path.isfile(target_path):
-            abort('Template expansion target exists, but is not a file',
-                  short_target_path)
-        if not overwrite:
-            log_message('Template expansion target exists - skipping',
-                        short_target_path)
-            return
-    log_message('Generate from template.',
-                source=short_source_path,
-                target=short_target_path)
-    if not options.DRY_RUN:
-        try:
-            with open(source_path, encoding='utf-8') as src_file:
-                with open(target_path, 'w', encoding='utf-8') as target_file:
-                    output_text = Template(src_file.read()).substitute(symbols)
-                    target_file.write(output_text)
-                if executable:
-                    os.system('chmod +x {}'.format(target_path))
-        except KeyError as exc_key_error:
-            if os.path.exists(target_path):
-                try:
-                    os.remove(target_path)
-                except (IOError, OSError) as exc_remove:
-                    log_warning('Unable to remove failed target file.',
-                                short_target_path,
-                                exception=exc_remove)
-            abort('Missing template symbol',
-                  source=short_source_path,
-                  symbol=exc_key_error)
-        except (IOError, OSError) as exc_write_error:
-            abort('Template expansion failed',
-                  source=short_source_path,
-                  target=short_target_path,
-                  exception=exc_write_error)
-
-
-def expand_templates(source_glob: Text,
-                     target_folder_path: Text,
-                     overwrite: bool = False,
-                     executable: bool = False,
-                     symbols: Dict = None):
-    for source_path in glob(source_glob):
-        target_path = os.path.join(target_folder_path, os.path.basename(source_path))
-        expand_template(source_path,
-                        target_path,
-                        overwrite=overwrite,
-                        executable=executable,
-                        symbols=symbols)
-
-
-def expand_template_path(source_path: Text, symbols: Dict) -> Text:
-    """
-    Expand name symbols in path.
-
-    :param source_path: source path with potential symbols to expand
-    :param symbols: symbol substitution dictionary
-    :return: output path with symbols expanded
-    """
-    name_parts = []
-    pos = 0
-    for match in TEMPLATE_FOLDER_SYMBOL_REGEX.finditer(source_path):
-        name = match.group(1)
-        start_pos, end_pos = match.span()
-        if start_pos > pos:
-            name_parts.append(source_path[pos:start_pos])
-        if name in symbols:
-            name_parts.append(symbols[name])
-        else:
-            log_error(f'Symbol "{name}" not found for path template "{source_path}".')
-            name_parts.append(source_path[start_pos:end_pos])
-        pos = end_pos
-    if pos < len(source_path):
-        name_parts.append(source_path[pos:])
-    return ''.join(name_parts)
-
-
-def expand_template_folder(template_folder: Text,
-                           target_folder: Text,
-                           overwrite: bool = False,
-                           symbols: Dict = None):
-    """
-    Recursively populate a target folder based on a template folder.
-
-    Note that .template* extensions are removed with special extensions handled
-    for generating dot name prefixes and setting executable permissions.
-
-    Source folder names may take advantage of symbol expansion by using special
-    syntax for name substitution. Target folder names will receive any
-    substituted symbols.
-
-    :param template_folder: path to template source folder
-    :param target_folder: path to target folder
-    :param overwrite: overwrite files if True
-    :param symbols: symbols for template expansion
-    :return:
-    """
-    symbols = symbols or {}
-    if not os.path.isdir(template_folder):
-        abort('Template source folder does not exist',
-              source_folder=folder_path(template_folder))
-    if os.path.exists(target_folder):
-        if not os.path.isdir(target_folder):
-            abort('Template target folder exists, but is not a folder',
-                  target_folder=target_folder)
-    log_heading(2, f'Expanding templates.')
-    log_message(None, template_folder=template_folder, target_folder=target_folder)
-    create_folder(target_folder)
-    for walk_source_folder, _walk_sub_folders, walk_file_names in os.walk(template_folder):
-        relative_folder = walk_source_folder[len(template_folder) + 1:]
-        expanded_folder = expand_template_path(relative_folder, symbols)
-        walk_target_folder = os.path.join(target_folder, expanded_folder)
-        create_folder(walk_target_folder)
-        for file_name in walk_file_names:
-            source_path = os.path.join(walk_source_folder, file_name)
-            stripped_file_name, extension = os.path.splitext(file_name)
-            if extension in TEMPLATE_EXTENSIONS_ALL:
-                if extension == TEMPLATE_EXTENSION_DOT:
-                    stripped_file_name = '.' + stripped_file_name
-                expanded_file_name = expand_template_path(stripped_file_name, symbols)
-                target_path = os.path.join(walk_target_folder, expanded_file_name)
-                executable = extension == TEMPLATE_EXTENSION_EXE
-                expand_template(source_path,
-                                target_path,
-                                overwrite=overwrite,
-                                executable=executable,
-                                symbols=symbols,
-                                source_relative_to=template_folder,
-                                target_relative_to=target_folder)
-            else:
-                copy_files(source_path, walk_target_folder)
-
-
 def get_folder_stack(folder: Text) -> List[Text]:
     """
     Get a list of folders from top-most down to the one provided.
@@ -436,7 +314,7 @@ class FileFilter:
 class ExcludesFilter(FileFilter):
     def __init__(self, source_folder: Text, excludes: List[Text]):
         if excludes:
-            self.matcher = prepare_ignore_patterns(excludes, source_folder)
+            self.matcher = gitignore_parser.prepare_ignore_patterns(excludes, source_folder)
         else:
             self.matcher = None
         super().__init__(source_folder)
@@ -452,7 +330,7 @@ class GitignoreFilter(FileFilter):
         super().__init__(source_folder)
         gitignore_path = os.path.join(self.source_folder, '.gitignore')
         if os.path.isfile(gitignore_path):
-            self.matcher = parse_gitignore(gitignore_path)
+            self.matcher = gitignore_parser.parse_gitignore(gitignore_path)
         else:
             self.matcher = None
 
@@ -529,3 +407,22 @@ def choose_program_alternative(*programs: Any, required: bool = False) -> Option
     if required:
         abort('Required program not found.', programs=programs)
     return None
+
+
+def make_relative_path(path: Text, start: Text = None) -> Text:
+    """
+    Construct a relative path.
+
+    Mainly a wrapper for os.path.relpath(), but it strips off leading './' to
+    provided cleaner paths.
+
+    :param path: path to convert to relative
+    :param start: optional start path
+    :return: relative path
+    """
+    rel_path = os.path.relpath(path, start=start)
+    if rel_path == '.':
+        return rel_path[1:]
+    if rel_path.startswith('./'):
+        return rel_path[2:]
+    return rel_path

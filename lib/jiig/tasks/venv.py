@@ -9,78 +9,95 @@ from jiig.utility.process import run
 from jiig.utility.python import build_virtual_environment, update_virtual_environment
 
 
-@jiig.task('venv',
-           description='Manage the tool virtual environment',
-           hidden_task=True)
-def task_venv(runner: jiig.TaskRunner):
-    if not runner.params.VENV_ENABLED:
-        abort(f'Virtual environment is disabled,',
-              f'VENV_ENABLED must be True in init.jiig.')
-    if not runner.params.VENV_ROOT:
-        abort(f'VENV_ROOT is not set in init.jiig.')
+class VenvBuildTask(jiig.Task):
+    """(Re-)Build the tool virtual environment."""
+
+    args = [
+        jiig.BoolOpt(('-r', '--rebuild'),
+                     'REBUILD_VENV',
+                     description='Force virtual environment rebuild.'),
+    ]
+
+    def on_run(self):
+        if self.params.PRIMARY_TASK:
+            log_heading(1, 'Build virtual environment')
+        build_virtual_environment(self.params.VENV_FOLDER,
+                                  packages=self.params.PIP_PACKAGES,
+                                  rebuild=self.data.REBUILD_VENV,
+                                  quiet=not self.params.PRIMARY_TASK)
 
 
-@jiig.sub_task(task_venv,
-               'build',
-               jiig.bool_option('REBUILD_VENV',
-                                ('-r', '--rebuild'),
-                                description='Force virtual environment rebuild'),
-               description='(Re-)Build the tool virtual environment')
-def task_venv_build(runner: jiig.TaskRunner):
-    if runner.params.PRIMARY_TASK:
-        log_heading(1, 'Build virtual environment')
-    build_virtual_environment(runner.params.VENV_ROOT,
-                              packages=runner.params.PIP_PACKAGES,
-                              rebuild=runner.args.REBUILD_VENV,
-                              quiet=not runner.params.PRIMARY_TASK)
+class VenvUpdateTask(jiig.Task):
+    """Update the tool virtual environment."""
+
+    def on_run(self):
+        if self.params.PRIMARY_TASK:
+            log_heading(1, 'Update virtual environment')
+        update_virtual_environment(self.params.VENV_FOLDER,
+                                   packages=self.params.PIP_PACKAGES)
 
 
-@jiig.sub_task(task_venv,
-               'update',
-               description='Update the tool virtual environment')
-def task_venv_update(runner: jiig.TaskRunner):
-    if runner.params.PRIMARY_TASK:
-        log_heading(1, 'Update virtual environment')
-    update_virtual_environment(runner.params.VENV_ROOT,
-                               packages=runner.params.PIP_PACKAGES)
+class VenvIPythonTask(jiig.Task):
+    """Run ipython from virtual environment."""
+
+    def on_run(self):
+        ipython_path = self.expand_path_template('{VENV_FOLDER}/bin/ipython')
+        if not os.path.exists(ipython_path):
+            pip_path = self.expand_path_template('{VENV_FOLDER}/bin/pip')
+            log_message('Install iPython in virtual environment.')
+            run([pip_path, 'install', 'ipython'])
+        try:
+            env = {'PYTHONPATH': os.path.pathsep.join(self.params.LIB_FOLDERS)}
+            os.execle(ipython_path, ipython_path, env)
+        except Exception as exc:
+            abort(f'Failed to execute "ipython" command.',
+                  command_path=ipython_path,
+                  exception=exc)
 
 
-@jiig.sub_task(task_venv,
-               'ipython',
-               description='Run ipython from virtual environment')
-def task_ipython(runner: jiig.TaskRunner):
-    ipython_path = runner.expand_path_template('{VENV_ROOT}/bin/ipython')
-    if not os.path.exists(ipython_path):
-        pip_path = runner.expand_path_template('{VENV_ROOT}/bin/pip')
-        log_message('Install iPython in virtual environment.')
-        run([pip_path, 'install', 'ipython'])
-    try:
-        env = {'PYTHONPATH': os.path.pathsep.join(runner.params.LIB_FOLDERS)}
-        os.execle(ipython_path, ipython_path, env)
-    except Exception as exc:
-        abort(f'Failed to execute "ipython" command.',
-              command_path=ipython_path,
-              exception=exc)
+class VenvPipTask(jiig.Task):
+    """Run pip from virtual environment."""
+
+    args = [
+        jiig.Arg('ARGS',
+                 description='Pip command line arguments.',
+                 cardinality='*'),
+    ]
+
+    def on_run(self):
+        pip_path = self.expand_path_template('{VENV_FOLDER}/bin/pip')
+        os.execl(pip_path, pip_path, *self.data.ARGS)
 
 
-@jiig.sub_task(task_venv,
-               'pip',
-               jiig.argument('ARGS',
-                             description='Pip command line arguments',
-                             cardinality='*'),
-               description='Run pip from virtual environment')
-def task_pip(runner: jiig.TaskRunner):
-    pip_path = runner.expand_path_template('{VENV_ROOT}/bin/pip')
-    os.execl(pip_path, pip_path, *runner.args.ARGS)
+class VenvPython(jiig.Task):
+    """Run python from virtual environment."""
+
+    args = [
+        jiig.Arg('ARGS',
+                 description='Python command line arguments.',
+                 cardinality='*'),
+    ]
+
+    def on_run(self):
+        python_path = self.expand_path_template('{VENV_FOLDER}/bin/python')
+        env = {'PYTHONPATH': os.path.pathsep.join(self.params.LIB_FOLDERS)}
+        os.execle(python_path, python_path, *self.data.ARGS, env)
 
 
-@jiig.sub_task(task_venv,
-               'python',
-               jiig.argument('ARGS',
-                             description='Python command line arguments',
-                             cardinality='*'),
-               description='Run python from virtual environment')
-def task_python(runner: jiig.TaskRunner):
-    python_path = runner.expand_path_template('{VENV_ROOT}/bin/python')
-    env = {'PYTHONPATH': os.path.pathsep.join(runner.params.LIB_FOLDERS)}
-    os.execle(python_path, python_path, *runner.args.ARGS, env)
+class TaskClass(jiig.Task):
+    """Manage the tool virtual environment."""
+
+    sub_tasks = {
+        'build': VenvBuildTask,
+        'ipython': VenvIPythonTask,
+        'pip': VenvPipTask,
+        'python': VenvPython,
+        'update': VenvUpdateTask,
+    }
+
+    def on_run(self):
+        if not self.params.VENV_ENABLED:
+            abort(f'Virtual environment is disabled,',
+                  f'VENV_ENABLED must be True in init.jiig.')
+        if not self.params.VENV_FOLDER:
+            abort(f'VENV_FOLDER is not set in init.jiig.')

@@ -153,7 +153,7 @@ class ParamList(Param):
                 payload.value.extend((
                     item for item in list_value
                     if item not in self.unique_values))
-                self.unique_values.write_data(list_value)
+                self.unique_values.update(list_value)
             else:
                 payload.value.extend(list_value)
 

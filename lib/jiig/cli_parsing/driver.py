@@ -64,7 +64,19 @@ class CommandLineParserDriver:
                                           disable_debug=self.disable_debug,
                                           disable_dry_run=self.disable_dry_run,
                                           disable_verbose=self.disable_verbose)
-        return self.implementation.on_pre_parse(command_line_arguments, options)
+
+        pre_parse_results = self.implementation.on_pre_parse(command_line_arguments, options)
+
+        # Tweak the parse results so that the data always has valid DEBUG, DRY_RUN,
+        # and VERBOSE options are always available.
+        if self.disable_debug:
+            pre_parse_results.data.DEBUG = False
+        if self.disable_dry_run:
+            pre_parse_results.data.DRY_RUN = False
+        if self.disable_verbose:
+            pre_parse_results.data.VERBOSE = False
+
+        return pre_parse_results
 
     def initialize_parser(self) -> ParserRoot:
         """
@@ -96,11 +108,22 @@ class CommandLineParserDriver:
                                           disable_debug=self.disable_debug,
                                           disable_dry_run=self.disable_dry_run,
                                           disable_verbose=self.disable_verbose)
-        return self.implementation.on_parse(command_line_arguments,
-                                            self.name,
-                                            self.description,
-                                            self.root,
-                                            options)
+        parse_results = self.implementation.on_parse(command_line_arguments,
+                                                     self.name,
+                                                     self.description,
+                                                     self.root,
+                                                     options)
+
+        # Tweak the parse results so that the data always has valid DEBUG, DRY_RUN,
+        # and VERBOSE options are always available.
+        if self.disable_debug:
+            parse_results.data.DEBUG = False
+        if self.disable_dry_run:
+            parse_results.data.DRY_RUN = False
+        if self.disable_verbose:
+            parse_results.data.VERBOSE = False
+
+        return parse_results
 
 
 def get_parser_driver(name: Text,

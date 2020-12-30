@@ -4,15 +4,31 @@
 Main Jiig program.
 
 The jiig-run "shebang" line at the top performs the magic to run the script with
-Python and a path that finds the Jiig library.
+the appropriate Python interpreter and with a path that finds Jiig libraries.
 
-All the body of this script has to do is load task modules so that they get
-registered for when the CLI is built.
+This script just has to create an appropriately-named Tool class.
 """
+
 
 import jiig
 
-jiig.tool(description='Jiig tool manager',
-          expose_hidden_tasks=True)
 
-from jiig.tasks import task, unittest, tool, venv   # noqa
+class ToolClass(jiig.Tool):
+    """Jiig utility."""
+
+    name = 'jiig'
+
+    tasks = {
+        'task': jiig.tasks.task,
+        'tool': jiig.tasks.tool,
+        'venv': jiig.tasks.venv,
+    }
+
+    secondary_tasks = {
+        'alias': jiig.tasks.alias,
+        'help': jiig.tasks.help,
+    }
+
+    hidden_tasks = {
+        'unittest': jiig.tasks.unittest,
+    }

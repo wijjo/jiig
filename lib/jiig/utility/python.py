@@ -10,7 +10,7 @@ from .console import abort, log_error, log_message
 from .filesystem import delete_folder, short_path
 from . import options
 from .process import run
-from .stream import open_text
+from .stream import open_text_source
 
 
 def format_call_string(call_name: Text, *args, **kwargs) -> Text:
@@ -111,7 +111,7 @@ def execute_source(*,
                    symbols: Dict = None) -> Dict:
     """Execute python source code text, file, or stream"""
     exec_symbols = symbols or {}
-    with open_text(text=text, file=file, stream=stream, check=True) as text_stream:
+    with open_text_source(text=text, file=file, stream=stream, check=True) as text_stream:
         # noinspection PyBroadException
         try:
             exec(text_stream.read(), exec_symbols)

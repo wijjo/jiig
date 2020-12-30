@@ -1,0 +1,9 @@
+{
+  "templates": [
+    {
+      "path": "task.py",
+      "output_path": "$template_task_name.py",
+      "expansion": "word"
+    }
+  ]
+}

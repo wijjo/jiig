@@ -9,12 +9,31 @@ Use as the program in the "shebang" line of the main script.
 import os
 import sys
 
-# Use script path to determine Jiig library folder to add to Python path.
-_LIB_FOLDER = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lib')
-if _LIB_FOLDER not in sys.path:
-    sys.path.insert(0, _LIB_FOLDER)
-# Now it is possible to import Jiig initialization.
-from jiig.initialization import initialize
+
+def jiig_run_main():
+    if len(sys.argv) < 2 or not os.path.isfile(sys.argv[1]):
+        sys.stderr.write(f'FATAL: jiig-run should not be run directly.{os.linesep}')
+        sys.exit(1)
+
+    # Use script path to determine Jiig library folder to add to Python path.
+    jiig_root = os.path.dirname(os.path.realpath(__file__))
+    jiig_library_path = os.path.join(jiig_root, 'lib')
+    if jiig_library_path not in sys.path:
+        sys.path.insert(0, jiig_library_path)
+
+    # Now it is possible to import and initialize Jiig.
+    from jiig.constants import DEFAULT_PARSER_IMPLEMENTATION
+    from jiig.initialization.main import main
+    from jiig.initialization.execution_data import ExecutionData
+
+    main(ExecutionData(run_script_path=sys.argv[0],
+                       tool_script_path=sys.argv[1],
+                       jiig_root=jiig_root,
+                       jiig_library_path=jiig_library_path,
+                       cli_args=sys.argv[2:],
+                       parser_implementation=DEFAULT_PARSER_IMPLEMENTATION,
+                       ))
+
 
 if __name__ == '__main__':
-    initialize()
+    jiig_run_main()

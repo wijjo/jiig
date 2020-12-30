@@ -3,7 +3,8 @@
 import os
 import sys
 import traceback
-from typing import Any, Text, Set
+from contextlib import contextmanager
+from typing import Any, Text, Set, Iterator, List, Sequence, Dict, Tuple, Optional
 
 from .general import format_message_lines
 from . import options
@@ -37,29 +38,22 @@ def log_message(text: Any, *args, **kwargs):
         sys.stdout.write(os.linesep)
 
 
-def print_call_stack(skip: int = None,
-                     limit: int = None,
-                     tb: object = None,
-                     label: Text = None):
-    sys.stderr.write(f'{options.MESSAGE_INDENT}::{label or "Call"} Stack::{os.linesep}')
-    if tb:
-        stack = traceback.extract_tb(tb, limit=limit)
-    else:
-        stack = traceback.extract_stack(limit=limit)
-    if skip is not None:
-        stack = stack[:-skip]
-    for file, line, function, source in stack:
-        sys.stderr.write(f'{options.MESSAGE_INDENT}{file}.{line}, {function}(){os.linesep}')
-
-
 def abort(text: Any, *args, **kwargs):
     """Display, and in the future log, a fatal _error message (to stderr) and quit."""
     from . import options
     skip = kwargs.pop('skip', 0)
     kwargs['tag'] = 'FATAL'
     log_message(text, *args, **kwargs)
+    # If an exception seems to be the trigger, dump a stack and exist.
+    for value in list(args) + list(kwargs.values()):
+        if isinstance(value, Exception):
+            traceback.print_exc()
+            sys.exit(255)
+    # If DEBUG is enabled dump a call stack and strip off the non-meaningful tail.
     if options.DEBUG:
-        print_call_stack(skip=skip + 2)
+        traceback_lines = traceback.format_stack()[:-(skip + 1)]
+        for line in traceback_lines:
+            sys.stderr.write(line)
     sys.exit(255)
 
 
@@ -79,3 +73,168 @@ def log_heading(level: int, heading: Text):
     """Display, and in the future log, a heading message to delineate blocks."""
     decoration = '=====' if level == 1 else '---'
     sys.stdout.write(f'{decoration} {heading} {decoration}{os.linesep}')
+
+
+def log_block_begin(level: int, heading: Text):
+    """
+    Display, and in the future log, a heading message to delineate blocks.
+
+    For now it just calls log_heading().
+    """
+    log_heading(level, heading)
+
+
+def log_block_end(level: int):
+    """Display, and in the future log, a message to delineate block endings."""
+    decoration = '=====' if level == 1 else '---'
+    sys.stdout.write(f'{decoration}{os.linesep}')
+
+
+class TopicLogger:
+    """Topic logger provided by log_topic()."""
+    def __init__(self,
+                 topic: Text,
+                 delayed: bool = None,
+                 parent: 'TopicLogger' = None):
+        """
+        Construct a topic or sub-topic.
+
+        :param topic: topic heading text or used as preamble if parent is not None
+        :param delayed: collect output and display at the end (inherited by default)
+        :param parent: parent TopicLogger, set if it is a sub-topic
+        """
+        self.topic: Text = topic
+        if delayed is None:
+            if parent:
+                delayed = parent.delayed
+            else:
+                delayed = False
+        self.delayed = delayed
+        self.parent: Optional[TopicLogger] = parent
+        self.errors: List[Tuple[Any, Sequence, Dict]] = []
+        self.warnings: List[Tuple[Any, Sequence, Dict]] = []
+        self.messages: List[Tuple[Any, Sequence, Dict]] = []
+        self.heading_level = 1
+        topic = self
+        while topic.parent is not None:
+            self.heading_level += 1
+            topic = topic.parent
+        if not self.delayed:
+            log_heading(self.heading_level, self.topic)
+
+    def error(self, text: Any, *args, **kwargs):
+        """
+        Add an error.
+
+        :param text: message text
+        :param args: positional data arguments
+        :param kwargs: keywords data arguments
+        """
+        if self.delayed:
+            if self.parent is None:
+                self.errors.append((text, args, kwargs))
+            else:
+                self.parent.error(f'{self.topic}: {text}', *args, **kwargs)
+        else:
+            log_error(text, *args, **kwargs)
+
+    def warning(self, text: Any, *args, **kwargs):
+        """
+        Add a warning.
+
+        :param text: message text
+        :param args: positional data arguments
+        :param kwargs: keywords data arguments
+        """
+        if self.delayed:
+            if self.parent is None:
+                self.warnings.append((text, args, kwargs))
+            else:
+                self.parent.warning(f'{self.topic}: {text}', *args, **kwargs)
+        else:
+            log_warning(text, *args, **kwargs)
+
+    def message(self, text: Any, *args, **kwargs):
+        """
+        Add a message.
+
+        Checked for uniqueness so that a particular note only appears once.
+
+        :param text: message text
+        :param args: positional data arguments
+        :param kwargs: keywords data arguments
+        """
+        if self.delayed:
+            if self.parent is None:
+                self.messages.append((text, args, kwargs))
+            else:
+                self.parent.message(f'{self.topic}: {text}', *args, **kwargs)
+        else:
+            log_message(text, *args, **kwargs)
+
+    @contextmanager
+    def sub_topic(self,
+                  topic: Text,
+                  delayed: bool = None,
+                  ) -> Iterator['TopicLogger']:
+        """
+        Context manager to start a sub-topic.
+
+        :param topic: sub-topic heading used as message preamble
+        :param delayed: collect output and display at the end (inherited by default)
+        :return: sub-TopicLogger to call with sub-topic messages
+        """
+        sub_topic_logger = TopicLogger(topic, delayed=delayed, parent=self)
+        yield sub_topic_logger
+        sub_topic_logger.flush()
+
+    def get_counts(self) -> Tuple[int, int, int]:
+        """
+        Get current error/warning/message counts.
+
+        :return: (error_count, warning_count, message_count) tuple
+        """
+        return len(self.errors), len(self.warnings), len(self.messages)
+
+    def flush(self):
+        """
+        Flush messages.
+
+        Generally used only internally, as long as the log_topic()
+        contextmanager function and sub_topic() method is used.
+        """
+        # Note that when self.delayed is False there should be no pending messages.
+        if self.delayed:
+            if self.errors or self.warnings or self.messages:
+                log_block_begin(self.heading_level, self.topic)
+                for text, args, kwargs in self.errors:
+                    log_error(text, *args, **kwargs)
+                self.errors = []
+                for text, args, kwargs in self.warnings:
+                    log_warning(text, *args, **kwargs)
+                self.warnings = []
+                for text, args, kwargs in self.messages:
+                    log_message(text, *args, **kwargs)
+                self.messages = []
+                if self.heading_level == 1:
+                    log_block_end(self.heading_level)
+        else:
+            if self.heading_level == 1:
+                log_block_end(self.heading_level)
+
+
+@contextmanager
+def log_topic(topic: Text, delayed: bool = False) -> Iterator[TopicLogger]:
+    """
+    Provide a context manager to start a topic.
+
+    Topic errors, warnings, and messages are flushed at the end of the `with`
+    block invoking this function.
+
+    :param topic: topic heading text
+    :param delayed: collect output and display at the end
+    :return: TopicLogger that the caller can use to add various message types
+    """
+    topic_logger = TopicLogger(topic, delayed=delayed)
+    yield topic_logger
+    topic_logger.flush()

@@ -71,7 +71,7 @@ https://docs.python.org/3.8/library/re.html#regular-expression-syntax
 import re
 from urllib.request import Request
 from typing import List, Callable, Text, IO, Dict, Any, Set, Optional, Hashable
-from jiig.utility.stream import open_text
+from jiig.utility.stream import open_text_source
 
 
 class NoStateCls:
@@ -158,13 +158,13 @@ class WScanner:
         :param timeout: timeout in seconds when downloading URL or Request
         :param state: next state value
         """
-        with open_text(text=text,
-                       file=file,
-                       stream=stream,
-                       url=url,
-                       request=request,
-                       timeout=timeout,
-                       check=True) as html_stream:
+        with open_text_source(text=text,
+                              file=file,
+                              stream=stream,
+                              url=url,
+                              request=request,
+                              timeout=timeout,
+                              check=True) as html_stream:
             if state is not NoState:
                 self.set_state(state)
             self.begin()

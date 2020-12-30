@@ -252,6 +252,13 @@ def format_message_lines(text: Any, *args, **kwargs) -> Iterator[Text]:
     """
     tag = kwargs.pop('tag', None)
 
+    def _generate_exception_lines(exc: Exception) -> Iterator[Text]:
+        exc_lines = format_exception(exc).split(os.linesep)
+        if exc_lines:
+            yield f'Exception: {exc_lines[0]}'
+            for exc_line in exc_lines[1:]:
+                yield exc_line
+
     def _generate_raw_lines():
         if text:
             if isinstance(text, (list, tuple)):
@@ -261,8 +268,10 @@ def format_message_lines(text: Any, *args, **kwargs) -> Iterator[Text]:
                 yield str(text)
         for value in args:
             if isinstance(value, Exception):
-                value = f"Exception: {format_exception(value)}')"
-            yield f'{options.MESSAGE_INDENT}{value}'
+                for exc_value in _generate_exception_lines(value):
+                    yield f'{options.MESSAGE_INDENT}{exc_value}'
+            else:
+                yield f'{options.MESSAGE_INDENT}{value}'
         for key, value in kwargs.items():
             if isinstance(value, (list, tuple)):
                 for idx, sub_value in enumerate(value):
@@ -270,9 +279,8 @@ def format_message_lines(text: Any, *args, **kwargs) -> Iterator[Text]:
                         sub_value = format_exception(sub_value)
                     yield f'{options.MESSAGE_INDENT}{key}[{idx + 1}]: {sub_value}'
             elif isinstance(value, Exception):
-                if isinstance(value, Exception):
-                    value = f"Exception: {format_exception(value)}')"
-                yield f'{options.MESSAGE_INDENT}{value}'
+                for exc_value in _generate_exception_lines(value):
+                    yield f'{options.MESSAGE_INDENT}{exc_value}'
             else:
                 yield f'{options.MESSAGE_INDENT}{key}: {value}'
 
@@ -299,7 +307,7 @@ def format_message_block(message: Any, *args, **kwargs) -> Text:
     return os.linesep.join(format_message_lines(message, *args, **kwargs))
 
 
-def plural(text: Any, countable: Any):
+def plural(text: Text, countable: Any):
     """
     Simple text pluralization adds "s" if `countable` has a length that is not one.
 
@@ -309,6 +317,8 @@ def plural(text: Any, countable: Any):
     """
     try:
         if len(countable) != 1:
+            if text.endswith('y'):
+                return f'{text[:-1]}ies'
             return f'{text}s'
     except TypeError:
         pass

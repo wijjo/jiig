@@ -32,7 +32,7 @@ import re
 from typing import List, Union, Callable, Text, IO, Dict, Any, Iterator, cast
 from urllib.request import Request
 
-from jiig.utility.stream import open_text
+from jiig.utility.stream import open_text_source
 
 
 class NextLine(Exception):
@@ -69,13 +69,13 @@ class ScannerBase:
         Input-specific I/O exceptions may be raised.
         """
         self.begin()
-        with open_text(text=text,
-                       file=file,
-                       stream=stream,
-                       url=url,
-                       request=request,
-                       timeout=timeout,
-                       check=True) as text_stream:
+        with open_text_source(text=text,
+                              file=file,
+                              stream=stream,
+                              url=url,
+                              request=request,
+                              timeout=timeout,
+                              check=True) as text_stream:
             try:
                 self.scan_text(text_stream)
             except StopIteration:

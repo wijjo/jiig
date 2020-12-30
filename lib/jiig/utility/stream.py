@@ -1,4 +1,8 @@
-"""Stream utilities."""
+"""
+Stream utilities.
+
+For now these are read-only utilities.
+"""
 
 import json
 import os
@@ -62,17 +66,19 @@ def _open_text(*,
 
 
 @contextmanager
-def open_text(*,
-              text: Text = None,
-              file: Text = None,
-              stream: IO = None,
-              url: Text = None,
-              request: Request = None,
-              timeout: int = None,
-              check: bool = False
-              ) -> Iterator[IO]:
+def open_text_source(*,
+                     text: Text = None,
+                     file: Text = None,
+                     stream: IO = None,
+                     url: Text = None,
+                     request: Request = None,
+                     timeout: int = None,
+                     check: bool = False
+                     ) -> Iterator[IO]:
     """
-    Open a text stream, given a string, file path, stream, URL, or Request object.
+    Open a text source stream for reading.
+
+    It may be a string, file path, stream, URL, or Request object.
 
     :param text: input string
     :param file: file path
@@ -99,17 +105,17 @@ def open_text(*,
         yield output_data.stream
 
 
-def open_json(*,
-              text: Text = None,
-              file: Text = None,
-              stream: IO = None,
-              url: Text = None,
-              request: Request = None,
-              timeout: int = None,
-              check: bool = False
-              ) -> Any:
+def read_json_source(*,
+                     text: Text = None,
+                     file: Text = None,
+                     stream: IO = None,
+                     url: Text = None,
+                     request: Request = None,
+                     timeout: int = None,
+                     check: bool = False
+                     ) -> Any:
     """
-    Open a text stream, given a string, file path, stream, URL, or Request object.
+    Read JSON from a text stream, given a string, file path, stream, URL, or Request object.
 
     :param text: input string
     :param file: file path
@@ -118,7 +124,7 @@ def open_json(*,
     :param request: input Request object for downloading
     :param timeout: timeout in seconds when downloading URL or Request
     :param check: abort cleanly if True, instead of passing along exceptions
-    :return: a yielded stream to use in a `with` block for proper closing
+    :return: JSON data
     """
     with _open_text(text=text,
                     file=file,
@@ -175,7 +181,7 @@ def load_json_file_stack(file_name: Text, folder: Text = None) -> Dict:
                                           f' for "{key}" in "{path}".')
                         elif isinstance(value, dict):
                             if isinstance(data[key], dict):
-                                data[key].write_data(value)
+                                data[key].update(value)
                             else:
                                 log_error(f'Ignoring non-dictionary value'
                                           f' for "{key}" in "{path}".')

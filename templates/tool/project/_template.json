@@ -1,0 +1,25 @@
+{
+  "templates": [
+    {
+      "path": "template_tool_name",
+      "output_path": "$template_tool_name",
+      "expansion": "word",
+      "executable": true
+    },
+    {
+      "path": "lib/template_tool_name/__init__.py",
+      "output_path": "lib/$template_tool_name/__init__.py",
+      "expansion": "copy"
+    },
+    {
+      "path": "lib/template_tool_name/tasks/__init__.py",
+      "output_path": "lib/$template_tool_name/tasks/__init__.py",
+      "expansion": "copy"
+    },
+    {
+      "path": "lib/template_tool_name/tasks/template_task_name.py",
+      "output_path": "lib/$template_tool_name/tasks/$template_task_name.py",
+      "expansion": "word"
+    }
+  ]
+}

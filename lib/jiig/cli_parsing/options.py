@@ -21,6 +21,7 @@ class ParserImplementations:
 DEFAULT_IMPLEMENTATION = ParserImplementations.argparse
 
 
+# noinspection DuplicatedCode
 def set_options(verbose: bool = None,
                 debug: bool = None,
                 dry_run: bool = None,
