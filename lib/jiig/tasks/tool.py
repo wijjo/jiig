@@ -1,6 +1,7 @@
 """Tool creation task."""
 
 import os
+from typing import Text, Optional
 
 import jiig
 
@@ -11,12 +12,18 @@ from jiig.utility.template_expansion import expand_folder
 class ToolProjectTask(jiig.Task):
     """Create Jiig tool project."""
 
-    opts = [
+    # For type inspection only.
+    class Data:
+        FORCE: bool
+        TOOL_NAME: Text
+        TASK_NAME: Text
+        TOOL_FOLDER: Optional[Text]
+    data: Data
+
+    args = [
         jiig.BoolOpt(('-f', '--force'), 'FORCE', 'Force overwriting of target files.'),
         jiig.Opt(('-T', '--tool-name'), 'TOOL_NAME', 'Tool name (default: <folder name>).'),
         jiig.Opt(('-t', '--task-name'), 'TASK_NAME', 'Task name (default: "task").'),
-    ]
-    args = [
         jiig.Arg('TOOL_FOLDER',
                  'Generated tool output folder.',
                  jiig.adapters.path.check_folder,
@@ -42,11 +49,16 @@ class ToolProjectTask(jiig.Task):
 class ToolScriptTask(jiig.Task):
     """Create monolithic Jiig tool script."""
 
-    opts = [
+    # For type inspection only.
+    class Data:
+        FORCE: bool
+        TOOL_NAME: Text
+        TOOL_FOLDER: Optional[Text]
+    data: Data
+
+    args = [
         jiig.BoolOpt(('-f', '--force'), 'FORCE', 'Force overwriting of target files.'),
         jiig.Opt(('-n', '--name'), 'TOOL_NAME', 'Tool name (default: <folder name>).'),
-    ]
-    args = [
         jiig.Arg('TOOL_FOLDER',
                  'Generated tool output folder.',
                  jiig.adapters.path.check_folder,

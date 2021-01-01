@@ -6,11 +6,8 @@ import jiig
 class TaskClass(jiig.Task):
     """Display hello message."""
 
-    opts = [
-        jiig.Opt('-t', 'TEXAS_STYLE', 'greet with a drawl'),
-    ]
-
     args = [
+        jiig.Opt('-t', 'TEXAS_STYLE', 'greet with a drawl'),
         jiig.Arg('NAME', 'optional name', cardinality='?')
     ]
 

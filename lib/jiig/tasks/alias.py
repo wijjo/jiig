@@ -2,7 +2,7 @@
 Alias sub-command tasks.
 """
 
-from typing import Text, Iterator, Iterable
+from typing import Text, Iterator, Iterable, Optional, List
 
 import jiig
 
@@ -13,6 +13,11 @@ from jiig.utility.console import log_message, log_error
 
 class AliasDeleteTask(jiig.Task):
     """Delete alias."""
+
+    # For type inspection only.
+    class Data:
+        ALIAS: Text
+    data: Data
 
     args = [
         jiig.Arg('ALIAS', 'Name of alias to delete.'),
@@ -26,9 +31,15 @@ class AliasDeleteTask(jiig.Task):
 class AliasDescriptionTask(jiig.Task):
     """Set alias description."""
 
+    # For type inspection only.
+    class Data:
+        ALIAS: Text
+        DESCRIPTION: Text
+    data: Data
+
     args = [
         jiig.Arg('ALIAS', 'Target alias name for description.'),
-        jiig.Arg('DESCRIPTION', 'Alias description.', cardinality='+'),
+        jiig.Arg('DESCRIPTION', 'Alias description.'),
     ]
 
     def on_run(self):
@@ -40,7 +51,12 @@ class AliasDescriptionTask(jiig.Task):
 class AliasListTask(jiig.Task):
     """List aliases."""
 
-    opts = [
+    # For type inspection only.
+    class Data:
+        EXPAND_NAMES: bool
+    data: Data
+
+    args = [
         jiig.BoolOpt(('-e', '--expand-names'), 'EXPAND_NAMES',
                      'Display expanded paths in names.'),
     ]
@@ -78,6 +94,12 @@ class AliasListTask(jiig.Task):
 class AliasRenameTask(jiig.Task):
     """Rename alias."""
 
+    # For type inspection only.
+    class Data:
+        ALIAS: Text
+        ALIAS_NEW: Text
+    data: Data
+
     args = [
         jiig.Arg('ALIAS', 'Existing alias name.'),
         jiig.Arg('ALIAS_NEW', 'New alias name.'),
@@ -91,10 +113,15 @@ class AliasRenameTask(jiig.Task):
 class AliasSetTask(jiig.Task):
     """Create or update alias."""
 
-    opts = [
-        jiig.Opt(('-d', '--description'), 'DESCRIPTION', 'New alias description.'),
-    ]
+    # For type inspection only.
+    class Data:
+        DESCRIPTION: Optional[Text]
+        ALIAS: Text
+        COMMAND: Text
+    data: Data
+
     args = [
+        jiig.Opt(('-d', '--description'), 'DESCRIPTION', 'New alias description.'),
         jiig.Arg('ALIAS', 'Name of alias to create or update.'),
         jiig.Arg('COMMAND', 'Command with options and arguments.'),
     ]
@@ -116,6 +143,11 @@ class AliasSetTask(jiig.Task):
 
 class AliasShowTask(jiig.Task):
     """Display alias."""
+
+    # For type inspection only.
+    class Data:
+        ALIASES: List[Text]
+    data: Data
 
     args = [
         jiig.Arg('ALIASES', 'Alias name(s) to display.', cardinality='+'),

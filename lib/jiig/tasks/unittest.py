@@ -3,6 +3,7 @@
 import os
 import unittest
 from glob import glob
+from typing import Text, List
 
 import jiig
 
@@ -14,6 +15,11 @@ from jiig.utility.python import import_module_path
 # TODO: Support tool tests, e.g. with TOOL specifier option.
 class TaskClass(jiig.Task):
     """Run unit tests using Python standard library unittest module."""
+
+    # For type inspection only.
+    class Data:
+        TESTS: List[Text]
+    data: Data
 
     args = [
         jiig.Arg('TESTS',

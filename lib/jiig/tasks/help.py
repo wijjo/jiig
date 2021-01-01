@@ -2,17 +2,23 @@
 Help task.
 """
 
+from typing import List, Text
+
 import jiig
 
 
 class TaskClass(jiig.Task):
     """Display help screen."""
 
-    opts = [
+    # For type inspection only.
+    class Data:
+        ALL_TASKS: bool
+        HELP_NAMES: List[Text]
+    data: Data
+
+    args = [
         jiig.BoolOpt(('-a', '--all'), 'ALL_TASKS',
                      'Show all tasks, including hidden ones.'),
-    ]
-    args = [
         jiig.Arg('HELP_NAMES',
                  'Command task name(s) or empty for top level help.',
                  cardinality='*'),

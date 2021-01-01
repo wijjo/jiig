@@ -14,7 +14,7 @@ from jiig.utility.footnotes import NotesList, NotesDict
 from jiig.utility.general import AttrDict
 from jiig.utility.help_formatter import HelpProvider
 
-from .arguments import Arg, Opt
+from .arguments import Arg
 
 
 class Task:
@@ -43,11 +43,8 @@ class Task:
     hidden_sub_tasks: Dict[Text, Union[Type, object]] = {}
     """Normally-hidden sub-task classes or modules by name."""
 
-    opts: List[Opt] = []
-    """Option definition list."""
-
     args: List[Arg] = []
-    """Argument definition list."""
+    """Argument/option definition list."""
 
     receive_trailing_arguments: bool = False
     """Keep unparsed trailing arguments if True."""

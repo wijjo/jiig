@@ -1,6 +1,7 @@
 """Virtual environment management task."""
 
 import os
+from typing import List, Text
 
 import jiig
 
@@ -11,6 +12,11 @@ from jiig.utility.python import build_virtual_environment, update_virtual_enviro
 
 class VenvBuildTask(jiig.Task):
     """(Re-)Build the tool virtual environment."""
+
+    # For type inspection only.
+    class Data:
+        REBUILD_VENV: bool
+    data: Data
 
     args = [
         jiig.BoolOpt(('-r', '--rebuild'),
@@ -58,6 +64,11 @@ class VenvIPythonTask(jiig.Task):
 class VenvPipTask(jiig.Task):
     """Run pip from virtual environment."""
 
+    # For type inspection only.
+    class Data:
+        ARGS: List[Text]
+    data: Data
+
     args = [
         jiig.Arg('ARGS',
                  description='Pip command line arguments.',
@@ -71,6 +82,11 @@ class VenvPipTask(jiig.Task):
 
 class VenvPython(jiig.Task):
     """Run python from virtual environment."""
+
+    # For type inspection only.
+    class Data:
+        ARGS: List[Text]
+    data: Data
 
     args = [
         jiig.Arg('ARGS',

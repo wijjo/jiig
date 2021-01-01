@@ -3,6 +3,7 @@ Task creation task.
 """
 
 import os
+from typing import Text, List
 
 import jiig
 
@@ -13,15 +14,20 @@ from jiig.utility.template_expansion import expand_folder
 class TaskCreateTask(jiig.Task):
     """Create task module(s)."""
 
-    opts = [
+    # For type inspection only.
+    class Data:
+        FORCE: bool
+        OUTPUT_FOLDER: Text
+        NEW_TASK_NAME: List[Text]
+    data: Data
+
+    args = [
         jiig.BoolOpt(('-f', '--force'), 'FORCE',
                      description='Force overwriting of target files.'),
         jiig.Opt(('-o', '--output-folder'), 'OUTPUT_FOLDER',
                  'Output tasks folder for generated modules.',
                  jiig.adapters.path.check_folder,
                  default_value='.'),
-    ]
-    args = [
         jiig.Arg('NEW_TASK_NAME', 'Task/module name(s).', cardinality='+'),
     ]
 

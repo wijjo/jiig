@@ -10,10 +10,11 @@ from inspect import isclass
 from typing import Type, Text, List, Dict, Union
 
 from jiig.constants import TASK_MODULE_CLASS_NAME
-from jiig.utility.console import abort
+from jiig.utility.console import abort, log_error
 from jiig.utility.general import AttrDict, format_exception
 from jiig.utility.help_formatter import HelpProvider
 
+from .arguments import Opt, Arg
 from .tasks import Task
 from .registration_utilities import prepare_registered_text
 
@@ -37,16 +38,28 @@ class RegisteredTask:
         self.is_secondary = is_secondary
         self.is_hidden = is_hidden
         # Copy some useful task class data members here.
-        self.opts = task_class.opts
-        self.args = task_class.args
+        # RegisteredTask has separate options and arguments lists.
+        self.opts: List[Opt] = []
+        self.args: List[Arg] = []
+        for arg in task_class.args:
+            if isinstance(arg, Opt):
+                self.opts.append(arg)
+            elif isinstance(arg, Arg):
+                self.args.append(arg)
+            else:
+                log_error(f'Task class has non-Arg/non-Opt item in `args` list.',
+                          arg,
+                          task_class=task_class.__name__,
+                          module=task_class.__module__)
         self.footnotes = task_class.footnotes
         self.receive_trailing_arguments = task_class.receive_trailing_arguments
+        # Prepare various flavors of sub-tasks.
         sub_task_preparer = self._SubTaskPreparer()
         sub_task_preparer.prepare(task_class.sub_tasks)
         sub_task_preparer.prepare(task_class.secondary_sub_tasks, is_secondary=True)
         sub_task_preparer.prepare(task_class.hidden_sub_tasks, is_hidden=True)
         if sub_task_preparer.resolution_errors:
-            abort(f'Failed to register task module(s).',
+            abort(f'Failed to register task modules and or classes.',
                   sub_task_preparer.resolution_errors)
         self.sub_tasks = sub_task_preparer.sub_tasks
         # Used by create_task()
