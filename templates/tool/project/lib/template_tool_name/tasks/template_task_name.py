@@ -6,10 +6,10 @@ import jiig
 class TaskClass(jiig.Task):
     """Display hello message."""
 
-    args = [
-        jiig.Opt('-t', 'TEXAS_STYLE', 'greet with a drawl'),
-        jiig.Arg('NAME', 'optional name', cardinality='?')
-    ]
+    args = {
+        'TEXAS_STYLE!': ('-t', 'greet with a drawl'),
+        'NAME?': 'optional name',
+    }
 
     def on_run(self):
         greeting = 'Howdy' if self.data.TEXAS_STYLE else 'Hello'

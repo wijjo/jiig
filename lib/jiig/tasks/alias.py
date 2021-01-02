@@ -19,9 +19,9 @@ class AliasDeleteTask(jiig.Task):
         ALIAS: Text
     data: Data
 
-    args = [
-        jiig.Arg('ALIAS', 'Name of alias to delete.'),
-    ]
+    args = {
+        'ALIAS': 'Name of alias to delete.',
+    }
 
     def on_run(self):
         with self.open_alias_catalog() as catalog:
@@ -37,10 +37,10 @@ class AliasDescriptionTask(jiig.Task):
         DESCRIPTION: Text
     data: Data
 
-    args = [
-        jiig.Arg('ALIAS', 'Target alias name for description.'),
-        jiig.Arg('DESCRIPTION', 'Alias description.'),
-    ]
+    args = {
+        'ALIAS': 'Target alias name for description.',
+        'DESCRIPTION': 'Alias description.',
+    }
 
     def on_run(self):
         with self.open_alias_catalog() as catalog:
@@ -56,10 +56,9 @@ class AliasListTask(jiig.Task):
         EXPAND_NAMES: bool
     data: Data
 
-    args = [
-        jiig.BoolOpt(('-e', '--expand-names'), 'EXPAND_NAMES',
-                     'Display expanded paths in names.'),
-    ]
+    args = {
+        'EXPAND_NAMES!': ('-e', '--expand-names', 'Display expanded paths in names.'),
+    }
 
     def on_run(self):
         displayed_line_count = 0
@@ -100,10 +99,10 @@ class AliasRenameTask(jiig.Task):
         ALIAS_NEW: Text
     data: Data
 
-    args = [
-        jiig.Arg('ALIAS', 'Existing alias name.'),
-        jiig.Arg('ALIAS_NEW', 'New alias name.'),
-    ]
+    args = {
+        'ALIAS': 'Existing alias name.',
+        'ALIAS_NEW': 'New alias name.',
+    }
 
     def on_run(self):
         with self.open_alias_catalog() as catalog:
@@ -120,11 +119,11 @@ class AliasSetTask(jiig.Task):
         COMMAND: Text
     data: Data
 
-    args = [
-        jiig.Opt(('-d', '--description'), 'DESCRIPTION', 'New alias description.'),
-        jiig.Arg('ALIAS', 'Name of alias to create or update.'),
-        jiig.Arg('COMMAND', 'Command with options and arguments.'),
-    ]
+    args = {
+        'DESCRIPTION': ('-d', '--description', 'New alias description.'),
+        'ALIAS': 'Name of alias to create or update.',
+        'COMMAND': 'Command with options and arguments.',
+    }
 
     # The command to alias is fed as unparsed trailing arguments.
     receive_trailing_arguments = True
@@ -149,9 +148,9 @@ class AliasShowTask(jiig.Task):
         ALIASES: List[Text]
     data: Data
 
-    args = [
-        jiig.Arg('ALIASES', 'Alias name(s) to display.', cardinality='+'),
-    ]
+    args = {
+        'ALIASES[+]': 'Alias name(s) to display.',
+    }
 
     def on_run(self):
         with self.open_alias_catalog() as catalog:

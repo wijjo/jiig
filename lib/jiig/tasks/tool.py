@@ -20,16 +20,14 @@ class ToolProjectTask(jiig.Task):
         TOOL_FOLDER: Optional[Text]
     data: Data
 
-    args = [
-        jiig.BoolOpt(('-f', '--force'), 'FORCE', 'Force overwriting of target files.'),
-        jiig.Opt(('-T', '--tool-name'), 'TOOL_NAME', 'Tool name (default: <folder name>).'),
-        jiig.Opt(('-t', '--task-name'), 'TASK_NAME', 'Task name (default: "task").'),
-        jiig.Arg('TOOL_FOLDER',
-                 'Generated tool output folder.',
-                 jiig.adapters.path.check_folder,
-                 default_value='.',
-                 cardinality='?'),
-    ]
+    args = {
+        'FORCE!': ('-f', '--force', 'Force overwriting of target files.'),
+        'TOOL_NAME': ('-T', '--tool-name', 'Tool name (default: <folder name>).'),
+        'TASK_NAME': ('-t', '--task-name', 'Task name (default: "task").'),
+        'TOOL_FOLDER?': ('Generated tool output folder.',
+                         jiig.path.check_folder,
+                         jiig.Default('.')),
+    }
 
     def on_run(self):
         target_folder = os.path.realpath(self.data.TOOL_FOLDER)
@@ -56,15 +54,13 @@ class ToolScriptTask(jiig.Task):
         TOOL_FOLDER: Optional[Text]
     data: Data
 
-    args = [
-        jiig.BoolOpt(('-f', '--force'), 'FORCE', 'Force overwriting of target files.'),
-        jiig.Opt(('-n', '--name'), 'TOOL_NAME', 'Tool name (default: <folder name>).'),
-        jiig.Arg('TOOL_FOLDER',
-                 'Generated tool output folder.',
-                 jiig.adapters.path.check_folder,
-                 default_value='.',
-                 cardinality='?'),
-    ]
+    args = {
+        'FORCE!': ('-f', '--force', 'Force overwriting of target files.'),
+        'TOOL_NAME': ('-T', '--tool-name', 'Tool name (default: <folder name>).'),
+        'TOOL_FOLDER?': ('Generated tool output folder.',
+                         jiig.path.check_folder,
+                         jiig.Default('.')),
+    }
 
     def on_run(self):
         target_folder = os.path.realpath(self.data.TOOL_FOLDER)

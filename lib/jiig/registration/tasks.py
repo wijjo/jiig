@@ -7,14 +7,12 @@ task classes. It should not be altered at runtime.
 
 import os
 from contextlib import contextmanager
-from typing import Text, List, Iterator, Optional, Dict, Union, Type
+from typing import Text, List, Iterator, Optional, Dict, Union, Type, Tuple
 
 from jiig.utility import alias_catalog
 from jiig.utility.footnotes import NotesList, NotesDict
 from jiig.utility.general import AttrDict
 from jiig.utility.help_formatter import HelpProvider
-
-from .arguments import Arg
 
 
 class Task:
@@ -23,6 +21,41 @@ class Task:
 
     Note that Task names are set on the instance by the constructor, because the
     name comes from task/sub-task dictionary keys.
+
+    # Argument dictionaries.
+
+    Maps argument <identifier> keys to <specification> values.
+
+    ## <identifier>
+
+    format: "<name><modifier>"
+
+    The modifier is optional.
+
+    Supported modifiers are:
+    - "[<repetition>]": allowed repetition as a number, '*', or '+'
+    - "?": indicates an optional (single) positional argument
+    - "!": specifies a boolean flag option that will be True when present
+
+    When a repetition modifier is specified argument data is provided as a list.
+
+    ## <specification>
+
+    The argument specification value can either be a string or a tuple.
+
+    A string becomes the argument description, and the argument is configured as
+    a simple text string.
+
+    A tuple supports the following content to provide greater flexibility in
+    defining arguments.
+
+    - "-..." strings are taken as option flags. Without any flag strings, it is
+      assumed to be a positional argument.
+    - Any other text string is taken as the argument description.
+    - Callable references are taken as argument data adapters.
+    - A Choices object can define a limited value set for the argument.
+    - A Default object can establish a default value if the argument is not
+      provided on the command line.
     """
 
     description: Text = None
@@ -43,8 +76,8 @@ class Task:
     hidden_sub_tasks: Dict[Text, Union[Type, object]] = {}
     """Normally-hidden sub-task classes or modules by name."""
 
-    args: List[Arg] = []
-    """Argument/option definition list."""
+    args: Dict[Text, Union[Text, Tuple]] = {}
+    """Argument/option definition dictionary."""
 
     receive_trailing_arguments: bool = False
     """Keep unparsed trailing arguments if True."""

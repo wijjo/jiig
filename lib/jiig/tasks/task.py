@@ -6,7 +6,6 @@ import os
 from typing import Text, List
 
 import jiig
-
 from jiig.utility.console import log_topic, abort
 from jiig.utility.template_expansion import expand_folder
 
@@ -21,15 +20,14 @@ class TaskCreateTask(jiig.Task):
         NEW_TASK_NAME: List[Text]
     data: Data
 
-    args = [
-        jiig.BoolOpt(('-f', '--force'), 'FORCE',
-                     description='Force overwriting of target files.'),
-        jiig.Opt(('-o', '--output-folder'), 'OUTPUT_FOLDER',
-                 'Output tasks folder for generated modules.',
-                 jiig.adapters.path.check_folder,
-                 default_value='.'),
-        jiig.Arg('NEW_TASK_NAME', 'Task/module name(s).', cardinality='+'),
-    ]
+    args = {
+        'FORCE!': ('-f', '--force', 'Force overwriting of target files.'),
+        'OUTPUT_FOLDER': ('-o', '--output-folder',
+                          'Output tasks folder for generated modules.',
+                          jiig.path.check_folder,
+                          jiig.Default('.')),
+        'NEW_TASK_NAME[+]': 'Task/module name(s).',
+    }
 
     def on_run(self):
         target_folder = self.data.OUTPUT_FOLDER or os.getcwd()

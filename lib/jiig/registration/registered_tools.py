@@ -10,11 +10,12 @@ import os
 from copy import copy
 from typing import Type, Text, Optional, List, Dict, Sequence
 
-from jiig import Tool
+import jiig
 from jiig.constants import TOP_TASK_LABEL, SUB_TASK_LABEL, JIIG_VENV_ROOT, DEFAULT_TEST_FOLDER
 from jiig.utility.console import log_error, abort
-from jiig.utility.general import make_list, AttrDict
+from jiig.utility.general import make_list, AttrDict, plural
 from jiig.utility.help_formatter import HelpFormatter, HelpProvider
+from jiig.utility.process import shell_quote_arg
 
 from .registered_tasks import RegisteredTask, prepare_registered_text
 from .tasks import Task
@@ -27,7 +28,7 @@ class RegisteredTool(HelpProvider):
 
     Presents normalized and finalized runtime data based on a Tool class.
     """
-    def __init__(self, tool_class: Type[Tool]):
+    def __init__(self, tool_class: Type[jiig.Tool]):
         text_results = prepare_registered_text(tool_class.description,
                                                tool_class.notes,
                                                getattr(tool_class, '__doc__', None))
@@ -60,7 +61,8 @@ class RegisteredTool(HelpProvider):
     def run(self,
             names: List[Text],
             data: object,
-            trailing_arguments: List[Text],
+            trailing_args: List[Text],
+            cli_args: List[Text],
             **params
             ):
         """
@@ -68,22 +70,18 @@ class RegisteredTool(HelpProvider):
 
         :param names: task name stack for execution
         :param data: parsed command line arguments as object with data attributes
-        :param trailing_arguments: command line trailing arguments, if requested
+        :param trailing_args: command line trailing arguments, if requested
+        :param cli_args: full list of command line arguments
         :param params: runtime parameter dictionary (converted to AttrDict)
         :return:
         """
-        command_string = ' '.join(names)
-
         registered_task_stack = self.get_task_stack(*names)
         if registered_task_stack is None:
             abort('Task class not found for command.', ' '.join(names))
 
         # Shouldn't have trailing arguments unless the specific command needs it.
-        if (trailing_arguments
-                and not registered_task_stack[-1].receive_trailing_arguments):
-            abort(f'Unexpected trailing arguments for command.',
-                  command_string,
-                  trailing_arguments)
+        registered_task = registered_task_stack[-1]
+        self._check_trailing_arguments(registered_task, names, trailing_args, cli_args)
 
         # Prepare argument data using raw data and task option/argument definitions.
         prepared_data = self.ArgumentData()
@@ -100,7 +98,7 @@ class RegisteredTool(HelpProvider):
             # Create the tool instance (self serves as the HelpProvider used for tool help).
             tool = self._tool_class(run_params,
                                     data,
-                                    trailing_arguments,
+                                    trailing_args,
                                     self)
 
             # Invoke the tool initialization hook.
@@ -112,7 +110,7 @@ class RegisteredTool(HelpProvider):
                 task_instance = registered_task.create_task(task_name,
                                                             run_params,
                                                             prepared_data,
-                                                            trailing_arguments,
+                                                            trailing_args,
                                                             self)
                 # Invoke the task run hook.
                 task_instance.on_run()
@@ -122,7 +120,7 @@ class RegisteredTool(HelpProvider):
         except KeyboardInterrupt:
             print('')
         except Exception as exc:
-            abort(f'Task command failed:', command_string, exc)
+            abort(f'Task command failed:', ' '.join(names), exc)
 
     def get_task_stack(self, *names: Text) -> Optional[List[RegisteredTask]]:
         """
@@ -241,7 +239,7 @@ class RegisteredTool(HelpProvider):
         return self.root_task.sub_tasks
 
     @staticmethod
-    def _prepare_registered_tool_options(source_tool_class: Type[Tool]) -> ToolOptions:
+    def _prepare_registered_tool_options(source_tool_class: Type[jiig.Tool]) -> ToolOptions:
         # Make a fresh copy of options with minor updates for paths.
         venv_folder = source_tool_class.options.venv_folder
         if venv_folder is None:
@@ -261,3 +259,29 @@ class RegisteredTool(HelpProvider):
             library_folders=copy(source_tool_class.options.library_folders),
             test_folder=os.path.realpath(test_folder),
         )
+
+    @staticmethod
+    def _check_trailing_arguments(registered_task: RegisteredTask,
+                                  names: List[Text],
+                                  trailing_args: List[Text],
+                                  cli_args: List[Text],
+                                  ):
+        expect_trailing_arguments = registered_task.receive_trailing_arguments
+        if trailing_args and not expect_trailing_arguments:
+            # Build quoted command arguments and caret markers for error arguments.
+            args_in = names + trailing_args
+            args_out: List[Text] = []
+            markers: List[Text] = []
+            arg_in_idx = 0
+            for cli_arg in cli_args:
+                quoted_arg = shell_quote_arg(cli_arg)
+                args_out.append(quoted_arg)
+                marker = ' '
+                if arg_in_idx < len(args_in) and cli_arg == args_in[arg_in_idx]:
+                    if arg_in_idx >= len(names):
+                        marker = '^'
+                    arg_in_idx += 1
+                markers.append(marker * len(quoted_arg))
+            abort(f'Bad command {plural("argument", trailing_args)}.',
+                  ' '.join(cli_args),
+                  ' '.join(markers))

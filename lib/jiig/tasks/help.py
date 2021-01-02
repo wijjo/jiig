@@ -16,13 +16,10 @@ class TaskClass(jiig.Task):
         HELP_NAMES: List[Text]
     data: Data
 
-    args = [
-        jiig.BoolOpt(('-a', '--all'), 'ALL_TASKS',
-                     'Show all tasks, including hidden ones.'),
-        jiig.Arg('HELP_NAMES',
-                 'Command task name(s) or empty for top level help.',
-                 cardinality='*'),
-    ]
+    args = {
+        'ALL_TASKS!': ('-a', '--all', 'Show all tasks, including hidden ones.'),
+        'HELP_NAMES[*]': 'Command task name(s) or empty for top level help.',
+    }
 
     def on_run(self):
         help_text = self.format_help(*self.data.HELP_NAMES,

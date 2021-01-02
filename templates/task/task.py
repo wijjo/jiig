@@ -10,11 +10,11 @@ import jiig
 class TaskClass(jiig.Task):
     """template_task_name help description"""
 
-    args = [
-        jiig.BoolOpt('-b', 'template_bool_option', 'a boolean option'),
-        jiig.Opt('-s', 'template_string_option', 'a string option'),
-        jiig.Arg('template_argument', 'an argument'),
-    ]
+    args = {
+        'template_bool_option!': ('-b', 'a boolean option'),
+        'template_string_option': ('-s', 'a string option'),
+        'template_argument': 'an argument',
+    }
 
     def on_run(self):
         print('In on_run().')

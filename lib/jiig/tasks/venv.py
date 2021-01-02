@@ -4,7 +4,6 @@ import os
 from typing import List, Text
 
 import jiig
-
 from jiig.utility.console import abort, log_heading, log_message
 from jiig.utility.process import run
 from jiig.utility.python import build_virtual_environment, update_virtual_environment
@@ -18,11 +17,9 @@ class VenvBuildTask(jiig.Task):
         REBUILD_VENV: bool
     data: Data
 
-    args = [
-        jiig.BoolOpt(('-r', '--rebuild'),
-                     'REBUILD_VENV',
-                     description='Force virtual environment rebuild.'),
-    ]
+    args = {
+        'REBUILD_VENV!': ('-r', '--rebuild', 'Force virtual environment rebuild.'),
+    }
 
     def on_run(self):
         if self.params.PRIMARY_TASK:
@@ -69,11 +66,9 @@ class VenvPipTask(jiig.Task):
         ARGS: List[Text]
     data: Data
 
-    args = [
-        jiig.Arg('ARGS',
-                 description='Pip command line arguments.',
-                 cardinality='*'),
-    ]
+    args = {
+        'ARGS[*]': 'Pip command line arguments.',
+    }
 
     def on_run(self):
         pip_path = self.expand_path_template('{VENV_FOLDER}/bin/pip')
@@ -88,11 +83,9 @@ class VenvPython(jiig.Task):
         ARGS: List[Text]
     data: Data
 
-    args = [
-        jiig.Arg('ARGS',
-                 description='Python command line arguments.',
-                 cardinality='*'),
-    ]
+    args = {
+        'ARGS[*]': 'Python command line arguments.',
+    }
 
     def on_run(self):
         python_path = self.expand_path_template('{VENV_FOLDER}/bin/python')

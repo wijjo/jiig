@@ -21,11 +21,9 @@ class TaskClass(jiig.Task):
         TESTS: List[Text]
     data: Data
 
-    args = [
-        jiig.Arg('TESTS',
-                 description='Unit test module name(s) to load/run (default: <all>).',
-                 cardinality='*'),
-    ]
+    args = {
+        'TESTS[*]': 'Unit test module name(s) to load/run (default: <all>).',
+    }
 
     def on_run(self):
         test_root = self.params.TEST_FOLDER or self.params.DEFAULT_TEST_FOLDER

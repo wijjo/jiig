@@ -6,17 +6,59 @@ consumption by the runtime engine. It adds some data, converts Task module
 references to Task class references, and finalizes options, paths, etc..
 """
 
-from inspect import isclass
-from typing import Type, Text, List, Dict, Union
+import re
+from dataclasses import dataclass
+from inspect import isclass, isfunction, signature
+from typing import Type, Text, List, Dict, Union, Any, Sequence, Optional
 
 from jiig.constants import TASK_MODULE_CLASS_NAME
 from jiig.utility.console import abort, log_error
 from jiig.utility.general import AttrDict, format_exception
 from jiig.utility.help_formatter import HelpProvider
 
-from .arguments import Opt, Arg
+from .arguments import Choices, Default, ArgumentAdapter, Cardinality, OptionFlag
 from .tasks import Task
 from .registration_utilities import prepare_registered_text
+
+
+ARG_NAME_PATTERN = r'[a-zA-Z][a-zA-Z0-9\-_]*'
+ARG_CARDINALITY_PATTERN = r'(?:\[(?:\d+|\*|\+)\])'
+ARG_MODIFIER_PATTERN = rf'{ARG_CARDINALITY_PATTERN}|!|\?'
+ARGUMENT_NAME_PATTERN = rf'^({ARG_NAME_PATTERN})({ARG_MODIFIER_PATTERN})?$'
+ARGUMENT_NAME_REGEX = re.compile(ARGUMENT_NAME_PATTERN)
+
+
+@dataclass
+class RegisteredArgument:
+    """Registered argument data."""
+    name: Text
+    description: Text
+    adapters: List[ArgumentAdapter] = None
+    cardinality: Cardinality = None
+    default_value: Any = None
+    choices: Sequence = None
+
+
+@dataclass
+class RegisteredOption:
+    """Registered option data."""
+    name: Text
+    flags: List[OptionFlag]
+    description: Text
+    adapters: List[ArgumentAdapter] = None
+    cardinality: Cardinality = None
+    default_value: Any = None
+    choices: Sequence = None
+    is_boolean: bool = False
+
+
+def _is_multi_value(cardinality: Cardinality = None) -> bool:
+    if cardinality is not None:
+        if isinstance(cardinality, int):
+            return cardinality > 1
+        if cardinality in ('*', '+'):
+            return True
+    return False
 
 
 class RegisteredTask:
@@ -39,15 +81,16 @@ class RegisteredTask:
         self.is_hidden = is_hidden
         # Copy some useful task class data members here.
         # RegisteredTask has separate options and arguments lists.
-        self.opts: List[Opt] = []
-        self.args: List[Arg] = []
-        for arg in task_class.args:
-            if isinstance(arg, Opt):
-                self.opts.append(arg)
-            elif isinstance(arg, Arg):
-                self.args.append(arg)
+        self.opts: List[RegisteredOption] = []
+        self.args: List[RegisteredArgument] = []
+        for arg_name, arg in task_class.args.items():
+            arg_or_opt = self._interpret_argument_data(arg_name, arg)
+            if isinstance(arg_or_opt, RegisteredOption):
+                self.opts.append(arg_or_opt)
+            elif isinstance(arg_or_opt, RegisteredArgument):
+                self.args.append(arg_or_opt)
             else:
-                log_error(f'Task class has non-Arg/non-Opt item in `args` list.',
+                log_error(f'Bad `args` specification for "{arg_name}".',
                           arg,
                           task_class=task_class.__name__,
                           module=task_class.__module__)
@@ -64,6 +107,89 @@ class RegisteredTask:
         self.sub_tasks = sub_task_preparer.sub_tasks
         # Used by create_task()
         self._task_class = task_class
+
+    @staticmethod
+    def _interpret_argument_data(name: Text,
+                                 data: Any,
+                                 ) -> Optional[Union[RegisteredArgument,
+                                                     RegisteredOption]]:
+        flags: Optional[List[OptionFlag]] = None
+        descriptions: List[Text] = []
+        adapters: Optional[List[ArgumentAdapter]] = None
+        cardinality: Optional[Cardinality] = None
+        default_value: Optional[Any] = None
+        choices: Optional[Sequence] = None
+        parsed_name = ARGUMENT_NAME_REGEX.match(name)
+        is_boolean = False
+        if not parsed_name:
+            log_error(f'Bad argument name "{name}".')
+            return None
+        arg_name = parsed_name.group(1)
+        modifier = parsed_name.group(2)
+        if modifier:
+            if modifier.startswith('['):
+                cardinality = modifier[1:-1]
+                if cardinality[0].isdigit():
+                    cardinality = int(cardinality)
+            elif modifier == '!':
+                is_boolean = True
+            elif modifier == '?':
+                cardinality = '?'
+        if isinstance(data, str):
+            descriptions.append(data)
+        elif isinstance(data, tuple):
+            for item in data:
+                if isinstance(item, str):
+                    if item.startswith('-'):
+                        if flags is None:
+                            flags = []
+                        flags.append(item)
+                    else:
+                        descriptions.append(item)
+                elif isfunction(item):
+                    if adapters is None:
+                        adapters = []
+                    # Quick and dirty adapter function smell test.
+                    if item not in (int, bool, float, str):
+                        sig = signature(item)
+                        if not sig.parameters:
+                            log_error('Adapter function missing value parameter.',
+                                      item.__name__)
+                        elif len(sig.parameters) > 1:
+                            log_error('Adapter function has more than one parameter.',
+                                      item.__name__)
+                        else:
+                            adapters.append(item)
+                elif isinstance(item, Choices):
+                    choices = item.values
+                elif isinstance(item, Default):
+                    default_value = item.value
+                else:
+                    log_error('Bad argument tuple item.', item)
+                    return None
+        if len(descriptions) == 0:
+            description = '(no description)'
+        else:
+            if len(descriptions) > 1:
+                log_error('Too many description strings for argument.', data)
+            description = descriptions[-1]
+        if flags is not None:
+            return RegisteredOption(arg_name,
+                                    flags,
+                                    description,
+                                    adapters=adapters,
+                                    cardinality=cardinality,
+                                    default_value=default_value,
+                                    choices=choices,
+                                    is_boolean=is_boolean)
+        if is_boolean:
+            log_error(f'Ignoring "!" modifier for positional argument "{arg_name}".')
+        return RegisteredArgument(arg_name,
+                                  description,
+                                  adapters=adapters,
+                                  cardinality=cardinality,
+                                  default_value=default_value,
+                                  choices=choices)
 
     def create_task(self,
                     name: Text,
@@ -152,12 +278,13 @@ class RegisteredTask:
                     try:
                         # Call all adapters to validate and convert as appropriate.
                         if value is not None:
-                            for adapter in arg.adapters:
-                                adapter_name = adapter.__name__
-                                if arg.multi_value:
-                                    value = [adapter(value_item) for value_item in value]
-                                else:
-                                    value = adapter(value)
+                            if arg.adapters is not None:
+                                for adapter in arg.adapters:
+                                    adapter_name = adapter.__name__
+                                    if _is_multi_value(arg.cardinality):
+                                        value = [adapter(value_item) for value_item in value]
+                                    else:
+                                        value = adapter(value)
                         setattr(prepared_data, arg.name, value)
                     except (TypeError, ValueError) as exc:
                         results.errors.append(
