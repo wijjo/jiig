@@ -5,8 +5,8 @@
 Jiig should probably handle all tasks not directly related to a tool's problem
 domain.
 
-To allow the `jiig` command to manipulate a tool it needs the ability to access
-a tool's configuration, e.g. `init.jiig` file, and virtual environment. Tool
+To allow the `jiig` command to manipulate a tool it may need access to a tool's
+configuration, e.g. the tool script file, and virtual environment. Tool
 manipulation tasks need an option or argument that identifies a tool in a way
 that its files can be located.
 
@@ -38,16 +38,6 @@ e.g. from .rst files.
 
 Should also write a tutorial.
 
-## Inherit and expose normally-hidden sub-tasks
-
-By default, some Jiig sub-tasks are not inherited by tools, for example, ones
-that work with tool creation virtual environment manipulation, like `create`,
-`venv`, `python`, and `pip`.
-
-Provide a mechanism for tools to explicitly inherit and expose these normally-
-hidden sub-tasks. An `INHERIT_TASKS` list in the `init.jiig` file is one
-possible way the overrides could be declared.
-
 ## History
 
 Provide a `history` task, similar to `alias`, that keeps track of previous
@@ -75,13 +65,3 @@ Add ability to save and use global tool options to be able to control features
 like history and output capture. Tools should be able to add their own options
 and hide some Jiig ones, e.g. if it doesn't want to support history or output
 capture for security reasons.
-
-## Smarter option/argument types
-
-Look into adding custom validation and output data types. E.g. add the ability
-to accept date strings that get validated and converted to a struct_time or time
-stamp integer.
-
-One possibility could be to all registration of new actions, in addition to
-'store_true', etc.. E.g. a 'store_date' action could be registered with a class
-that can parse, validate, and convert date strings.
