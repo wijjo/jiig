@@ -1,8 +1,8 @@
 # Jiig
 
-Jiig is a framework and tool that makes it easier to create multi-command shell
-tools. Jiig tool interfaces resemble the `git` command in having multi-level
-sub-commands, options, and arguments, along with integrated help.
+Jiig is a framework and tool for creating multi-command shell tools. Jiig-based
+tool interfaces resemble the `git` command structure. It has multi-level
+sub-commands, options, and arguments, along with integrated "help" command.
 
 `Tzar` (https://github.com/wijjo/tzar) is an early example of a Jiig-based tool
 that is written by the same author.
@@ -11,58 +11,43 @@ that is written by the same author.
 
 ### Simple and flexible command line interface
 
-All functionality is accessible through a command line interface (abbreviated
-"CLI") that supports a hierarchy of sub-commands, called "tasks" in Jiig
-terminology, along with their options and arguments.
+All functionality is accessible through a command line interface, i.e. "CLI",
+that supports a hierarchy of sub-commands. In Jiig terminology sub-commands are
+called "tasks". Tasks can have flagged options and positional arguments.
 
-Help is provided by a standard "-h/--help" option at all task levels, plus a
-multi-level "help" sub-command.
+Help is provided by a multi-level "help" sub-command.
 
 Complex full or partial command lines may be saved and retrieved through an
 "alias" facility and sub-command that can be inherited by any tool.
 
-### Easy declarative `argparse` CLI definition
+### Declarative `argparse` CLI definitions
 
-The command line interface (CLI) is automatically generated based on task
-function `@task` decorators. The `@task` meta-data parameters feed into the
-construction of an `argparse` CLI argument parser, including the integrated
-help and alias facilities.
+The command line interface driver is designed to support multiple
+implementations, but for now only the standard Python "argparse" library is
+supported.
+
+A Tool sub-class defines the top level of meta-data and tasks. Tasks are pulled
+in by referencing Task sub-classes or modules in lists declared in Tool and Task
+classes.
 
 ### Modular structure
 
-Since `@task` declarations live near the corresponding implementation code, new
-tasks can be added as self-contained modules. The only additional step required
-to wire the new task into the CLI is to import the module, which typically
-happens in the main script.
+Task modules are ordinary modules, except they need to have a specially named
+Task sub-class called "TaskClass". Which tasks get integrated into the tool is
+solely determined by whether or not they are referenced in active task lists.
 
-### Simple main script and execution model
+### Main tool script and execution model
 
-Jiig main scripts use `jiig-run` for the "shebang" line that defines the shell
-executable program for the script. It does not run Python directly.
+Jiig tool scripts use `jiig-run` for the top "shebang" comment line. This line
+defines the shell executable program for the script. So tool scripts do not run
+Python directly. The final interpreter is pulled in by Jiig and configured to
+provide the correct runtime environment, including the library path.
 
-The indirect execution structure allows `jiig-run` to set up and use a virtual
-environment, if the tool is configured for one. It also prepares the library
-load path before executing the tool script.
+The indirect execution structure also allows `jiig-run` to set up and use a
+virtual environment, if the tool is configured for one.
 
-The tool main script imports task modules, which pulls in decorated task
-functions and modules and provides the meta-data for building the argparse-based
-command line interface.
-
-### Tool configuration
-
-An optional `init.jiig` file configures the following information for one or
-more Jiig tools in a folder.
-
-* LIB_FOLDERS: Library folders for access to additional modules.
-* VENV_ROOT: Virtual environment root folder, defaults to 'venv'.
-* VENV_ENABLED: Enables virtual environment when True.
-* PIP_PACKAGES: Pip package names for installing in the virtual environment.
-
-Paths should be relative, allowing the file to be part of a source repository.
-
-If there is no `init.jiig` configuration file, it runs without a virtual
-environment, and with a library path that provides access to both Python
-Standard Library and Jiig modules.
+The tool main script declares or imports the primary Tool class, which needs to
+be called "ToolClass".
 
 ### Dependencies and the virtual environment
 
@@ -82,61 +67,17 @@ external commands, and for supporting other common shell command needs.
 
 ### Limited code generation
 
-The `tool` sub-command can generate a tool project or basic script.
+The `tool` sub-command can generate a tool project or basic tool script.
 
 The `task` sub-command can generate a basic task module.
 
-### Simple Jiig script code
+## Documentation amd type inspection
 
-The code generation is pretty superfluous, because there is very little code
-needed for a basic Jiig script. Here is a minimal example.
+There is no API documentation yet, but all or most significant modules, classes,
+and functions have useful doc strings.
 
-```
-#!/usr/bin/env jiig-run
-
-"""This is my program!"""
-
-import jiig
-
-@jiig.task()
-def hello(runner):
-    """a friendly greeting"""
-    print('hello')
-
-@jiig.task()
-def goodbye(runner):
-    """a friendly farewell"""
-    print('goodbye')
-```
-
-Here is an actual demo session.
-
-```
-$ ./hello help
-usage: hello [-h] [-d] [-v] [-n] TASK ...
-
-This is my program!
-
-positional arguments:
-  TASK
-    goodbye   a friendly farewell
-    hello     a friendly greeting
-    help      display help screen
-
-optional arguments:
-  -h, --help  show this help message and exit
-  -d          enable debug mode
-  -v          display additional (verbose) messages
-  -n          display actions without executing them
-
-$ ./hello goodbye
-goodbye
-```
-
-The doc strings provide some command line help. The function names are used as
-task names. This provides a very quick and intuitive starting point, but ongoing
-development might be better served by using explicit script and task metadata.
-
+The programming interface is also very well typed. So an IDE like PyCharm or
+VScode with appropriate plug-ins can provide a lot of assistance.
 
 ## Aliases
 
@@ -214,8 +155,14 @@ alias `.c1` is saved from folder `/a/b/c` it is saved with the full alias name
 are substituted and used internally.
 
 
-## Future documentation
+## Getting started
 
-There is no reference manual or user guide yet. It will definitely happen. For
-now the best way to get started is this READ-ME and the Tzar project (mentioned
-above) as an example.
+Use the "jiig tool project" or "jiig tool script" command to create either a
+multi-folder/multi-file project or a stand-alone script. Follow the comments and
+generated code for hints about how to proceed.
+
+The "jiig task create" command can add a new task to an existing project, but it
+needs to be given the task library folder.
+
+Use the "help" task get more information on how to use the Jiig command line
+interface.
