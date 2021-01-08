@@ -17,6 +17,10 @@ class ToolClass(jiig.Tool):
     """Jiig utility."""
 
     name = 'jiig'
+    project = 'Jiig'
+    version = '0.5'
+    author = 'Steve Cooper'
+    copyright = '2021, Steve Cooper'
 
     tasks = {
         'task': jiig.tasks.task,
@@ -27,6 +31,7 @@ class ToolClass(jiig.Tool):
     secondary_tasks = {
         'alias': jiig.tasks.alias,
         'help': jiig.tasks.help,
+        'sphinx': jiig.tasks.sphinx
     }
 
     hidden_tasks = {

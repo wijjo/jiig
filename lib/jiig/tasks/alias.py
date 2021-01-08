@@ -126,7 +126,7 @@ class AliasSetTask(jiig.Task):
     }
 
     # The command to alias is fed as unparsed trailing arguments.
-    receive_trailing_arguments = True
+    options = jiig.TaskOptions(receive_trailing_arguments=True)
 
     def on_run(self):
         with self.open_alias_catalog() as catalog:

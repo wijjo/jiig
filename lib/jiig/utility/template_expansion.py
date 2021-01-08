@@ -370,12 +370,11 @@ class _TemplateExpander:
         executable = False
         if extension not in TEMPLATE_EXTENSIONS_ALL:
             expansion = COPY_EXPANSION
+            target_file_name += extension
         elif extension == TEMPLATE_EXTENSION_DOT:
             target_file_name = '.' + target_file_name
         elif extension == TEMPLATE_EXTENSION_EXE:
             executable = True
-        if extension:
-            target_file_name += extension
         output_path = os.path.join(source_folder_path, target_file_name)
         generated_spec = _TemplateExpansionSpec(output_path, expansion, executable)
         self.expansion_specs_by_path[relative_path] = generated_spec

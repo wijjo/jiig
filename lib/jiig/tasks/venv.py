@@ -4,6 +4,7 @@ import os
 from typing import List, Text
 
 import jiig
+from jiig.constants import VENV_DISABLED, VENV_REQUIRED
 from jiig.utility.console import abort, log_heading, log_message
 from jiig.utility.process import run
 from jiig.utility.python import build_virtual_environment, update_virtual_environment
@@ -105,8 +106,9 @@ class TaskClass(jiig.Task):
     }
 
     def on_run(self):
-        if not self.params.VENV_ENABLED:
-            abort(f'Virtual environment is disabled,',
-                  f'VENV_ENABLED must be True in init.jiig.')
+        if self.params.VENV_SUPPORT == VENV_DISABLED:
+            abort(f'Virtual environment is disabled.')
+        if self.params.VENV_SUPPORT != VENV_REQUIRED and not self.params.PIP_PACKAGES:
+            abort(f'Virtual environment is not required.')
         if not self.params.VENV_FOLDER:
-            abort(f'VENV_FOLDER is not set in init.jiig.')
+            abort(f'VENV_FOLDER is not set.')

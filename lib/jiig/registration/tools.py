@@ -5,10 +5,14 @@ Tool-related classes.
 from dataclasses import dataclass, field
 from typing import Text, List, Dict, Union, Type
 
-from jiig.constants import DEFAULT_TEST_FOLDER
+from jiig import constants
 from jiig.utility.footnotes import NotesList, NotesDict
 from jiig.utility.general import AttrDict
 from jiig.utility.help_formatter import HelpProvider
+
+
+# Virtual environment support options.
+VenvSupport = int
 
 
 @dataclass
@@ -33,8 +37,8 @@ class ToolOptions:
     venv_folder: Text = None
     """Virtual environment root folder - JIIG_VENV_ROOT/<tool> is used if None."""
 
-    venv_enabled: bool = False
-    """Enable virtual environment if True."""
+    venv_support: VenvSupport = constants.VENV_DEFAULT
+    """Virtual environment support level, i.e. VENV_OPTIONAL, VENV_REQUIRED, or VENV_DISABLED."""
 
     pip_packages: List[Text] = field(default_factory=list)
     """Packages to install in virtual environment, if enabled."""
@@ -42,8 +46,14 @@ class ToolOptions:
     library_folders: List[Text] = field(default_factory=list)
     """Library folders to add to Python import path."""
 
-    test_folder: Text = DEFAULT_TEST_FOLDER
+    test_folder: Text = constants.DEFAULT_TEST_FOLDER
     """Test folder path for loading unit tests."""
+
+    doc_folder: Text = constants.DEFAULT_DOC_FOLDER
+    """Documentation folder, e.g. for Sphinx documentation."""
+
+    build_folder: Text = constants.DEFAULT_BUILD_FOLDER
+    """Documentation folder, e.g. for Sphinx documentation."""
 
 
 class Tool:
@@ -52,12 +62,27 @@ class Tool:
 
     If the name is not defined as a sub-class member it will default to the tool
     script name, if available.
+
+    Holds a good deal of meta-data that is used by features like the Sphinx
+    documentation generator to minimize the need for separate configurations.
     """
     name: Text = None
     """Required name, must be provided by sub-class."""
 
     description: Text = None
     """Tool description."""
+
+    project: Text = None
+    """Project name, typically capitalized, for use in documentation, etc.."""
+
+    version: Text = None
+    """Tool version."""
+
+    copyright = '(no copyright)'
+    """Copyright notice."""
+
+    author = '(no author)'
+    """Credited author."""
 
     notes: NotesList = None
     """Tool help notes."""

@@ -2,7 +2,7 @@
 Registered task argument dataclass.
 """
 
-from typing import Text, List, Any, Union, Callable
+from typing import Text, Any, Union, Callable
 
 ArgumentAdapter = Callable[..., Any]
 Cardinality = Union[Text, int]

@@ -26,11 +26,10 @@ class TaskClass(jiig.Task):
     }
 
     def on_run(self):
-        test_root = self.params.TEST_FOLDER or self.params.DEFAULT_TEST_FOLDER
-        check_folder_exists(test_root)
+        check_folder_exists(self.params.TOOL_TEST_FOLDER)
         module_map = {
             os.path.splitext(os.path.basename(file_path))[0]: file_path
-            for file_path in glob(os.path.join(test_root, 'test*.py'))
+            for file_path in glob(os.path.join(self.params.TOOL_TEST_FOLDER, 'test*.py'))
         }
         module_names_to_run = []
         if self.data.TESTS:

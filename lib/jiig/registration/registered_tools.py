@@ -10,8 +10,7 @@ import os
 from copy import copy
 from typing import Type, Text, Optional, List, Dict, Sequence
 
-import jiig
-from jiig.constants import TOP_TASK_LABEL, SUB_TASK_LABEL, JIIG_VENV_ROOT, DEFAULT_TEST_FOLDER
+from jiig import constants
 from jiig.utility.console import log_error, abort
 from jiig.utility.general import make_list, AttrDict, plural
 from jiig.utility.help_formatter import HelpFormatter, HelpProvider
@@ -19,7 +18,26 @@ from jiig.utility.process import shell_quote_arg
 
 from .registered_tasks import RegisteredTask, prepare_registered_text
 from .tasks import Task
-from .tools import ToolOptions
+from .tools import ToolOptions, Tool
+
+
+class ArgumentNameError(RuntimeError):
+    pass
+
+
+class ArgumentData:
+    """A blank object that receives argument data as attributes."""
+
+    def __getattr__(self, name):
+        """
+        Provide a better error for bad attribute names.
+
+        :param name: attribute name
+        :return: attribute value
+        """
+        if name not in self.__dict__:
+            raise ArgumentNameError(f'Command argument data has no "{name}" attribute.')
+        return super().__getattr__(name)
 
 
 class RegisteredTool(HelpProvider):
@@ -28,14 +46,18 @@ class RegisteredTool(HelpProvider):
 
     Presents normalized and finalized runtime data based on a Tool class.
     """
-    def __init__(self, tool_class: Type[jiig.Tool]):
+    def __init__(self, tool_class: Type[Tool]):
         text_results = prepare_registered_text(tool_class.description,
                                                tool_class.notes,
                                                getattr(tool_class, '__doc__', None))
+        self.tool_name = tool_class.name
         self.description = text_results.description
+        self.project = tool_class.project or self.tool_name.capitalize()
+        self.version = tool_class.version or '(no version)'
+        self.copyright = tool_class.copyright or '(no copyright)'
+        self.author = tool_class.author or '(author)'
         self.notes = text_results.notes
         self.options = self._prepare_registered_tool_options(tool_class)
-        self.tool_name = tool_class.name
         self.footnotes = tool_class.footnotes
         # Used by run() method.
         self._tool_class = tool_class
@@ -53,10 +75,6 @@ class RegisteredTool(HelpProvider):
         self.root_task = RegisteredTask(RootTask, False, False)
 
         super().__init__()
-
-    class ArgumentData:
-        """A blank object that receives argument data as attributes."""
-        pass
 
     def run(self,
             names: List[Text],
@@ -84,7 +102,7 @@ class RegisteredTool(HelpProvider):
         self._check_trailing_arguments(registered_task, names, trailing_args, cli_args)
 
         # Prepare argument data using raw data and task option/argument definitions.
-        prepared_data = self.ArgumentData()
+        prepared_data = ArgumentData()
         errors: List[Text] = []
         for registered_task in registered_task_stack:
             results = registered_task.prepare_argument_data(data, prepared_data)
@@ -93,7 +111,29 @@ class RegisteredTool(HelpProvider):
             abort(f'{len(errors)} argument failure(s):', *errors)
 
         try:
-            run_params = AttrDict(params)
+            # Add params not provided by caller.
+            run_params = AttrDict(params,
+                                  ALIASES_PATH=constants.ALIASES_PATH,
+                                  AUTHOR=self.author,
+                                  COPYRIGHT=self.copyright,
+                                  DEFAULT_build_FOLDER=constants.DEFAULT_BUILD_FOLDER,
+                                  DEFAULT_DOC_FOLDER=constants.DEFAULT_DOC_FOLDER,
+                                  DEFAULT_TEST_FOLDER=constants.DEFAULT_TEST_FOLDER,
+                                  FULL_NAME_SEPARATOR=constants.FULL_NAME_SEPARATOR,
+                                  JIIG_TEMPLATES_FOLDER=constants.JIIG_TEMPLATES_FOLDER,
+                                  PIP_PACKAGES=self.options.pip_packages,
+                                  PROJECT=self.project,
+                                  SUB_TASK_LABEL=constants.SUB_TASK_LABEL,
+                                  TASK_TEMPLATES_FOLDER=constants.TASK_TEMPLATES_FOLDER,
+                                  DOC_FOLDER=self.options.doc_folder,
+                                  BUILD_FOLDER=self.options.build_folder,
+                                  TOOL_TEMPLATES_FOLDER=constants.TOOL_TEMPLATES_FOLDER,
+                                  TOOL_TEST_FOLDER=self.options.test_folder,
+                                  TOP_TASK_LABEL=constants.TOP_TASK_LABEL,
+                                  VENV_SUPPORT=self.options.venv_support,
+                                  VENV_FOLDER=self.options.venv_folder,
+                                  VERSION=self.version,
+                                  )
 
             # Create the tool instance (self serves as the HelpProvider used for tool help).
             tool = self._tool_class(run_params,
@@ -119,6 +159,8 @@ class RegisteredTool(HelpProvider):
             tool.on_terminate()
         except KeyboardInterrupt:
             print('')
+        except ArgumentNameError as exc:
+            abort(str(exc))
         except Exception as exc:
             abort(f'Task command failed:', ' '.join(names), exc)
 
@@ -145,7 +187,10 @@ class RegisteredTool(HelpProvider):
 
         :param show_hidden: show hidden task help if True
         """
-        formatter = HelpFormatter(self.tool_name, [], self.description, TOP_TASK_LABEL)
+        formatter = HelpFormatter(self.tool_name,
+                                  [],
+                                  self.description,
+                                  constants.TOP_TASK_LABEL)
         for name, registered_task in self.tasks.items():
             formatter.add_command(name,
                                   registered_task.description,
@@ -153,6 +198,22 @@ class RegisteredTool(HelpProvider):
                                   is_hidden=registered_task.is_hidden,
                                   has_sub_commands=bool(registered_task.sub_tasks))
         return formatter.format_help(show_hidden=show_hidden)
+
+    def get_pip_packages(self, *names: Text) -> List[Text]:
+        """
+        Look up required Pip packages for tool and tasks (based on names provided).
+
+        :param names: task name stack
+        :return: the Pip packages required by the tool and tasks provided
+        """
+        pip_packages: List[Text] = copy(self.options.pip_packages)
+        registered_task_stack = self.get_task_stack(*names)
+        if registered_task_stack:
+            for registered_task in registered_task_stack:
+                for pip_package in registered_task.options.pip_packages:
+                    if pip_package not in pip_packages:
+                        pip_packages.append(pip_package)
+        return pip_packages
 
     def format_task_help(self, names: Sequence[Text], show_hidden: bool = False) -> Text:
         """
@@ -174,7 +235,7 @@ class RegisteredTool(HelpProvider):
         formatter = HelpFormatter(self.tool_name,
                                   names,
                                   registered_task.description,
-                                  SUB_TASK_LABEL)
+                                  constants.SUB_TASK_LABEL)
 
         # Add notes and footnotes (extra footnotes are only provided for tasks).
         for note in registered_task.notes:
@@ -239,14 +300,20 @@ class RegisteredTool(HelpProvider):
         return self.root_task.sub_tasks
 
     @staticmethod
-    def _prepare_registered_tool_options(source_tool_class: Type[jiig.Tool]) -> ToolOptions:
+    def _prepare_registered_tool_options(source_tool_class: Type[Tool]) -> ToolOptions:
         # Make a fresh copy of options with minor updates for paths.
         venv_folder = source_tool_class.options.venv_folder
         if venv_folder is None:
-            venv_folder = os.path.join(JIIG_VENV_ROOT, source_tool_class.name)
+            venv_folder = os.path.join(constants.JIIG_VENV_ROOT, source_tool_class.name)
         test_folder = source_tool_class.options.test_folder
         if test_folder is None:
-            test_folder = DEFAULT_TEST_FOLDER
+            test_folder = constants.DEFAULT_TEST_FOLDER
+        doc_folder = source_tool_class.options.doc_folder
+        if doc_folder is None:
+            doc_folder = constants.DEFAULT_DOC_FOLDER
+        build_folder = source_tool_class.options.build_folder
+        if build_folder is None:
+            build_folder = constants.DEFAULT_BUILD_FOLDER
         return ToolOptions(
             disable_alias=source_tool_class.options.disable_alias,
             disable_help=source_tool_class.options.disable_help,
@@ -254,10 +321,12 @@ class RegisteredTool(HelpProvider):
             disable_dry_run=source_tool_class.options.disable_dry_run,
             disable_verbose=source_tool_class.options.disable_verbose,
             venv_folder=os.path.realpath(venv_folder),
-            venv_enabled=source_tool_class.options.venv_enabled,
+            venv_support=source_tool_class.options.venv_support,
             pip_packages=copy(source_tool_class.options.pip_packages),
             library_folders=copy(source_tool_class.options.library_folders),
             test_folder=os.path.realpath(test_folder),
+            doc_folder=os.path.realpath(doc_folder),
+            build_folder=os.path.realpath(build_folder),
         )
 
     @staticmethod
@@ -266,7 +335,7 @@ class RegisteredTool(HelpProvider):
                                   trailing_args: List[Text],
                                   cli_args: List[Text],
                                   ):
-        expect_trailing_arguments = registered_task.receive_trailing_arguments
+        expect_trailing_arguments = registered_task.options.receive_trailing_arguments
         if trailing_args and not expect_trailing_arguments:
             # Build quoted command arguments and caret markers for error arguments.
             args_in = names + trailing_args

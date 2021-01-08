@@ -7,12 +7,22 @@ task classes. It should not be altered at runtime.
 
 import os
 from contextlib import contextmanager
+from dataclasses import dataclass, field
 from typing import Text, List, Iterator, Optional, Dict, Union, Type, Tuple
 
 from jiig.utility import alias_catalog
 from jiig.utility.footnotes import NotesList, NotesDict
 from jiig.utility.general import AttrDict
 from jiig.utility.help_formatter import HelpProvider
+
+
+@dataclass
+class TaskOptions:
+    pip_packages: List[Text] = field(default_factory=list)
+    """Pip-installed packages required from a virtual environment, if enabled."""
+
+    receive_trailing_arguments: bool = False
+    """Keep unparsed trailing arguments if True."""
 
 
 class Task:
@@ -79,8 +89,8 @@ class Task:
     args: Dict[Text, Union[Text, Tuple]] = {}
     """Argument/option definition dictionary."""
 
-    receive_trailing_arguments: bool = False
-    """Keep unparsed trailing arguments if True."""
+    options: TaskOptions = TaskOptions()
+    """Optional task runtime options."""
 
     def __init__(self,
                  name: Text,

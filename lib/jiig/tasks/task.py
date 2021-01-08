@@ -25,29 +25,31 @@ class TaskCreateTask(jiig.Task):
         'OUTPUT_FOLDER': ('-o', '--output-folder',
                           'Output tasks folder for generated modules.',
                           jiig.path.check_folder,
+                          jiig.path.absolute,
                           jiig.Default('.')),
         'NEW_TASK_NAME[+]': 'Task/module name(s).',
     }
 
     def on_run(self):
-        target_folder = self.data.OUTPUT_FOLDER or os.getcwd()
-        if not os.path.exists(os.path.join(target_folder, '__init__.py')):
-            abort(f'Target folder "{target_folder}" is not a Python package.',
-                  target_folder)
+        if not os.path.exists(os.path.join(self.data.OUTPUT_FOLDER, '__init__.py')):
+            abort(f'Target folder is not a Python package.',
+                  self.data.OUTPUT_FOLDER)
+        source_folder = os.path.join(self.params.JIIG_ROOT,
+                                     self.params.TASK_TEMPLATES_FOLDER)
         with log_topic('Create task module(s)') as topic:
-            source_folder = os.path.join(self.params.JIIG_ROOT,
-                                         self.params.TASK_TEMPLATES_FOLDER)
             for task_name in self.data.NEW_TASK_NAME:
                 topic.message(f'Generating task "{task_name}".')
-                expand_folder(source_folder,
-                              target_folder,
-                              overwrite=self.data.FORCE,
-                              symbols={
-                                  'template_task_name': task_name,
-                                  'template_bool_option': f'{task_name.upper()}_BOOL',
-                                  'template_string_option': f'{task_name.upper()}_STRING',
-                                  'template_argument': f'{task_name.upper()}_ARG',
-                              })
+                expand_folder(
+                    source_folder,
+                    self.data.OUTPUT_FOLDER,
+                    overwrite=self.data.FORCE,
+                    symbols={
+                        'template_task_name': task_name,
+                        'template_bool_option': f'{task_name.upper()}_BOOL',
+                        'template_string_option': f'{task_name.upper()}_STRING',
+                        'template_argument': f'{task_name.upper()}_ARG',
+                    }
+                )
 
 
 class TaskClass(jiig.Task):

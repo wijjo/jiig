@@ -12,7 +12,8 @@ write-only. Read-only modules are kept side-effect-free and return loaded data.
 Write-only modules return no data.
 """
 
-from . import cli_preprocessor, environment_loader, tool_loader, cli_processor, task_loader
+from . import cli_preprocessor, environment_loader, tool_loader, cli_processor, \
+    virtual_environment_loader, task_loader
 
 from .execution_data import ExecutionData
 
@@ -29,12 +30,16 @@ def main(exec_data: ExecutionData):
     # Pre-process the command line in order to get some global options.
     pre_results = cli_preprocessor.initialize(exec_data, registered_tool)
 
-    # Initialize Python environment and libraries (may restart and not return).
+    # Initialize Python environment and libraries.
     environment_loader.initialize(exec_data, registered_tool, pre_results)
 
     # Once the registered tool is in hand, the command line parser can be built
     # based on tool/task metadata, and the command line can be parsed.
     parse_results = cli_processor.initialize(exec_data, registered_tool, pre_results)
+
+    # Load a virtual environment, if one is required and not yet loaded.
+    # May restart without returning from this call.
+    virtual_environment_loader.initialize(exec_data, registered_tool, parse_results)
 
     # Finally ready to execute the registered tasks stack.
     task_loader.initialize(exec_data, registered_tool, parse_results)

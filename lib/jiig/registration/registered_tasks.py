@@ -7,6 +7,7 @@ references to Task class references, and finalizes options, paths, etc..
 """
 
 import re
+from copy import copy
 from dataclasses import dataclass
 from inspect import isclass, isfunction, signature
 from typing import Type, Text, List, Dict, Union, Any, Sequence, Optional
@@ -17,7 +18,7 @@ from jiig.utility.general import AttrDict, format_exception
 from jiig.utility.help_formatter import HelpProvider
 
 from .arguments import Choices, Default, ArgumentAdapter, Cardinality, OptionFlag
-from .tasks import Task
+from .tasks import TaskOptions, Task
 from .registration_utilities import prepare_registered_text
 
 
@@ -95,7 +96,8 @@ class RegisteredTask:
                           task_class=task_class.__name__,
                           module=task_class.__module__)
         self.footnotes = task_class.footnotes
-        self.receive_trailing_arguments = task_class.receive_trailing_arguments
+        # Copy options.
+        self.options = self._prepare_registered_task_options(task_class)
         # Prepare various flavors of sub-tasks.
         sub_task_preparer = self._SubTaskPreparer()
         sub_task_preparer.prepare(task_class.sub_tasks)
@@ -107,6 +109,13 @@ class RegisteredTask:
         self.sub_tasks = sub_task_preparer.sub_tasks
         # Used by create_task()
         self._task_class = task_class
+
+    @staticmethod
+    def _prepare_registered_task_options(source_task_class: Type[Task]) -> TaskOptions:
+        return TaskOptions(
+            pip_packages=copy(source_task_class.options.pip_packages),
+            receive_trailing_arguments=source_task_class.options.receive_trailing_arguments,
+        )
 
     @staticmethod
     def _interpret_argument_data(name: Text,

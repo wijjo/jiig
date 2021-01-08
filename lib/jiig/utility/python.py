@@ -137,23 +137,45 @@ def build_virtual_environment(venv_folder: Text,
                               packages: List = None,
                               rebuild: bool = False,
                               quiet: bool = False):
-    def _program_path(name):
-        return os.path.join(venv_folder, 'bin', name)
+    pip_path = os.path.join(venv_folder, 'bin', 'pip')
     venv_short_path = short_path(venv_folder, is_folder=True)
-    if os.path.exists(_program_path('python')):
+    if os.path.exists(os.path.join(venv_folder, 'bin', 'python')):
         if not rebuild:
             if not quiet:
                 log_message('Virtual environment already exists.', venv_short_path)
+            if packages:
+                install_missing_virtual_environment_packages(venv_folder, packages, quiet=quiet)
             return
         delete_folder(venv_folder)
     log_message('Create virtual environment', venv_short_path)
     run([sys.executable, '-m', 'venv', venv_folder])
-    pip_path = _program_path('pip')
     log_message('Upgrade pip in virtual environment.', verbose=True)
     run([pip_path, 'install', '--upgrade', 'pip'])
     if packages:
         log_message('Install pip packages in virtual environment.', verbose=True)
         run([pip_path, 'install'] + packages)
+
+
+def install_missing_virtual_environment_packages(venv_folder: Text,
+                                                 packages: List[Text],
+                                                 quiet: bool = False):
+    if not packages:
+        return
+    pip_path = os.path.join(venv_folder, 'bin', 'pip')
+    result = run([pip_path, 'list'], capture=True, quiet=quiet, run_always=True)
+    installed = set()
+    for line in result.stdout.split(os.linesep)[2:]:
+        columns = line.split(maxsplit=1)
+        if len(columns) == 2:
+            installed.add(columns[0].lower())
+    new_packages = list(filter(lambda p: p.lower() not in installed, packages))
+    if not new_packages:
+        return
+    pip_args = [pip_path, 'install']
+    if quiet:
+        pip_args.append('-q')
+    pip_args.extend(new_packages)
+    run(pip_args, quiet=quiet)
 
 
 def update_virtual_environment(venv_folder: Text, packages: List = None):

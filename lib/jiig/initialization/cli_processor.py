@@ -2,10 +2,13 @@
 Command line argument parsing.
 """
 
+from dataclasses import dataclass
+from typing import Text, List, Optional
+
 from jiig.constants import ALIASES_PATH
-from jiig.cli_parsing import ParserCommand, get_parser_driver, ParseResults
-from ..registration.registered_tasks import RegisteredTask
-from ..registration.registered_tools import RegisteredTool
+from jiig.cli_parsing import ParserCommand, get_parser_driver
+from jiig.registration.registered_tasks import RegisteredTask
+from jiig.registration.registered_tools import RegisteredTool
 from jiig.utility.alias_catalog import expand_alias_name, open_alias_catalog
 from jiig.utility.console import abort
 from jiig.utility.general import make_list
@@ -36,10 +39,18 @@ def _add_task_arguments_and_subcommands(command: ParserCommand,
         _add_task_arguments_and_subcommands(sub_command, registered_sub_task)
 
 
+@dataclass
+class CLIResults:
+    data: object
+    names: List[Text]
+    trailing_arguments: Optional[List[Text]]
+    pip_packages: List[Text]
+
+
 def initialize(exec_data: ExecutionData,
                registered_tool: RegisteredTool,
                pre_results: CLIPreResults,
-               ) -> ParseResults:
+               ) -> CLIResults:
     """
     Parse the command line.
 
@@ -73,4 +84,9 @@ def initialize(exec_data: ExecutionData,
                 abort(f'Alias "{pre_results.trailing_arguments[0]}" not found.')
             final_arguments = alias.command + pre_results.trailing_arguments[1:]
 
-    return parser_driver.parse(final_arguments, capture_trailing=True)
+    parse_results = parser_driver.parse(final_arguments, capture_trailing=True)
+    return CLIResults(parse_results.data,
+                      parse_results.names,
+                      parse_results.trailing_arguments,
+                      registered_tool.get_pip_packages(*parse_results.names),
+                      )
