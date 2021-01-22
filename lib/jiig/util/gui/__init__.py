@@ -1,0 +1,3 @@
+"""
+Jiig GUI library.
+"""

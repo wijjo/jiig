@@ -8,6 +8,57 @@ Use as the program in the "shebang" line of the main script.
 
 import os
 import sys
+import traceback
+from dataclasses import dataclass, fields
+from inspect import isfunction, isclass, ismodule
+from typing import Text, Dict, Type, Any, Callable
+
+# Needs to be hard-coded here, because sys.path isn't fully initialized.
+from lib.jiig import const
+
+
+@dataclass
+class ScriptGlobals:
+    variables: Dict[Text, Any]
+    functions: Dict[Text, Callable]
+    classes: Dict[Text, Type]
+    modules: Dict[Text, object]
+
+
+def _load_script(tool_script_path: Text) -> ScriptGlobals:
+    symbols = {}
+    try:
+        with open(file=tool_script_path) as tool_script_file:
+            exec(tool_script_file.read(), symbols)
+        # Sort script public globals into typed symbol buckets.
+        variables: Dict[Text, Any] = {}
+        functions: Dict[Text, Callable] = {}
+        classes: Dict[Text, Type] = {}
+        modules: Dict[Text, object] = {}
+        for name, value in symbols.items():
+            if not name.startswith('_'):
+                if isclass(value):
+                    classes[name] = value
+                elif ismodule(value):
+                    modules[name] = value
+                elif isfunction(value):
+                    functions[name] = value
+                else:
+                    variables[name] = value
+        return ScriptGlobals(variables, functions, classes, modules)
+    except Exception as exc:
+        sys.stderr.write(f'''\
+FATAL: Failed to load tool script and tool class.
+FATAL:    {tool_script_path}
+FATAL:    {exc}
+''')
+        traceback_lines = traceback.format_exc().split(os.linesep)[3:]
+        traceback_lines[0] = traceback_lines[0].replace('<string>', tool_script_path
+                                                        ).replace(', in <module>', '')
+        for line in traceback_lines:
+            sys.stderr.write(line)
+            sys.stderr.write(os.linesep)
+        sys.exit(255)
 
 
 def jiig_run_main():
@@ -15,24 +66,77 @@ def jiig_run_main():
         sys.stderr.write(f'FATAL: jiig-run should not be run directly.{os.linesep}')
         sys.exit(1)
 
-    # Use script path to determine Jiig library folder to add to Python path.
-    jiig_root = os.path.dirname(os.path.realpath(__file__))
-    jiig_library_path = os.path.join(jiig_root, 'lib')
-    if jiig_library_path not in sys.path:
-        sys.path.insert(0, jiig_library_path)
+    tool_script_path = os.path.realpath(sys.argv[1])
+    tool_root_folder, tool_script_name = os.path.split(tool_script_path)
+    jiig_root_folder = os.path.dirname(os.path.realpath(__file__))
 
-    # Now it is possible to import and initialize Jiig.
-    from jiig.constants import DEFAULT_PARSER_IMPLEMENTATION
-    from jiig.initialization.main import main
-    from jiig.initialization.execution_data import ExecutionData
+    # Load the script and digest relevant global symbols.
+    script_globals = _load_script(tool_script_path)
 
-    main(ExecutionData(run_script_path=sys.argv[0],
-                       tool_script_path=sys.argv[1],
-                       jiig_root=jiig_root,
-                       jiig_library_path=jiig_library_path,
-                       cli_args=sys.argv[2:],
-                       parser_implementation=DEFAULT_PARSER_IMPLEMENTATION,
-                       ))
+    # Add hard-coded load path to access Jiig boot assets, e.g. ToolBootstrap.
+    jiig_library_folder = os.path.join(jiig_root_folder, const.DEFAULT_LIBRARY_FOLDER)
+    sys.path.insert(0, jiig_library_folder)
+    from jiig.model.tool import Tool
+    from jiig.model.tool_bootstrap import ToolBootstrap
+    from jiig.const import TOOL_BOOT_FUNCTION_NAME
+    from jiig.init.main import main
+    from jiig.model.tool_configuration import ToolConfiguration
+    from jiig.util.console import abort, log_warning
+    from jiig.util.general import plural
+
+    # Make sure there's a boot function.
+    boot_function = script_globals.functions.get(TOOL_BOOT_FUNCTION_NAME)
+    if boot_function is None:
+        abort(f'Tool script missing {TOOL_BOOT_FUNCTION_NAME}() function.')
+
+    # Paths we already know should not be set in the tool script.
+    unwanted = set(script_globals.variables.keys()).intersection(('tool_root_folder',
+                                                                  'jiig_root_folder',
+                                                                  'jiig_library_folder'))
+    if unwanted:
+        log_warning(f'These global {plural("variables", unwanted)}'
+                    f' should not be set in a tool script.',
+                    *unwanted)
+        for name in unwanted:
+            del script_globals.variables[name]
+
+    # Populate known configuration symbols.
+    attribute_names = set(f.name for f in fields(ToolConfiguration))
+    attribute_symbols = {}
+    for name, value in script_globals.variables.items():
+        if name in attribute_names:
+            attribute_symbols[name] = value
+
+    # Use non-attribute symbols for string expansion.
+    for name, value in script_globals.variables.items():
+        if name not in attribute_names:
+            # Add to any `expansion_symbols` provided by the script.
+            attribute_symbols.setdefault('expansion_symbols', {})[name] = value
+
+    # Plug in required data.
+    if 'tool_name' not in attribute_symbols:
+        attribute_symbols['tool_name'] = tool_script_name
+    attribute_symbols['tool_root_folder'] = tool_root_folder
+    attribute_symbols['jiig_root_folder'] = jiig_root_folder
+    attribute_symbols['jiig_library_folder'] = jiig_library_folder
+
+    # Bootstrap class declaration.
+    class JiigRunToolBootstrap(ToolBootstrap):
+        """
+        Tool bootstrap configuration produced by jiig-run.
+        """
+        def on_boot(self) -> Type[Tool]:
+            """
+            Required call-back method to get Tool class.
+
+            :return: tool class type
+            """
+            return boot_function()
+
+    # Start the engine.
+    main(JiigRunToolBootstrap(**attribute_symbols),
+         runner_args=sys.argv[:2],
+         cli_args=sys.argv[2:])
 
 
 if __name__ == '__main__':

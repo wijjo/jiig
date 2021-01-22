@@ -31,7 +31,7 @@ Test code generation, virtual environment creation/management, etc..
 
 ## Documentation
 
-Implement something like Sphinx to capture API documentation from doc strings.
+Implement something like Pdoc3 to capture API documentation from doc strings.
 This may require a virtual environment. It could be a separate Jiig build tool.
 Incorporate higher level framework reference documentation from other files,
 e.g. from .rst files.

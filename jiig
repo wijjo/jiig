@@ -1,39 +1,64 @@
 #!/usr/bin/env jiig-run
-
 """
 Main Jiig program.
-
-The jiig-run "shebang" line at the top performs the magic to run the script with
-the appropriate Python interpreter and with a path that finds Jiig libraries.
-
-This script just has to create an appropriately-named Tool class.
 """
 
+tool_name = 'jiig'
 
-import jiig
+project_name = 'Jiig'
+
+description = 'Jiig tool.'
+
+version = '0.5'
+
+author = 'Steve Cooper'
+
+# noinspection PyShadowingBuiltins
+copyright = '2021, Steve Cooper'
+
+pip_packages = ['pdoc3', 'PySimpleGUI']
+
+doc_api_packages = ['jiig']
+
+doc_api_packages_excluded = [
+    'jiig.cli_parsing.implementations',
+    'jiig.gui',
+    'jiig.initialization',
+    'jiig.tasks',
+]
 
 
-class ToolClass(jiig.Tool):
-    """Jiig utility."""
+def boot():
+    """
+    Called by jiig-run to provide a Tool class.
 
-    name = 'jiig'
-    project = 'Jiig'
-    version = '0.5'
-    author = 'Steve Cooper'
-    copyright = '2021, Steve Cooper'
+    It is called once the runtime environment is established, and any needed
+    virtual environment is created and or loaded.
 
-    tasks = {
-        'task': jiig.tasks.task,
-        'tool': jiig.tasks.tool,
-        'venv': jiig.tasks.venv,
-    }
+    :return: tool class type
+    """
+    from jiig import model
 
-    secondary_tasks = {
-        'alias': jiig.tasks.alias,
-        'help': jiig.tasks.help,
-        'sphinx': jiig.tasks.sphinx
-    }
+    class JiigTool(model.Tool):
+        """Jiig tool class."""
 
-    hidden_tasks = {
-        'unittest': jiig.tasks.unittest,
-    }
+        from jiig.task import task, tool, venv
+        tasks = {
+            'task': task,
+            'tool': tool,
+            'venv': venv,
+        }
+
+        from jiig.task import alias, help, pdoc
+        secondary_tasks = {
+            'alias': alias,
+            'help': help,
+            'pdoc': pdoc
+        }
+
+        from jiig.task import unittest
+        hidden_tasks = {
+            'unittest': unittest,
+        }
+
+    return JiigTool

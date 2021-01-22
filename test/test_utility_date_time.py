@@ -2,7 +2,7 @@ import time
 import unittest
 from typing import Text, Sequence, Tuple, Optional
 
-from jiig.utility.date_time import apply_date_time_delta_string, parse_date_time
+from jiig.util.date_time import apply_date_time_delta_string, parse_date_time
 
 
 CUR_TS = time.localtime()
