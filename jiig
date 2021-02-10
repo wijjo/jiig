@@ -3,62 +3,28 @@
 Main Jiig program.
 """
 
-tool_name = 'jiig'
+TOOL_NAME = 'jiig'
 
-project_name = 'Jiig'
+PROJECT_NAME = 'Jiig'
 
-description = 'Jiig tool.'
+DESCRIPTION = 'Jiig tool.'
 
-version = '0.5'
+VERSION = '0.5'
 
-author = 'Steve Cooper'
+AUTHOR = 'Steve Cooper'
 
 # noinspection PyShadowingBuiltins
-copyright = '2021, Steve Cooper'
+COPYRIGHT = '2021, Steve Cooper'
 
-pip_packages = ['pdoc3', 'PySimpleGUI']
+PIP_PACKAGES = ['pdoc3', 'PySimpleGUI']
 
-doc_api_packages = ['jiig']
+DOC_API_PACKAGES = ['jiig']
 
-doc_api_packages_excluded = [
+DOC_API_PACKAGES_EXCLUDED = [
     'jiig.cli_parsing.implementations',
     'jiig.gui',
     'jiig.initialization',
-    'jiig.tasks',
+    'jiig.task',
 ]
 
-
-def boot():
-    """
-    Called by jiig-run to provide a Tool class.
-
-    It is called once the runtime environment is established, and any needed
-    virtual environment is created and or loaded.
-
-    :return: tool class type
-    """
-    from jiig import model
-
-    class JiigTool(model.Tool):
-        """Jiig tool class."""
-
-        from jiig.task import task, tool, venv
-        tasks = {
-            'task': task,
-            'tool': tool,
-            'venv': venv,
-        }
-
-        from jiig.task import alias, help, pdoc
-        secondary_tasks = {
-            'alias': alias,
-            'help': help,
-            'pdoc': pdoc
-        }
-
-        from jiig.task import unittest
-        hidden_tasks = {
-            'unittest': unittest,
-        }
-
-    return JiigTool
+ROOT_TASK = 'jiig.task.root'

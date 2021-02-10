@@ -12,50 +12,41 @@ write-only. Read-only modules are kept side-effect-free and return loaded data.
 Write-only modules return no data.
 """
 
-import sys
 from typing import List, Text
 
 from jiig import model
+from jiig.util.console import log_message
 
-from . import \
-    cli_preprocessor, \
-    cli_processor, \
-    environment_loader, \
-    task_runner, \
-    tool_booter, \
-    venv_loader
+from . import pre_load, load_tool, prepare_interpreter, load_application, execute_application
 
 
-def main(bootstrap: model.ToolBootstrap,
+def main(tool_config: model.Tool,
          runner_args: List[Text] = None,
          cli_args: List[Text] = None,
          ):
     """
-    Main function called from jiig-run to drive all stages of tool initialization.
+    Main function called from jiig-run to drive tool and task initialization.
 
-    :param bootstrap: tool bootstrap object
+    :param tool_config: tool configuration object
     :param runner_args: optional runner, e.g. jiig-run, preamble
     :param cli_args: command line arguments to override the default, sys.argv[1:]
     """
-    if cli_args is None:
-        cli_args = sys.argv[1:]
+    # Pre-parse global options so that debug/verbose options can apply early.
+    pre_load_data = pre_load.go(tool_config, runner_args, cli_args)
+    log_message('Pre-loaded global options.', debug=True)
 
-    # Pre-process the command line in order to get some global options.
-    pre_parse_data = cli_preprocessor.initialize(bootstrap, cli_args)
+    # Wrap the tool configuration so that all necessary tool data is resolved.
+    tool = load_tool.go(tool_config)
+    log_message('Prepared tool runtime object.', debug=True)
 
-    # Initialize Python environment and libraries.
-    environment_loader.initialize(bootstrap, pre_parse_data)
+    # Restart in venv as needed and initialize library load path.
+    prepare_interpreter.go(pre_load_data, tool)
+    log_message('Prepared Python interpreter environment.', debug=True)
 
-    # Load a virtual environment, if one is required and not yet loaded.
-    # May restart without returning from this call.
-    venv_loader.initialize(bootstrap, runner_args, cli_args, pre_parse_data)
+    # Parse CLI arguments based on configured tool and tasks.
+    # Produces CLI parameter data, an active task stack
+    application_data = load_application.go(pre_load_data, tool)
+    log_message('Prepared application for execution.', debug=True)
 
-    # Boot the tool.
-    registered_tool = tool_booter.initialize(bootstrap)
-
-    # Given the registered tool, a command line parser can be constructed based
-    # on tool/task metadata, and the command line can be parsed.
-    parse_data = cli_processor.initialize(bootstrap, registered_tool, pre_parse_data)
-
-    # Finally ready to execute the registered tasks stack.
-    task_runner.initialize(cli_args, registered_tool, parse_data)
+    # Finally, execute the application task stack.
+    execute_application.go(application_data)

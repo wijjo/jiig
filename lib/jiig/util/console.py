@@ -17,15 +17,17 @@ def log_message(text: Any, *args, **kwargs):
     Display message line(s) and indented lines for relevant keyword data.
 
     Keywords:
-       tag             prefix for all lines displayed in uppercase
-       verbose         True if requires VERBOSE mode
-       debug           True if requires DEBUG mode
-       issue_once_tag  unique tag to prevent issuing the message more than once
+       tag                  prefix for all lines displayed in uppercase
+       verbose              True if requires VERBOSE mode
+       debug                True if requires DEBUG mode
+       issue_once_tag       unique tag to prevent issuing the message more than once
+       exception_traceback  dump traceback stack if an exception is being reported
     """
     verbose = kwargs.pop('verbose', None)
     debug = kwargs.pop('debug', None)
     issue_once_tag = kwargs.pop('issue_once_tag', None)
     stream = kwargs.pop('log_stream', sys.stdout)
+    exception_traceback = kwargs.pop('exception_traceback', None)
     if verbose and not options.VERBOSE:
         return
     if debug and not options.DEBUG:
@@ -37,6 +39,12 @@ def log_message(text: Any, *args, **kwargs):
     for line in format_message_lines(text, *args, **kwargs):
         stream.write(line)
         stream.write(os.linesep)
+    # Dump a traceback stack if DEBUG and an exception is being reported.
+    if options.DEBUG or exception_traceback:
+        for value in list(args) + list(kwargs.values()):
+            if isinstance(value, Exception):
+                traceback.print_exc()
+                break
 
 
 def abort(text: Any, *args, **kwargs):
@@ -45,12 +53,8 @@ def abort(text: Any, *args, **kwargs):
     skip = kwargs.pop('skip', 0)
     kwargs['tag'] = 'FATAL'
     kwargs['log_stream'] = sys.stderr
+    kwargs['exception_traceback'] = True
     log_message(text, *args, **kwargs)
-    # If an exception seems to be the trigger, dump a stack and exist.
-    for value in list(args) + list(kwargs.values()):
-        if isinstance(value, Exception):
-            traceback.print_exc()
-            sys.exit(255)
     # If DEBUG is enabled dump a call stack and strip off the non-meaningful tail.
     if options.DEBUG:
         traceback_lines = traceback.format_stack()[:-(skip + 1)]

@@ -7,45 +7,38 @@ template_tool_name (jiig monolithic tool script).
 import jiig
 
 
-class HelloTask(jiig.Task):
-    """Display hello message."""
-
-    args = {
-        'TEXAS_STYLE!': ('-t', 'greet with a drawl'),
-        'NAME?': 'optional name',
-    }
-
-    def on_run(self):
-        greeting = '¶Howdy' if self.data.TEXAS_STYLE else 'Hello'
-        if self.data.NAME:
-            greeting = f'{greeting} {self.data.NAME}'
-        jiig.utility.process.run(['date'], quiet=True)
-        print(f'{greeting}:')
-        print('')
-        print(f'Sample task script: "template_tool_name"')
-        print('')
-        print('Use the sample script as a basis for defining your own custom')
-        print('tool, tasks, options, and arguments.')
+HELLO_TASK = jiig.Task(
+    description='Display hello message.',
+    args={
+        'TEXAS_STYLE[!]': ('-t', 'greet with a drawl'),
+        'NAME[?]': 'optional name',
+    },
+)
 
 
-class ToolClass(jiig.Tool):
-    """template_tool_name class description."""
+@HELLO_TASK.run
+def hello(_runner: jiig.Runner, data):
+    greeting = 'Howdy' if data.TEXAS_STYLE else 'Hello'
+    if data.NAME:
+        greeting = f'{greeting} {data.NAME}'
+    jiig.util.process.run(['date'], quiet=True)
+    print(f'{greeting}:')
+    print('')
+    print(f'Sample task script: "template_tool_name"')
+    print('')
+    print('Use the sample script as a basis for defining your own custom')
+    print('tool, tasks, options, and arguments.')
 
-    tasks = {
-        'hello': HelloTask,
-    }
 
-    secondary_tasks = {
-        'alias': jiig.tasks.alias,
-        'help': jiig.tasks.help,
-    }
+ROOT_TASK = jiig.Task(
+    tasks={
+        'hello': HELLO_TASK,
+        'alias[s]': jiig.task.alias,
+        'help[s]': jiig.task.help,
+    },
+)
 
-    # hidden_tasks = {}
 
-    def on_initialize(self):
-        # Tool initialization goes here (delete if not used).
-        pass
+TOOL_NAME = 'template_tool_name'
 
-    def on_terminate(self):
-        # Tool termination code goes here (delete if not used).
-        pass
+DESCRIPTION = 'template_tool_name description.'

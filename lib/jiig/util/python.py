@@ -6,11 +6,15 @@ import importlib.util
 import os
 import sys
 import traceback
-from typing import Text, List, Tuple, Optional, IO, Dict
+from dataclasses import fields, is_dataclass
+from inspect import isclass, isfunction, ismodule
+from types import ModuleType
+from typing import Text, List, Tuple, Optional, IO, Dict, Type, Any
 
 from . import options
-from .console import abort, log_error, log_message
+from .console import abort, log_error, log_message, log_warning
 from .filesystem import delete_folder, short_path
+from .general import format_message_block
 from .process import run
 from .stream import open_text_source
 
@@ -30,8 +34,14 @@ def format_call_string(call_name: Text, *args, **kwargs) -> Text:
     return f'{call_name}({arg_body}){return_string}'
 
 
-def import_module_path(module_name: Text, module_path: Text):
-    """Dynamically import a module by name and path."""
+def import_module_path(module_name: Text, module_path: Text) -> ModuleType:
+    """
+    Dynamically import a module by name and path.
+
+    :param module_name: module name
+    :param module_path: module path
+    :return: imported module
+    """
     log_message(f'import_module_path({module_name}, {module_path})', debug=True)
     module_spec = importlib.util.spec_from_file_location(module_name, module_path)
     module = importlib.util.module_from_spec(module_spec)
@@ -191,3 +201,116 @@ def update_virtual_environment(venv_folder: Text, packages: List = None):
     if packages:
         log_message('Install pip packages in virtual environment.', verbose=True)
         run([pip_path, 'install'] + packages)
+
+
+def symbols_to_dataclass(symbols: Dict,
+                         dc_type: Type,
+                         from_uppercase: bool = False,
+                         required: List[Text] = None,
+                         protected: List[Text] = None,
+                         overflow: Text = None,
+                         defaults: Dict = None,
+                         ) -> object:
+    """
+    Populate dataclass from symbols.
+
+    Uppercase module globals become lowercase dataclass attributes.
+
+    The behavior may be altered by optional parameters.
+
+    :param symbols: input symbols
+    :param dc_type: output dataclass type, scanned for field names, etc.
+    :param from_uppercase: convert from upper to lower case if True
+    :param required: list of required dataclass field names
+    :param protected: list of unwanted dataclass field names
+    :param overflow: optional dataclass field name to receive unexpected symbols
+    :param defaults: optional defaults that may be used for missing attributes
+    :return: populated dataclass instance
+    :raise ValueError: if conversion fails due to bad input data
+    :raise TypeError: if conversion fails due to bad output type
+    """
+    if not isclass(dc_type) or not is_dataclass(dc_type):
+        raise AttributeError(f'module_to_dataclass() target is not a dataclass.')
+
+    def _is_data_item(item_name: Text, item_value: Any) -> bool:
+        if item_name.startswith('_'):
+            return False
+        if isfunction(item_value) or isclass(item_value) or ismodule(item_value):
+            return False
+        if from_uppercase and item_name.isupper():
+            item_name = item_name.lower()
+        if not item_name.islower():
+            return False
+        if protected and item_name in protected:
+            log_warning(f'Ignoring protected symbol "{attr_name}"'
+                        f' in {dc_type.__name__} module.')
+            return False
+        return True
+
+    # Convert symbols and adjust key case as needed.
+    input_symbols = {}
+    for attr_name, attr_value in symbols.items():
+        if _is_data_item(attr_name, attr_value):
+            input_symbols[attr_name.lower()] = attr_value
+
+    # Use defaults for missing items.
+    if defaults is not None:
+        for default_attr_name, default_attr_value in defaults.items():
+            if default_attr_name not in input_symbols:
+                input_symbols[default_attr_name] = default_attr_value
+
+    # Check for missing required symbols.
+    missing_names = set(required).difference(input_symbols.keys())
+    if missing_names:
+        if from_uppercase:
+            missing_names = map(str.upper, missing_names)
+        message = format_message_block(f'{dc_type.__name__} is missing the following data:',
+                                       *sorted(missing_names))
+        raise ValueError(message)
+
+    # Set known output symbols.
+    output_symbols = {}
+    # noinspection PyDataclass
+    valid_names = set(f.name for f in fields(dc_type))
+    for name in valid_names.intersection(input_symbols.keys()):
+        output_symbols[name] = input_symbols[name]
+
+    # Set overflow output symbols, if supported.
+    if overflow is not None:
+        for name in set(input_symbols.keys()).difference(valid_names):
+            output_symbols.setdefault(overflow, {})[name] = input_symbols[name]
+
+    try:
+        return dc_type(**output_symbols)
+    except Exception as exc:
+        abort(f'Failed to construct {dc_type.__name__} object.', exc)
+
+
+def module_to_dataclass(module: object,
+                        dc_type: Type,
+                        required: List[Text] = None,
+                        protected: List[Text] = None,
+                        overflow: Text = None,
+                        ) -> object:
+    """
+    Populate dataclass from module globals.
+
+    Uppercase module globals become lowercase dataclass attributes.
+
+    The behavior may be altered by optional parameters.
+
+    :param module: input module object
+    :param dc_type: output dataclass type, scanned for field names, etc.
+    :param required: list of required dataclass field names
+    :param protected: list of unwanted dataclass field names
+    :param overflow: optional dataclass field name to receive unexpected symbols
+    :return: populated dataclass instance
+    :raise AttributeError: if conversion fails due to bad input data
+    :raise TypeError: if conversion fails due to bad output type
+    """
+    return symbols_to_dataclass(module.__dict__,
+                                dc_type,
+                                from_uppercase=True,
+                                required=required,
+                                protected=protected,
+                                overflow=overflow)

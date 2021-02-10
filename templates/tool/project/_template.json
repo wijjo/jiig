@@ -7,18 +7,28 @@
       "executable": true
     },
     {
+      "path": "lib/__init__.py",
+      "output_path": "lib/__init__.py",
+      "expansion": "word"
+    },
+    {
       "path": "lib/template_tool_name/__init__.py",
       "output_path": "lib/$template_tool_name/__init__.py",
-      "expansion": "copy"
+      "expansion": "word"
     },
     {
-      "path": "lib/template_tool_name/tasks/__init__.py",
-      "output_path": "lib/$template_tool_name/tasks/__init__.py",
-      "expansion": "copy"
+      "path": "lib/template_tool_name/task/__init__.py",
+      "output_path": "lib/$template_tool_name/task/__init__.py",
+      "expansion": "word"
     },
     {
-      "path": "lib/template_tool_name/tasks/template_task_name.py",
-      "output_path": "lib/$template_tool_name/tasks/$template_task_name.py",
+      "path": "lib/template_tool_name/task/root.py",
+      "output_path": "lib/$template_tool_name/task/root.py",
+      "expansion": "word"
+    },
+    {
+      "path": "lib/template_tool_name/task/template_task_name.py",
+      "output_path": "lib/$template_tool_name/task/$template_task_name.py",
       "expansion": "word"
     }
   ]

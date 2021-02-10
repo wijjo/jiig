@@ -1,30 +1,10 @@
 #!/usr/bin/env jiig-run
 """
-template_tool_name (jiig tool script).
+template_tool_name Jiig tool script.
 """
 
-import jiig
-from template_tool_name.tasks import template_task_name
+TOOL_NAME = 'template_tool_name'
 
+DESCRIPTION = 'template_tool_name description.'
 
-class ToolClass(jiig.Tool):
-    """template_tool_name description."""
-
-    tasks = {
-        'template_task_name': template_task_name,
-    }
-
-    secondary_tasks = {
-        'alias': jiig.tasks.alias,
-        'help': jiig.tasks.help,
-    }
-
-    # hidden_tasks = {}
-
-    def on_initialize(self):
-        # Tool initialization goes here (delete if not used).
-        pass
-
-    def on_terminate(self):
-        # Tool termination code goes here (delete if not used).
-        pass
+ROOT_TASK = 'template_tool_name.task.root'

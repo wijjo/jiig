@@ -205,7 +205,7 @@ class AliasCatalog:
             self._sort_catalog()
         return self._iterate_aliases()
 
-    def resolve_alias(self, alias_name: Text) -> Optional[Alias]:
+    def get_alias(self, alias_name: Text) -> Optional[Alias]:
         """
         Get alias by name.
 

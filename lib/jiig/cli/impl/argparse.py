@@ -4,6 +4,8 @@ CLI parser based on argparse standard library module.
 
 import argparse
 import os
+import re
+import sys
 from contextlib import contextmanager
 from typing import List, Text, Sequence, Tuple, Union, Any, Dict
 
@@ -16,6 +18,7 @@ from ..types import ArgumentParserError, ParserRoot, CommandLineParseOptions, \
     CommandLineParserImplementation, PreParseResults, ParseResults, ParserCommand
 
 DEST_NAME_SEPARATOR = '.'
+REQUIRED_SUB_COMMAND_REGEX = re.compile(r'^the following arguments are required: (.*)$')
 
 
 class _ArgumentParser(argparse.ArgumentParser):
@@ -137,18 +140,18 @@ class _ArgumentParser(argparse.ArgumentParser):
         """
         if self.raise_exceptions:
             raise ArgumentParserError(message)
-        # if REQUIRED_SUB_COMMAND_RE.match(message):
-        #     words = self.prog.split()
-        #     if len(words) == 1:
-        #         lines = [f'The "{words[0]}" program requires a command.',
-        #                  f'See "{words[0]} help" for more information.', ]
-        #     else:
-        #         lines = [f'The "{self.prog}" command requires a sub-command.',
-        #                  f'See "{" ".join(words[:-1])} help {words[-1]}" for more information.']
-        #     for line in lines:
-        #         sys.stderr.write(line)
-        #         sys.stderr.write(os.linesep)
-        #     sys.exit(0)
+        if REQUIRED_SUB_COMMAND_REGEX.match(message):
+            words = self.prog.split()
+            if len(words) == 1:
+                lines = [f'The "{words[0]}" program requires a command.',
+                         f'See "{words[0]} help" for more information.', ]
+            else:
+                lines = [f'The "{self.prog}" command requires a sub-command.',
+                         f'See "{" ".join(words[:-1])} help {words[-1]}" for more information.']
+            for line in lines:
+                sys.stderr.write(line)
+                sys.stderr.write(os.linesep)
+            sys.exit(0)
         super().error(message)
 
     def format_usage(self):

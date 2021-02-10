@@ -12,7 +12,8 @@ import os
 import sys
 import traceback
 from textwrap import wrap
-from typing import Iterable, Any, Text, Iterator, List, Optional, Tuple
+from typing import Iterable, Any, Text, Iterator, List, \
+    Optional, Tuple, Sequence, Callable, Union, Dict
 
 from . import options
 
@@ -307,19 +308,86 @@ def format_message_block(message: Any, *args, **kwargs) -> Text:
     return os.linesep.join(format_message_lines(message, *args, **kwargs))
 
 
-def plural(text: Text, countable: Any):
+def plural(noun: Text, countable: Any):
     """
-    Simple text pluralization adds "s" if `countable` has a length that is not one.
+    Simplistic text pluralization.
 
-    :param text: text to pluralize
+    If `countable` length is one:
+
+    - Return unchanged.
+
+    Otherwise if countable length is zero or greater than one:
+
+    - If it ends in 'y', return with ending 'y' replaced by 'ies'.
+    - Otherwise return with 's' appended.
+
+    ** No other irregular pluralization cases are handled. Please be aware of
+    the input, and how the simplistic algorithm works for it (or not). **
+
+    :param noun: noun to pluralize as needed
     :param countable: item with a length that determines if it is pluralized
-    :return: pluralized text
+    :return: possibly-pluralized noun
     """
     try:
         if len(countable) != 1:
-            if text.endswith('y'):
-                return f'{text[:-1]}ies'
-            return f'{text}s'
+            if noun.endswith('y'):
+                return f'{noun[:-1]}ies'
+            return f'{noun}s'
     except TypeError:
         pass
-    return text
+    return noun
+
+
+def binary_search(sequence: Sequence,
+                  value: Any,
+                  key: Callable[[Any], Any] = None,
+                  ) -> Optional[Any]:
+    """
+    Perform binary search on ordered sequence.
+
+    Based on standard bisect library, but cloned and adapted code for arbitrary
+    item types and an optional key() function. Unlike find(), it returns
+    the found item or None, instead of a position or -1.
+
+    :param sequence: ordered item sequence to search
+    :param value: value to search for
+    :param key: optional key function a la sort() to return item key value
+    :return: found item or None if not found
+    """
+    # "Borrowed" and adapted code from bisect.bisect_left().
+    lo = 0
+    hi = len(sequence)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        # Use __lt__ to match the logic in list.sort() and in heapq
+        item = sequence[mid]
+        if key is None:
+            key_value = item
+        else:
+            key_value = key(item)
+        if key_value < value:
+            lo = mid + 1
+        else:
+            hi = mid
+    if lo == len(sequence):
+        return None
+    return sequence[lo]
+
+
+def filter_dict(function: Callable[[Any, Any], bool],
+                input_data: Union[Dict, Sequence[Tuple[Any, Any]]],
+                ) -> dict:
+    """
+    Apply filter function to a dictionary or pair sequence.
+
+    :param function: function passed key and value arguments and returns True to keep
+    :param input_data: input dictionary or pair sequence
+    :return: filtered output dictionary
+    """
+    # If input data is not a dictionary assume it's a pair sequence.
+    return dict(
+        filter(
+            lambda kv: function(kv[0], kv[1]),
+            input_data.items() if isinstance(input_data, dict) else input_data
+        )
+    )
