@@ -5,8 +5,6 @@ mytool (jiig monolithic tool script).
 """
 
 import jiig
-import jiig.task.alias
-import jiig.task.help
 
 
 HELLO_TASK = jiig.Task(
