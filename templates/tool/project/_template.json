@@ -7,6 +7,12 @@
       "executable": true
     },
     {
+      "path": "mytool.py",
+      "output_path": "$mytool.py",
+      "expansion": "word",
+      "executable": true
+    },
+    {
       "path": "lib/__init__.py",
       "output_path": "lib/__init__.py",
       "expansion": "word"

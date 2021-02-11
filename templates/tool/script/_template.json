@@ -5,6 +5,12 @@
       "output_path": "$mytool",
       "expansion": "word",
       "executable": true
+    },
+    {
+      "path": "mytool.py",
+      "output_path": "$mytool.py",
+      "expansion": "word",
+      "executable": true
     }
   ]
 }

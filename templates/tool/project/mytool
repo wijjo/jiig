@@ -1,6 +1,10 @@
 #!/usr/bin/env jiig-run
 """
-mytool Jiig tool script.
+mytool Jiig tool script (jiig-run version).
+
+Jiig-run automatically deals with the Python package load path, manages any
+required virtual environment, and scrapes tool metadata from simple
+configuration variables.
 """
 
 TOOL_NAME = 'mytool'

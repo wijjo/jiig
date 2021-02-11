@@ -1,12 +1,14 @@
-#!/usr/bin/env jiig-run
+#!/usr/bin/env python3
 """
-mytool (jiig monolithic tool script - jiig-run version).
+mytool (jiig monolithic tool script - pure-Python version).
 
-Jiig-run automatically deals with the Python package load path, manages any
-required virtual environment, and scrapes tool metadata from simple
-configuration variables.
+PYTHONPATH (i.e. sys.path) must include Jiig lib for `import jiig` to work.
+
+To use a virtual environment, either let `jiig.main()` automatically create and
+restart in it or activate the virtual environment prior to running this script.
 """
 
+import os
 import jiig
 
 
@@ -42,6 +44,13 @@ ROOT_TASK = jiig.Task(
 )
 
 
-TOOL_NAME = 'mytool'
+TOOL = jiig.Tool(
+    tool_name='mytool',
+    tool_root_folder=os.path.dirname(__file__),
+    description='mytool description.',
+    root_task=ROOT_TASK,
+)
 
-DESCRIPTION = 'mytool description.'
+
+if __name__ == '__main__':
+    jiig.main(TOOL)
