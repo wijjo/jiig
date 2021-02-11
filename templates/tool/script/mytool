@@ -1,10 +1,12 @@
 #!/usr/bin/env jiig-run
 
 """
-template_tool_name (jiig monolithic tool script).
+mytool (jiig monolithic tool script).
 """
 
 import jiig
+import jiig.task.alias
+import jiig.task.help
 
 
 HELLO_TASK = jiig.Task(
@@ -24,7 +26,7 @@ def hello(_runner: jiig.Runner, data):
     jiig.util.process.run(['date'], quiet=True)
     print(f'{greeting}:')
     print('')
-    print(f'Sample task script: "template_tool_name"')
+    print(f'Sample task script: "mytool"')
     print('')
     print('Use the sample script as a basis for defining your own custom')
     print('tool, tasks, options, and arguments.')
@@ -39,6 +41,6 @@ ROOT_TASK = jiig.Task(
 )
 
 
-TOOL_NAME = 'template_tool_name'
+TOOL_NAME = 'mytool'
 
-DESCRIPTION = 'template_tool_name description.'
+DESCRIPTION = 'mytool description.'

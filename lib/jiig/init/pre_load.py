@@ -58,7 +58,7 @@ def go(tool_config: model.Tool,
         raw_arguments = cli_args
 
     # Pre-parse raw arguments to get top level options and trailing arguments.
-    parser_driver = cli.get_parser_driver(
+    parser_driver = cli.driver.get_parser_driver(
         tool_config.tool_name,
         'pre-processing',
         implementation=tool_config.parser_implementation,
@@ -72,14 +72,14 @@ def go(tool_config: model.Tool,
 
     # Push options into libraries to keep a one-way dependency from Jiig to
     # independent libraries, without needing a back-channel for options.
-    util.set_options(debug=results.data.DEBUG,
-                     dry_run=results.data.DRY_RUN,
-                     verbose=results.data.VERBOSE)
-    cli.set_options(debug=results.data.DEBUG,
-                    dry_run=results.data.DRY_RUN,
-                    verbose=results.data.VERBOSE,
-                    top_command_label=const.TOP_TASK_LABEL,
-                    sub_command_label=const.SUB_TASK_LABEL)
+    util.options.set_options(debug=results.data.DEBUG,
+                             dry_run=results.data.DRY_RUN,
+                             verbose=results.data.VERBOSE)
+    cli.options.set_options(debug=results.data.DEBUG,
+                            dry_run=results.data.DRY_RUN,
+                            verbose=results.data.VERBOSE,
+                            top_command_label=const.TOP_TASK_LABEL,
+                            sub_command_label=const.SUB_TASK_LABEL)
 
     interp_data = AppPreLoadData(runner_args,
                                  cli_args,

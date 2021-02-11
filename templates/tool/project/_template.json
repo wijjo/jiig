@@ -1,8 +1,8 @@
 {
   "templates": [
     {
-      "path": "template_tool_name",
-      "output_path": "$template_tool_name",
+      "path": "mytool",
+      "output_path": "$mytool",
       "expansion": "word",
       "executable": true
     },
@@ -12,23 +12,23 @@
       "expansion": "word"
     },
     {
-      "path": "lib/template_tool_name/__init__.py",
-      "output_path": "lib/$template_tool_name/__init__.py",
+      "path": "lib/mytool/__init__.py",
+      "output_path": "lib/$mytool/__init__.py",
       "expansion": "word"
     },
     {
-      "path": "lib/template_tool_name/task/__init__.py",
-      "output_path": "lib/$template_tool_name/task/__init__.py",
+      "path": "lib/mytool/task/__init__.py",
+      "output_path": "lib/$mytool/task/__init__.py",
       "expansion": "word"
     },
     {
-      "path": "lib/template_tool_name/task/root.py",
-      "output_path": "lib/$template_tool_name/task/root.py",
+      "path": "lib/mytool/task/root.py",
+      "output_path": "lib/$mytool/task/root.py",
       "expansion": "word"
     },
     {
-      "path": "lib/template_tool_name/task/template_task_name.py",
-      "output_path": "lib/$template_tool_name/task/$template_task_name.py",
+      "path": "lib/mytool/task/mytask.py",
+      "output_path": "lib/$mytool/task/$mytask.py",
       "expansion": "word"
     }
   ]

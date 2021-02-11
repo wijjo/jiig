@@ -45,7 +45,7 @@ def task_run(runner: jiig.Runner, data: Data):
                 data.OUTPUT_FOLDER,
                 overwrite=data.FORCE,
                 symbols={
-                    'template_task_name': task_name,
+                    'mytask': task_name,
                     'template_bool_option': f'{task_name.upper()}_BOOL',
                     'template_string_option': f'{task_name.upper()}_STRING',
                     'template_argument': f'{task_name.upper()}_ARG',

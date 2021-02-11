@@ -1,8 +1,8 @@
 {
   "templates": [
     {
-      "path": "template_tool_name",
-      "output_path": "$template_tool_name",
+      "path": "mytool",
+      "output_path": "$mytool",
       "expansion": "word",
       "executable": true
     }

@@ -49,7 +49,7 @@ def _resolve_root_task(tool: model.ToolRuntime) -> model.TaskRuntime:
     return root_task
 
 
-def _add_sub_task_arguments_and_subcommands(command: cli.ParserCommand,
+def _add_sub_task_arguments_and_subcommands(command: cli.types.ParserCommand,
                                             sub_task: model.TaskRuntime):
     for opt in sub_task.flagged_options:
         command.add_option(opt.name,
@@ -142,7 +142,7 @@ def go(pre_load_data: AppPreLoadData,
     root_task = _resolve_root_task(tool)
 
     # Create and initialize the parser driver.
-    parser_driver = cli.get_parser_driver(
+    parser_driver = cli.driver.get_parser_driver(
         tool.name,
         tool.description,
         implementation=pre_load_data.parser_implementation,

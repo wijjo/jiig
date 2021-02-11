@@ -9,7 +9,7 @@ import jiig
 from jiig.util.template_expansion import expand_folder
 
 
-DEFAULT_TASK_NAME = 'generated_task'
+DEFAULT_TASK_NAME = 'mytask'
 
 
 TASK = jiig.Task(
@@ -44,8 +44,7 @@ def task_run(runner: jiig.Runner, data: Data):
         data.TOOL_FOLDER,
         overwrite=data.FORCE,
         symbols={
-            'template_tool_name': (data.TOOL_NAME
-                                   or os.path.basename(data.TOOL_FOLDER)),
-            'template_task_name': data.TASK_NAME,
+            'mytool': (data.TOOL_NAME or os.path.basename(data.TOOL_FOLDER)),
+            'mytask': data.TASK_NAME,
         },
     )

@@ -1,1 +1,1 @@
-__all__ = ['template_tool_name']
+__all__ = ['mytool']

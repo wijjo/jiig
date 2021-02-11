@@ -1,0 +1,10 @@
+#!/usr/bin/env jiig-run
+"""
+mytool Jiig tool script.
+"""
+
+TOOL_NAME = 'mytool'
+
+DESCRIPTION = 'mytool description.'
+
+ROOT_TASK = 'mytool.task.root'

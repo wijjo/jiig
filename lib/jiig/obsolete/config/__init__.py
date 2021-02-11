@@ -1,4 +1,0 @@
-"""
-Jiig configuration library.
-"""
-

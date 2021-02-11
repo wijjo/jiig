@@ -1,5 +1,5 @@
 """
-task template_task_name module
+task mytask module
 
 Refer to the documentation for more information about Task classes.
 """
@@ -8,7 +8,7 @@ import jiig
 
 
 TASK = jiig.Task(
-    description='template_task_name help description',
+    description='mytask help description',
     args={
         'template_bool_option[!]': ('-b', 'a boolean option'),
         'template_string_option': ('-s', 'a string option'),

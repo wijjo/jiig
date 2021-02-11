@@ -2,7 +2,6 @@
 Public CLI parsing modules and interface.
 """
 
-from .driver import get_parser_driver, CommandLineParserDriver
-from .options import set_options, ParserImplementations
-from .types import ParseResults, PreParseResults, ParserRoot, ParserCommand
-
+# It's all one related package.
+# Only impl has delayed loading, in case there are unwanted dependencies.
+from . import options, types, driver

@@ -5,7 +5,7 @@ Jiig global constants.
 import os
 import re
 
-from .cli import ParserImplementations
+from .cli.options import ParserImplementations
 
 # TODO: Paths should become Windows-compatible eventually.
 DEFAULT_ALIASES_PATH = os.path.expanduser('~/.jiig-aliases')

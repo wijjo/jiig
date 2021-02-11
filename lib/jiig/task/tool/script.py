@@ -37,6 +37,6 @@ def task_run(runner: jiig.Runner, data: Data):
         data.TOOL_FOLDER,
         overwrite=data.FORCE,
         symbols={
-            'template_tool_name': (data.TOOL_NAME or os.path.basename(data.TOOL_FOLDER)),
+            'mytool': (data.TOOL_NAME or os.path.basename(data.TOOL_FOLDER)),
         },
     )
