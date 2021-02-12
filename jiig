@@ -13,7 +13,6 @@ VERSION = '0.5'
 
 AUTHOR = 'Steve Cooper'
 
-# noinspection PyShadowingBuiltins
 COPYRIGHT = '2021, Steve Cooper'
 
 PIP_PACKAGES = ['pdoc3', 'PySimpleGUI']

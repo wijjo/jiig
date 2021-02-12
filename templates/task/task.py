@@ -19,7 +19,6 @@ TASK = jiig.Task(
 
 @TASK.run
 def task_run(_runner: jiig.Runner, data):
-    print('In on_run().')
     if data.template_bool_option:
         print('template_bool_option is enabled.')
     if data.template_string_option:
