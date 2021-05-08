@@ -77,7 +77,7 @@ There is no API documentation yet, but all or most significant modules, classes,
 and functions have useful doc strings.
 
 The programming interface is also very well typed. So an IDE like PyCharm or
-VScode with appropriate plug-ins can provide a lot of assistance.
+VS-Code with appropriate plug-ins can provide a lot of assistance.
 
 ## Aliases
 

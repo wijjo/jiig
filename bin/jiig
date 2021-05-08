@@ -1,0 +1,27 @@
+#!/usr/bin/env jiig-run
+"""
+Main Jiig program.
+"""
+
+TOOL_NAME = 'jiig'
+
+PROJECT_NAME = 'Jiig'
+
+DESCRIPTION = 'Jiig tool.'
+
+VERSION = '0.5'
+
+AUTHOR = 'Steve Cooper'
+
+COPYRIGHT = '2021, Steve Cooper'
+
+PIP_PACKAGES = ['pdoc3', 'PySimpleGUI']
+
+DOC_API_PACKAGES = ['jiig']
+
+DOC_API_PACKAGES_EXCLUDED = [
+    'jiig.driver.cli.impl',
+    'jiig.tasks',
+]
+
+ROOT_TASK = 'jiig.tasks.root'

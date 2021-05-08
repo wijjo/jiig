@@ -1,7 +1,7 @@
 {
   "templates": [
     {
-      "path": "task.py",
+      "path": "mytask.py",
       "output_path": "$mytask.py",
       "expansion": "word"
     }

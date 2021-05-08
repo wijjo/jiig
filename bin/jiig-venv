@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+
+"""
+Jiig stand-alone virtual environment builder.
+
+This is not very robust, and mainly for rare use to create a virtual environment
+when tool code is incomplete or broken.
+"""
+
+import os
+import sys
+
+
+def jiig_env_main():
+    script_name = os.path.basename(sys.argv[0])
+    if len(sys.argv) != 2:
+        sys.stderr.write(f'{script_name} requires the tool script path.')
+        sys.exit(1)
+    jiig_root_folder = os.path.dirname(os.path.dirname(os.path.realpath(sys.argv[1])))
+    sys.path.insert(0, jiig_root_folder)
+    tool_script_path = os.path.realpath(sys.argv[1])
+    tool_symbols = {}
+    with open(file=tool_script_path) as tool_script_file:
+        exec(tool_script_file.read(), tool_symbols)
+    tool_name = tool_symbols['TOOL_NAME']
+    pip_packages = tool_symbols['PIP_PACKAGES']
+    from jiig.util.python import build_virtual_environment
+    from jiig.registry import JIIG_VENV_ROOT
+    venv_folder = os.path.join(os.path.expanduser(JIIG_VENV_ROOT), tool_name)
+    build_virtual_environment(venv_folder, packages=pip_packages)
+
+
+if __name__ == '__main__':
+    jiig_env_main()

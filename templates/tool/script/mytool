@@ -10,38 +10,62 @@ configuration variables.
 import jiig
 
 
-HELLO_TASK = jiig.Task(
-    description='Display hello message.',
-    args={
-        'TEXAS_STYLE[!]': ('-t', 'greet with a drawl'),
-        'NAME[?]': 'optional name',
-    },
-)
+class TaskCase(jiig.TaskHandler):
+    """Convert text case (default is "smart" conversion)."""
+
+    upper: jiig.boolean('convert to all-uppercase', cli_flags='-u')
+    lower: jiig.boolean('convert to all-lowercase', cli_flags='-l')
+    blocks: jiig.text('text block(s) to convert', repeat=(1, None))
+
+    def on_run(self, _runtime: jiig.Runtime):
+        if self.upper and self.lower:
+            raise RuntimeError('Conflicting upper/lower options specified.')
+        if not self.upper and not self.lower:
+            # "Smart" conversion checks first character of first block.
+            to_upper = self.blocks[0][:1].islower()
+        else:
+            to_upper = self.upper
+        text = ' '.join(self.blocks)
+        if to_upper:
+            output_text = text.upper()
+        else:
+            output_text = text.lower()
+        print(output_text)
 
 
-@HELLO_TASK.run
-def hello(_runner: jiig.Runner, data):
-    greeting = 'Howdy' if data.TEXAS_STYLE else 'Hello'
-    if data.NAME:
-        greeting = f'{greeting} {data.NAME}'
-    jiig.util.process.run(['date'], quiet=True)
-    print(f'{greeting}:')
-    print('')
-    print(f'Sample task script: "mytool"')
-    print('')
-    print('Use the sample script as a basis for defining your own custom')
-    print('tool, tasks, options, and arguments.')
+class TaskWords(jiig.TaskHandler):
+    """Count words using primitive whitespace splitting."""
+
+    blocks: jiig.text('text block(s) with words to count', repeat=(1, None))
+
+    def on_run(self, _runtime: jiig.Runtime):
+        count = len(' '.join(self.blocks).split())
+        print(f'The word count is {count}.')
 
 
-ROOT_TASK = jiig.Task(
-    tasks={
-        'hello': HELLO_TASK,
-        'alias[s]': jiig.task.alias,
-        'help[s]': jiig.task.help,
-    },
-)
+class TaskCalc(jiig.TaskHandler):
+    """Evaluate formula using Python interpreter."""
+
+    blocks: jiig.text('formula block(s) to evaluate', repeat=(1, None))
+
+    def on_run(self, _runtime: jiig.Runtime):
+        result = eval(' '.join(self.blocks))
+        print(f'The result is {result}.')
+
+
+class Task(jiig.TaskHandler,
+           tasks={'case': TaskCase,
+                  'words': TaskWords,
+                  'calc': TaskCalc}
+          ):
+    """Various text manipulations."""
+    pass
 
 
 TOOL_NAME = 'mytool'
 
 DESCRIPTION = 'mytool description.'
+
+ROOT_TASK = Task
+
+# PIP_PACKAGES = []
