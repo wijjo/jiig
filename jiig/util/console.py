@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from typing import Any, Text, Set, Iterator, List, Sequence, Dict, Tuple, Optional
 
 from . import options
-from .general import format_message_lines, fit_text
+from .general import format_message_lines, get_exception_stack
 
 MESSAGES_ISSUED_ONCE: Set[Text] = set()
 
@@ -40,23 +40,33 @@ def log_message(text: Any, *args, **kwargs):
     for line in format_message_lines(text, *args, **kwargs):
         stream.write(line)
         stream.write(os.linesep)
+    has_exception = False
+    for value in list(args) + list(kwargs.values()):
+        if isinstance(value, Exception):
+            has_exception = True
+            break
     # Dump a traceback stack if DEBUG and an exception is being reported.
-    if options.DEBUG:
-        for value in list(args) + list(kwargs.values()):
-            if isinstance(value, Exception):
-                traceback.print_exc()
-                break
-    elif exception_traceback:
-        lines: List[Text] = []
-        last_exc_tb = sys.exc_info()[2]
-        if last_exc_tb is not None:
-            for tb in reversed(traceback.extract_tb(last_exc_tb)):
-                if not os.path.exists(tb.filename):
-                    break
-                location = '.'.join([tb.filename, str(tb.lineno)])
-                lines.append(f'{fit_text(location, 32, front=True, pad=" ")}: {tb.line}')
-            if lines:
-                log_error('Exception stack:', *reversed(lines))
+    if has_exception:
+        if options.DEBUG:
+            traceback.print_exc()
+        elif exception_traceback:
+            exc_stack = get_exception_stack()
+            if exc_stack.items:
+                lines: List[Text] = []
+                if exc_stack.package_path:
+                    heading_note = f'limited to frame: {exc_stack.package_path}'
+                    for item in exc_stack.items:
+                        sub_path = item.location[len(exc_stack.package_path) + 1:]
+                        lines.append(f'{sub_path}: {item.text}')
+                else:
+                    heading_note = None
+                    for item in exc_stack.items:
+                        lines.append(f'{item.path}: {item.text}')
+                if lines:
+                    if not options.DEBUG:
+                        lines.append('(enable the debug option for a complete exception stack)')
+                    note = f' ({heading_note})' if heading_note else ''
+                    log_error(f'Exception stack{note}:', *lines)
 
 
 def abort(text: Any, *args, **kwargs):
@@ -111,19 +121,107 @@ def log_block_end(level: int):
     sys.stdout.write(f'{decoration}{os.linesep}')
 
 
+class Logger:
+    """A pre-configured logger, e.g. to add a sub-tag to every output line."""
+
+    def __init__(self, sub_tag: Text = None):
+        """
+        Logger constructor.
+
+        :param sub_tag: optional sub-tag to add to tagged lines
+        """
+        self.sub_tag = sub_tag
+
+    def error(self, text: Any, *args, **kwargs):
+        """
+        Display an error.
+
+        :param text: message text
+        :param args: positional data arguments
+        :param kwargs: keywords data arguments
+        """
+        log_error(text, *args, **kwargs, sub_tag=self.sub_tag)
+
+    def warning(self, text: Any, *args, **kwargs):
+        """
+        Display a warning.
+
+        :param text: message text
+        :param args: positional data arguments
+        :param kwargs: keywords data arguments
+        """
+        log_warning(text, *args, **kwargs, sub_tag=self.sub_tag)
+
+    def message(self, text: Any, *args, **kwargs):
+        """
+        Display an informational message.
+
+        Checked for uniqueness so that a particular note only appears once.
+
+        :param text: message text
+        :param args: positional data arguments
+        :param kwargs: keywords data arguments
+        """
+        log_message(text, *args, **kwargs, sub_tag=self.sub_tag)
+
+    def abort(self, text: Any, *args, **kwargs):
+        """
+        Display a fatal error and exit.
+
+        :param text: message text
+        :param args: positional data arguments
+        :param kwargs: keywords data arguments
+        """
+        abort(text, *args, **kwargs, sub_tag=self.sub_tag)
+
+    @staticmethod
+    def heading(level: int, heading: Text):
+        """
+        Display, and in the future log, a heading message to delineate blocks.
+
+        :param level: heading level, 1-n
+        :param heading: heading text
+        """
+        log_heading(level, heading)
+
+    @staticmethod
+    def block_begin(level: int, heading: Text):
+        """
+        Display, and in the future log, a heading message to delineate blocks.
+
+        For now it just calls log_heading().
+
+        :param level: heading level, 1-n
+        :param heading: heading text
+        """
+        log_block_begin(level, heading)
+
+    @staticmethod
+    def block_end(level: int):
+        """
+        Display, and in the future log, a message to delineate block endings.
+
+        :param level: heading level, 1-n
+        """
+        log_block_end(level)
+
+
 class TopicLogger:
     """Topic logger provided by log_topic()."""
     def __init__(self,
                  topic: Text,
                  delayed: bool = None,
-                 parent: 'TopicLogger' = None):
+                 parent: 'TopicLogger' = None,
+                 sub_tag: Text = None):
         """
         Construct a topic or sub-topic.
 
         :param topic: topic heading text or used as preamble if parent is not None
         :param delayed: collect output and display at the end (inherited by default)
         :param parent: parent TopicLogger, set if it is a sub-topic
+        :param sub_tag: optional sub-tag to add to tagged lines
         """
+        self._logger = Logger(sub_tag=sub_tag)
         self.topic: Text = topic
         if delayed is None:
             if parent:
@@ -141,7 +239,7 @@ class TopicLogger:
             self.heading_level += 1
             topic = topic.parent
         if not self.delayed:
-            log_heading(self.heading_level, self.topic)
+            self._logger.heading(self.heading_level, self.topic)
 
     def error(self, text: Any, *args, **kwargs):
         """
@@ -157,7 +255,7 @@ class TopicLogger:
             else:
                 self.parent.error(f'{self.topic}: {text}', *args, **kwargs)
         else:
-            log_error(text, *args, **kwargs)
+            self._logger.error(text, *args, **kwargs)
 
     def warning(self, text: Any, *args, **kwargs):
         """
@@ -173,7 +271,7 @@ class TopicLogger:
             else:
                 self.parent.warning(f'{self.topic}: {text}', *args, **kwargs)
         else:
-            log_warning(text, *args, **kwargs)
+            self._logger.warning(text, *args, **kwargs)
 
     def message(self, text: Any, *args, **kwargs):
         """
@@ -191,7 +289,7 @@ class TopicLogger:
             else:
                 self.parent.message(f'{self.topic}: {text}', *args, **kwargs)
         else:
-            log_message(text, *args, **kwargs)
+            self._logger.message(text, *args, **kwargs)
 
     @contextmanager
     def sub_topic(self,
@@ -227,21 +325,21 @@ class TopicLogger:
         # Note that when self.delayed is False there should be no pending messages.
         if self.delayed:
             if self.errors or self.warnings or self.messages:
-                log_block_begin(self.heading_level, self.topic)
+                self._logger.block_begin(self.heading_level, self.topic)
                 for text, args, kwargs in self.errors:
-                    log_error(text, *args, **kwargs)
+                    self._logger.error(text, *args, **kwargs)
                 self.errors = []
                 for text, args, kwargs in self.warnings:
-                    log_warning(text, *args, **kwargs)
+                    self._logger.warning(text, *args, **kwargs)
                 self.warnings = []
                 for text, args, kwargs in self.messages:
-                    log_message(text, *args, **kwargs)
+                    self._logger.message(text, *args, **kwargs)
                 self.messages = []
                 if self.heading_level == 1:
-                    log_block_end(self.heading_level)
+                    self._logger.block_end(self.heading_level)
         else:
             if self.heading_level == 1:
-                log_block_end(self.heading_level)
+                self._logger.block_end(self.heading_level)
 
 
 @contextmanager

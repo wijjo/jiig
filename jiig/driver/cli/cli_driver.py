@@ -2,9 +2,10 @@
 
 import os
 from dataclasses import dataclass
+from inspect import isclass
 from typing import Text, Sequence, List, Optional
 
-from jiig.util.alias_catalog import expand_alias_name, open_alias_catalog
+from jiig.util.alias_catalog import is_alias_name, open_alias_catalog
 from jiig.util.console import abort
 from jiig.util.general import make_list, plural
 from jiig.util.process import shell_command_string
@@ -183,10 +184,11 @@ def _add_sub_task_arguments_and_subcommands(command: CLICommand,
     for field in sub_task.fields:
         flags = field.hints.get(CLI_HINT_FLAGS)
         if flags:
+            is_boolean = isclass(field.element_type) and issubclass(field.element_type, bool)
             command.add_option(field.name,
                                field.description,
                                make_list(flags),
-                               is_boolean=issubclass(field.element_type, bool),
+                               is_boolean=is_boolean,
                                repeat=field.repeat,
                                default=field.default,
                                choices=field.choices)
@@ -210,7 +212,7 @@ def _expand_alias_as_needed(tool_name: Text, trailing_arguments: List[Text]) -> 
     # Build the final arguments list, expanding an alias as required.
     if not trailing_arguments:
         final_arguments: List[Text] = []
-    elif not expand_alias_name(trailing_arguments[0]):
+    elif not is_alias_name(trailing_arguments[0]):
         final_arguments = trailing_arguments
     else:
         with open_alias_catalog(tool_name) as catalog:

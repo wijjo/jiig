@@ -197,8 +197,8 @@ class RuntimeTask:
             try:
                 task_ref = import_module(task_ref)
             except Exception as exc:
-                log_error(f'Failed to import task module by name.',
-                          exc, imported_module_name=task_ref, exception_traceback=True)
+                log_error(f'Failed to load task module.',
+                          exc, task_module_name=task_ref, exception_traceback=True)
                 return None
         # Reference is a module? Hopefully it's one that was registered.
         if ismodule(task_ref):

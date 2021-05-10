@@ -264,7 +264,7 @@ def main(tool_config: Tool,
     runtime_root_task = RuntimeTask.resolve(
         runtime_tool.root_task_reference, tool_config.tool_name, 2)
     if runtime_root_task is None:
-        abort('Failed to resolve root task.')
+        abort('Failed to load tasks.')
     if not runtime_root_task.sub_tasks:
         abort('There are no registered tasks.')
 

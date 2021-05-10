@@ -2,9 +2,9 @@
 Task field functions and classes.
 """
 
-from typing import Text, Annotated, Union, Callable, Protocol
+from typing import Text, Annotated, Union, Callable, Protocol, List
 
-from .adapters import path_is_folder, path_to_absolute
+from . import adapters
 
 from .registry.field import Field
 
@@ -80,7 +80,7 @@ def boolean(description: Text, **hints) -> Field:
 
 
 @field_function
-def filesystem_folder(description: Text,
+def filesystem_folder(description: Text, /,
                       absolute_path: bool = False,
                       **hints,
                       ) -> Field:
@@ -92,7 +92,78 @@ def filesystem_folder(description: Text,
     :param hints: driver hints
     :return: field specification
     """
-    adapters = [path_is_folder]
+    adapters_list = [adapters.path_is_folder]
     if absolute_path:
-        adapters.append(path_to_absolute)
-    return Field(Text, description, hints, adapters=adapters)
+        adapters_list.append(adapters.path_to_absolute)
+    return Field(Text, description, hints, adapters=adapters_list)
+
+
+@field_function
+def filesystem_object(description: Text, /,
+                      absolute_path: bool = False,
+                      exists: bool = False,
+                      **hints,
+                      ) -> Field:
+    """
+    Declare a folder path field.
+
+    :param description: field description
+    :param absolute_path: convert to absolute path if True
+    :param exists: it must exist if True
+    :param hints: driver hints
+    :return: field specification
+    """
+    adapters_list = []
+    if absolute_path:
+        adapters_list.append(adapters.path_to_absolute)
+    if exists:
+        adapters_list.append(adapters.path_exists)
+    return Field(Text, description, hints, adapters=adapters_list)
+
+
+@field_function
+def age(description: Text, **hints) -> Field:
+    """
+    Age based on string specification.
+
+    :param description: field description
+    :param hints: driver hints
+    :return: field specification
+    """
+    return Field(float, description, hints, adapters=[adapters.str_to_age])
+
+
+@field_function
+def timestamp(description: Text, **hints) -> Field:
+    """
+    Timestamp based on string specification.
+
+    :param description: field description
+    :param hints: driver hints
+    :return: field specification
+    """
+    return Field(float, description, hints, adapters=[adapters.str_to_timestamp])
+
+
+@field_function
+def interval(description: Text, **hints) -> Field:
+    """
+    Time interval based on string specification.
+
+    :param description: field description
+    :param hints: driver hints
+    :return: field specification
+    """
+    return Field(float, description, hints, adapters=[adapters.str_to_interval])
+
+
+@field_function
+def comma_tuple(description: Text, **hints) -> Field:
+    """
+    Comma-separated string converted to tuple.
+
+    :param description: field description
+    :param hints: driver hints
+    :return: field specification
+    """
+    return Field(List[Text], description, hints, adapters=[adapters.str_to_comma_tuple])

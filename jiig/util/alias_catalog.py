@@ -116,7 +116,17 @@ class Alias:
         return os.path.dirname(self.short_name) or None
 
 
-def expand_alias_name(short_name: Text) -> Optional[Text]:
+def is_alias_name(name: Text) -> bool:
+    """
+    Check if name is an alias.
+
+    :param name: name to check
+    :return: True if it is an alias
+    """
+    return name[0] in (os.path.sep, '.', '~')
+
+
+def expand_alias_name(short_name: Text, checked: bool = False) -> Optional[Text]:
     """
     Expand scoped alias name.
 
@@ -125,12 +135,20 @@ def expand_alias_name(short_name: Text) -> Optional[Text]:
     The current implementation is inefficient and has minimal validation.
 
     :param short_name: short alias name to expand
+    :param checked: abort instead of raising exception
     :return: expanded name or None if it isn't a valid alias name
+    :raise ValueError: if the alias name is bad
     """
+    def _error(text: Text):
+        if checked:
+            abort(text)
+        else:
+            raise ValueError(text)
     if not short_name:
-        return None
-    if short_name[0] not in (os.path.sep, '.', '~'):
-        return None
+        _error('No alias name received for alias operation.')
+    if not is_alias_name(short_name):
+        _error(f'Alias name "{short_name}" does not start with a location,'
+               f' e.g. .NAME, ~NAME, or /PATH/NAME.')
     if short_name[0] == os.path.sep:
         return short_name
     last_slash_pos = short_name.rfind(os.path.sep)
@@ -216,9 +234,7 @@ class AliasCatalog:
         :param alias_name: alias name, possibly preceded by a path
         :return: alias data if found or None if not
         """
-        full_name = expand_alias_name(alias_name)
-        if not full_name:
-            abort(f'Bad alias name "{alias_name}".')
+        full_name = expand_alias_name(alias_name, checked=True)
         tool_alias_map = self.catalog.get(self.tool_name)
         if not tool_alias_map:
             return None
@@ -265,9 +281,7 @@ class AliasCatalog:
         :param command: command arguments for alias (required)
         :param description: description of alias, e.g. for help screen
         """
-        full_name = expand_alias_name(alias_name)
-        if not full_name:
-            abort(f'Bad alias name "{alias_name}" for create.')
+        full_name = expand_alias_name(alias_name, checked=True)
         if not list(command):
             abort(f'New alias "{alias_name}" command is empty.')
         tool_alias_map = self.catalog.get(self.tool_name)
@@ -295,9 +309,7 @@ class AliasCatalog:
         :param command: command arguments for alias (optional, or not updated)
         :param description: description of alias (optional, or not updated)
         """
-        full_name = expand_alias_name(alias_name)
-        if not full_name:
-            abort(f'Bad alias name "{alias_name}" for update.')
+        full_name = expand_alias_name(alias_name, checked=True)
         if command is not None and not list(command):
             abort(f'Alias "{alias_name}" command is empty.')
         tool_alias_map = self.catalog.get(self.tool_name)
@@ -325,9 +337,7 @@ class AliasCatalog:
 
         :param alias_name: name of alias to delete
         """
-        full_name = expand_alias_name(alias_name)
-        if not full_name:
-            abort(f'Bad alias name "{alias_name}" for delete.')
+        full_name = expand_alias_name(alias_name, checked=True)
         tool_alias_map = self.catalog.get(self.tool_name)
         if not tool_alias_map:
             abort('Tool has no aliases.')
@@ -346,12 +356,8 @@ class AliasCatalog:
         :param alias_name: name of alias to rename
         :param alias_name_new: new target alias name
         """
-        full_name = expand_alias_name(alias_name)
-        full_name_new = expand_alias_name(alias_name_new)
-        if not full_name:
-            abort(f'Bad alias name "{alias_name}" for rename.')
-        if not full_name_new:
-            abort(f'Bad target alias name "{alias_name_new}" for rename.')
+        full_name = expand_alias_name(alias_name, checked=True)
+        full_name_new = expand_alias_name(alias_name_new, checked=True)
         tool_alias_map = self.catalog.get(self.tool_name)
         if not tool_alias_map:
             abort('Tool has no aliases.')

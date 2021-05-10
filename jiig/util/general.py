@@ -238,7 +238,8 @@ def format_table(*rows: Iterable[Any],
 
 def format_exception(exc: Exception,
                      label: Text = None,
-                     skip_stack_levels: int = 0
+                     skip_stack_levels: int = 0,
+                     show_exception_location: bool = False,
                      ) -> Text:
     """
     Format exception text.
@@ -246,14 +247,15 @@ def format_exception(exc: Exception,
     :param exc: the exception to format
     :param label: preamble for exception message
     :param skip_stack_levels: number of stack levels to skip
+    :param show_exception_location: add exception location to output if True
     :return: text string for exception
     """
     parts = []
     if label:
         parts.append(label)
     stack = traceback.extract_tb(sys.exc_info()[2])
-    if len(stack) > skip_stack_levels:
-        file, line, function, source = stack[skip_stack_levels]
+    if show_exception_location and len(stack) > skip_stack_levels:
+        file, line, _function, _source = stack[skip_stack_levels]
         parts.append(f'{os.path.basename(file)}.{line}')
     parts.append(exc.__class__.__name__)
     parts.append(str(exc))
@@ -278,7 +280,7 @@ def format_message_lines(text: Any, *args, **kwargs) -> Iterator[Text]:
     def _generate_exception_lines(exc: Exception) -> Iterator[Text]:
         exc_lines = format_exception(exc).split(os.linesep)
         if exc_lines:
-            yield f'Exception: {exc_lines[0]}'
+            yield f'exception: {exc_lines[0]}'
             for exc_line in exc_lines[1:]:
                 yield exc_line
 
@@ -449,3 +451,90 @@ def fit_text(text: Text,
         return ''.join([placeholder, text[excess_width + placeholder_width:]])
     else:
         return ''.join([text[:-(excess_width + placeholder_width)], placeholder])
+
+
+@dataclass
+class ExceptionStackItem:
+    path: Text
+    line: int
+    text: Text
+
+    @property
+    def location(self) -> Text:
+        return '.'.join([self.path, str(self.line)])
+
+
+@dataclass
+class ExceptionStack:
+    items: List[ExceptionStackItem]
+    package_path: Optional[Text]
+
+
+def get_exception_stack(keep_non_package_frames: bool = False,
+                        keep_non_file_frames: bool = False,
+                        ) -> ExceptionStack:
+    """
+    Get exception stack as list.
+
+    By default it tries to minimize the stack frames returned to leave out
+    non-file frames, e.g. due to exec()'d code, and frames outside of the top
+    level application frame.
+
+    :param keep_non_package_frames: don't hide frames that are outside of top (application) frame
+    :param keep_non_file_frames: don't hide non-source file frames if True
+    :return: stack item list
+    """
+    last_exc_tb = sys.exc_info()[2]
+    if last_exc_tb is not None:
+        items = [ExceptionStackItem(tb.filename, tb.lineno, tb.line)
+                 for tb in traceback.extract_tb(last_exc_tb)]
+    else:
+        items = []
+    package: Optional[Package] = None
+    # Trim first non-source file frame, e.g. to hide a string exec().?
+    if items and not keep_non_file_frames:
+        has_non_file_frame = False
+        for item_idx, item in enumerate(items):
+            if os.path.exists(item.path):
+                if has_non_file_frame:
+                    items = items[item_idx:]
+                    break
+            else:
+                has_non_file_frame = True
+    # Trim non-package frames:
+    if items and not keep_non_package_frames:
+        for item_idx, item in enumerate(items):
+            item_package = package_for_path(item.path)
+            if package is None:
+                package = item_package
+            else:
+                if item_package.name != package.name:
+                    items = items[:item_idx]
+                    break
+    return ExceptionStack(items, package.folder if package is not None else None)
+
+
+@dataclass
+class Package:
+    name: Text
+    folder: Text
+
+
+def package_for_path(path: Text) -> Package:
+    """
+    Provide a package name based on a path.
+
+    Returns an empty string if not enclosed in a package.
+
+    :param path: path to convert to a package
+    :return: package data based on path
+    """
+    folder = path if os.path.isdir(path) else os.path.dirname(path)
+    names: List[Text] = []
+    while os.path.exists(os.path.join(folder, '__init__.py')):
+        names.append(os.path.basename(folder))
+        new_folder = os.path.dirname(folder)
+        if new_folder == folder:
+            break
+        folder = new_folder
+    return Package('.'.join(names), folder)

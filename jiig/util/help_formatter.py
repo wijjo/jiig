@@ -4,10 +4,10 @@ import os
 from dataclasses import dataclass
 from shutil import get_terminal_size
 from textwrap import wrap
-from typing import Text, List, Optional, Iterator, Dict, Sequence
+from typing import Text, List, Optional, Iterator, Dict, Sequence, Any
 
 from .footnotes import FootnoteBuilder, NotesList, NotesDict
-from .general import DefaultValue
+from .general import DefaultValue, make_list
 from .repetition import Repetition
 
 
@@ -185,7 +185,7 @@ class HelpFormatter:
                             receives_trailing_arguments=receives_trailing_arguments))
 
     def add_option(self,
-                   flags: List[Text],
+                   flags: Any,
                    name: Text,
                    description: Text = None,
                    repeat: Repetition = None,
@@ -207,7 +207,7 @@ class HelpFormatter:
         self.options.append(
             HelpOption(name,
                        description=description,
-                       flags=flags,
+                       flags=make_list(flags),
                        repeat=repeat,
                        default=default,
                        choices=choices,
@@ -362,6 +362,28 @@ class HelpFormatter:
         for footnote_text in self.footnote_builder.format_footnotes():
             yield _format_text(footnote_text)
 
+    @staticmethod
+    def _flag_key(flag: Text):
+        # Option flags are sorted by label text, with the additional logic of
+        # equal uppercase letters following lowercase and long options following
+        # equal short labels.
+        if flag.startswith('-'):
+            if flag.startswith('--'):
+                group = 'C'
+                label = flag[2:]
+            else:
+                label = flag[1:]
+                if label and label[0].isupper():
+                    group = 'B'
+                    label = label.lower()
+                else:
+                    group = 'A'
+        else:
+            # Shouldn't get here.
+            group = 'D'
+            label = flag
+        return ''.join([label, group])
+
     def format_help(self,
                     show_hidden: bool = False,
                     receives_trailing_arguments: bool = False,
@@ -369,7 +391,7 @@ class HelpFormatter:
         # Sort options by (lowercase, original case) tuples so that
         # uppercase always precedes equal but lowercase version. Simply
         # sorting on lowercase keys would not guarantee that result.
-        options = list(sorted(self.options, key=lambda a: (a.flags[0].lower(), a.flags[0])))
+        options = list(sorted(self.options, key=lambda a: self._flag_key(a.flags[0])))
         arguments = list(sorted(self.arguments, key=lambda a: a.name))
         terminal_size = get_terminal_size()
         line_max_width = max(HELP_MINIMUM_WRAP_WIDTH,

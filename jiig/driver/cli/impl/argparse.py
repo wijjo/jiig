@@ -7,9 +7,9 @@ import os
 import re
 import sys
 from contextlib import contextmanager
-from typing import List, Text, Sequence, Tuple, Dict, Optional, Union
+from typing import List, Text, Sequence, Tuple, Dict
 
-from jiig.util.console import abort, log_message, log_error
+from jiig.util.console import Logger
 from jiig.util.general import make_list, DefaultValue
 from jiig.util.repetition import Repetition
 from jiig.util.python import format_call_string
@@ -20,6 +20,9 @@ from ..cli_implementation import CLIImplementation
 
 DEST_NAME_SEPARATOR = '.'
 REQUIRED_SUB_COMMAND_REGEX = re.compile(r'^the following arguments are required: (.*)$')
+
+
+logger = Logger(sub_tag='argparse')
 
 
 class _ArgumentParser(argparse.ArgumentParser):
@@ -146,14 +149,14 @@ class _ArgumentParser(argparse.ArgumentParser):
         if self.raise_exceptions:
             raise CLIError(message)
         if REQUIRED_SUB_COMMAND_REGEX.match(message):
-            log_error(message, sub_tag='Argparse')
+            logger.error(message)
             help_words = self.prog.split()
             help_words.insert(1, 'help')
-            log_message(self.see_help_message)
+            logger.message(self.see_help_message)
             sys.exit(0)
         else:
-            log_error(message, sub_tag='Argparse')
-            log_message(self.see_help_message)
+            logger.error(message)
+            logger.message(self.see_help_message)
             sys.exit(2)
 
     def format_usage(self):
@@ -164,15 +167,15 @@ class _ArgumentParser(argparse.ArgumentParser):
 
     def _dump(self, method_name, *args, **kwargs):
         if self.debug:
-            log_message(f'ArgumentParser[{id(self)}:{" ".join(self._command_names)}]:'
-                        f' {format_call_string(method_name, *args, **kwargs)}')
+            logger.message(f'ArgumentParser[{id(self)}:{" ".join(self._command_names)}]:'
+                           f' {format_call_string(method_name, *args, **kwargs)}')
 
     def _abort(self, method_name, exc, *args, **kwargs):
         parser = '|'.join(self._command_names) if self._command_names else '(top)'
-        abort(f'CLI parsing failed (argparse).',
-              parser=parser,
-              call=format_call_string(method_name, *args, **kwargs),
-              exception=str(exc))
+        logger.abort(f'CLI parsing failed (argparse).',
+                     parser=parser,
+                     call=format_call_string(method_name, *args, **kwargs),
+                     exception=str(exc))
 
     @classmethod
     @contextmanager
@@ -239,7 +242,7 @@ class Implementation(CLIImplementation):
             sub_parser = top_group.add_parser(command.name,
                                               help=command.description,
                                               add_help=False)
-            self._prepare_recursive(command, sub_parser, self.top_task_dest_name)
+            self._prepare_recursive(command, sub_parser, self.top_task_dest_name, [command.name])
 
         # Parse the command line arguments.
         if parse_options.capture_trailing:
@@ -278,33 +281,9 @@ class Implementation(CLIImplementation):
                                 help='display additional (verbose) messages')
 
     @classmethod
-    def _make_nargs(cls,
-                    repeat: Repetition = None,
-                    default: DefaultValue = None,
-                    ) -> Optional[Union[Text, int]]:
-        # Returns nargs value if specs map well to one. Falls through, reports
-        # error, and returns None if specs are unsupported or invalid.
-        if repeat is None:
-            if default is not None:
-                return '?'
-            return None
-        elif repeat.minimum is None or repeat.minimum == 0:
-            if repeat.maximum == 1:
-                return '?'
-            if repeat.maximum is None:
-                return '*'
-        elif repeat.minimum == 1:
-            if repeat.maximum is None:
-                return '+'
-        elif repeat.minimum > 0:
-            if repeat.minimum == repeat.maximum:
-                return repeat.minimum
-        log_error('Bad repeat range for argparse CLI.', repeat.maximum)
-        return None
-
-    @classmethod
     def _add_option_or_positional(cls,
                                   parser: argparse.ArgumentParser,
+                                  command_name: Text,
                                   name: Text,
                                   description: Text,
                                   flags: Sequence[Text] = None,
@@ -316,13 +295,30 @@ class Implementation(CLIImplementation):
         kwargs = {'dest': name.upper(), 'help': description}
         if is_boolean_option:
             kwargs['action'] = 'store_true'
-        nargs = cls._make_nargs(repeat, default)
-        if nargs is not None:
-            kwargs['nargs'] = nargs
         if default is not None:
             kwargs['default'] = default.value
         if choices:
             kwargs['choices'] = choices
+        # Convert and validate repetition to make an `nargs` value.
+        if repeat is None:
+            if default is not None:
+                kwargs['nargs'] = '?'
+        else:
+            if repeat.minimum is None or repeat.minimum == 0:
+                if repeat.maximum is None:
+                    kwargs['nargs'] = '*'
+                elif repeat.maximum == 1:
+                    kwargs['nargs'] = '?'
+            elif repeat.minimum == 1:
+                if repeat.maximum is None:
+                    kwargs['nargs'] = '+'
+            elif repeat.minimum > 0:
+                if repeat.minimum == repeat.maximum:
+                    kwargs['nargs'] = repeat.minimum
+            if 'nargs' not in kwargs:
+                logger.error(f'Bad repeat range for "{command_name}", field "{name}".',
+                             (repeat.minimum, repeat.maximum))
+        # Add the argument to argparse.
         parser.add_argument(*make_list(flags), **kwargs)
 
     @classmethod
@@ -330,9 +326,14 @@ class Implementation(CLIImplementation):
                            command: CLICommand,
                            parser: argparse.ArgumentParser,
                            parent_dest_name: Text,
+                           command_names: List[Text] = None,
                            ):
+        if command_names is None:
+            command_names = []
+        command_name = ' '.join(command_names)
         for option in command.options:
             cls._add_option_or_positional(parser,
+                                          command_name,
                                           option.name,
                                           option.description,
                                           flags=option.flags,
@@ -342,6 +343,7 @@ class Implementation(CLIImplementation):
                                           choices=option.choices)
         for argument in command.positionals:
             cls._add_option_or_positional(parser,
+                                          command_name,
                                           argument.name,
                                           argument.description,
                                           repeat=argument.repeat,
@@ -355,4 +357,5 @@ class Implementation(CLIImplementation):
                 sub_parser = sub_group.add_parser(sub_command.name,
                                                   help=sub_command.description,
                                                   add_help=False)
-                cls._prepare_recursive(sub_command, sub_parser, dest_name)
+                cls._prepare_recursive(sub_command, sub_parser, dest_name,
+                                       command_names=(command_names + [sub_command.name]))
