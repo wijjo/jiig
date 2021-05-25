@@ -1,13 +1,74 @@
 # Jiig
 
-Jiig is a framework and tool for creating multi-command shell tools. Jiig-based
-tool interfaces resemble the `git` command structure. It has multi-level
-sub-commands, options, and arguments, along with integrated "help" command.
+Jiig is a framework and tool kit for simplifying the creation of shell tools and
+various other kinds of programs.
 
-`Tzar` (https://github.com/wijjo/tzar) is an early example of a Jiig-based tool
-that is written by the same author.
 
-## Features
+## Advantages
+
+### Data-driven user interface
+
+### Type-safety
+
+### Clean business logic
+
+### Easy interface changes
+
+### Task structure
+
+### Modular user interface drivers
+
+
+## Program structure
+
+* User-selected driver to interpret metadata as a user interface.
+* Tool definition, either as a special tool script or a Tool object.
+    * Tool metadata.
+    * Root (top level) Task class reference.
+* Task classes (self-registering).
+    * Task class annotated fields.
+    * Task class call-back action methods.
+    * Optional child sub-task references.
+
+1. Task classes, their metadata and methods.
+2. Field annotations within task classes and metadata parameters.
+3. A selected driver that interprets task and field metadata to drive a running
+   program and user interface.
+
+Business logic coexists with task and field metadata as task class methods. The
+business logic can remain pure because field data validation and type conversion
+is handled externally.
+
+But when fields and business logic do need to change in concert they are likely
+found in the same file, the same class, and probably the same editor screen.
+
+
+## User interface
+
+The initial release supports argparse-based command line interfaces (CLIs). But
+user interfaces (UIs) are modular, and implemented by drivers that convert field
+data and UI-specific hints into the concrete user interface.
+
+It will be possible in the future to extend field hints and add drivers to
+support UI alternatives like the following.
+
+* ReST API based on tasks, fields, and ReST-specific hints.
+* Simple dialog-based GUIs that map tasks and fields to windows and controls,
+  e.g. using TK, QT, Windows, Mac, etc..
+* Simple task/field-based Web interface.
+* CLI libraries other than argparse, possibly including a new stand-alone Jiig
+  CLI library.
+
+It
+promotes an approach where user interface definition is primarily data-driven
+and maintains a clean separation from core "business" logic.
+
+`Tzar` (https://github.com/wijjo/tzar), also created by the Jiig author, is an
+early Jiig-based tool example.
+
+It includes some code generation capability to help get started quickly. But the
+framework is designed to make it easy to build from scratch, i.e. without
+needing generated code.
 
 ### Simple and flexible command line interface
 
