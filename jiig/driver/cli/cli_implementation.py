@@ -1,6 +1,6 @@
 """CLI Base implementation class."""
 
-from typing import Sequence, Text, List
+from typing import Sequence, Text
 
 from .cli_command import CLICommand
 from .cli_types import CLIOptions, CLIPreliminaryResults, CLIResults
@@ -17,6 +17,7 @@ class CLIImplementation:
         # These are set from the outside a little later.
         self.debug = False
         self.dry_run = False
+        self.pause = False
         self.verbose = False
         self.top_task_dest_name = 'command'
 
@@ -37,7 +38,7 @@ class CLIImplementation:
                  command_line_arguments: Sequence[Text],
                  name: Text,
                  description: Text,
-                 commands: List[CLICommand],
+                 root_command: CLICommand,
                  options: CLIOptions,
                  ) -> CLIResults:
         """
@@ -46,7 +47,7 @@ class CLIImplementation:
         :param command_line_arguments: command line argument list
         :param name: program name
         :param description: program description
-        :param commands: top level commands
+        :param root_command: root command
         :param options: options governing parser building and execution
         :return: object with argument data attributes
         """

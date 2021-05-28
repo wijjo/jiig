@@ -288,16 +288,17 @@ def symbols_to_dataclass(symbols: Dict,
             if default_attr_name not in input_symbols:
                 input_symbols[default_attr_name] = default_attr_value
 
-    # Check for missing required symbols.
-    missing_names = set(required).difference(input_symbols.keys())
-    if missing_names:
-        if from_uppercase:
-            missing_names = map(str.upper, missing_names)
-        attribute_word = plural('attribute', missing_names)
-        message = format_message_block(f'{dc_type.__name__} data is missing'
-                                       f' the following {attribute_word}:',
-                                       *sorted(missing_names))
-        raise ValueError(message)
+    if required:
+        # Check for missing required symbols.
+        missing_names = set(required).difference(input_symbols.keys())
+        if missing_names:
+            if from_uppercase:
+                missing_names = map(str.upper, missing_names)
+            attribute_word = plural('attribute', missing_names)
+            message = format_message_block(f'{dc_type.__name__} data is missing'
+                                           f' the following {attribute_word}:',
+                                           *sorted(missing_names))
+            raise ValueError(message)
 
     # Set known output symbols.
     output_symbols = {}

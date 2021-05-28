@@ -15,6 +15,8 @@ class DriverOptions:
     """Disable the dry run option."""
     disable_verbose: bool = False
     """Disable the verbose option."""
+    enable_pause: bool = False
+    """Enable the pause option."""
     raise_exceptions: bool = False
     """Raise exceptions if True."""
     top_task_label: Text = 'TASK'

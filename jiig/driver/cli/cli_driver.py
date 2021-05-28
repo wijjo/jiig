@@ -82,15 +82,19 @@ class CLIDriver(Driver):
         cli_implementation.debug = self.debug
         cli_implementation.dry_run = self.dry_run
         cli_implementation.verbose = self.verbose
+        cli_implementation.pause = self.pause
         cli_implementation.top_task_dest_name = self.options.top_task_dest_name
         options = CLIOptions(
             raise_exceptions=self.options.raise_exceptions,
             disable_debug=self.options.disable_debug,
             disable_dry_run=self.options.disable_dry_run,
-            disable_verbose=self.options.disable_verbose)
+            disable_verbose=self.options.disable_verbose,
+            enable_pause=self.options.enable_pause,
+        )
         pre_parse_results = cli_implementation.on_pre_parse(command_line_arguments, options)
         self.debug = getattr(pre_parse_results.data, 'DEBUG', False)
         self.dry_run = getattr(pre_parse_results.data, 'DRY_RUN', False)
+        self.pause = getattr(pre_parse_results.data, 'PAUSE', False)
         self.verbose = getattr(pre_parse_results.data, 'VERBOSE', False)
         # Expand alias as needed to produce final argument list.
         expanded_arguments = _expand_alias_as_needed(
@@ -109,20 +113,26 @@ class CLIDriver(Driver):
         :return: driver application data
         """
 
-        commands: List[CLICommand] = []
+        root_command = CLICommand(root_task.name, root_task.description)
+        _add_task_fields(root_command, root_task)
         for sub_task in root_task.sub_tasks:
-            command = CLICommand(sub_task.name, sub_task.description)
-            commands.append(command)
-            _add_sub_task_arguments_and_subcommands(command, sub_task)
+            command = root_command.add_sub_command(sub_task.name, sub_task.description)
+            _add_task_fields_and_subcommands(command, sub_task)
 
         options = CLIOptions(
             capture_trailing=True,
             raise_exceptions=False,
             disable_debug=self.options.disable_debug,
             disable_dry_run=self.options.disable_dry_run,
-            disable_verbose=self.options.disable_verbose)
+            disable_verbose=self.options.disable_verbose,
+            enable_pause=self.options.enable_pause,
+        )
         parse_results = initialization_data.cli_implementation.on_parse(
-            initialization_data.final_arguments, self.name, self.phase, commands, options)
+            initialization_data.final_arguments,
+            self.name,
+            self.phase,
+            root_command,
+            options)
 
         # Tweak parse results so that data so that valid DEBUG, DRY_RUN, and
         # VERBOSE options are always available.
@@ -132,6 +142,8 @@ class CLIDriver(Driver):
             parse_results.data.DRY_RUN = False
         if self.options.disable_verbose:
             parse_results.data.VERBOSE = False
+        if not self.options.enable_pause:
+            parse_results.data.PAUSE = False
 
         # Resolve the task stack.
         try:
@@ -179,9 +191,9 @@ class CLIDriver(Driver):
             print(text)
 
 
-def _add_sub_task_arguments_and_subcommands(command: CLICommand,
-                                            sub_task: DriverTask):
-    for field in sub_task.fields:
+def _add_task_fields(command: CLICommand,
+                     task: DriverTask):
+    for field in task.fields:
         flags = field.hints.get(CLI_HINT_FLAGS)
         if flags:
             is_boolean = isclass(field.element_type) and issubclass(field.element_type, bool)
@@ -192,7 +204,7 @@ def _add_sub_task_arguments_and_subcommands(command: CLICommand,
                                repeat=field.repeat,
                                default=field.default,
                                choices=field.choices)
-    for field in sub_task.fields:
+    for field in task.fields:
         flags = field.hints.get(CLI_HINT_FLAGS)
         if not flags:
             # Trailing argument capture is handled separately.
@@ -202,10 +214,15 @@ def _add_sub_task_arguments_and_subcommands(command: CLICommand,
                                        repeat=field.repeat,
                                        default=field.default,
                                        choices=field.choices)
-    for sub_sub_task in sub_task.sub_tasks:
+
+
+def _add_task_fields_and_subcommands(command: CLICommand,
+                                     task: DriverTask):
+    _add_task_fields(command, task)
+    for sub_sub_task in task.sub_tasks:
         sub_command = command.add_sub_command(sub_sub_task.name,
                                               sub_sub_task.description)
-        _add_sub_task_arguments_and_subcommands(sub_command, sub_sub_task)
+        _add_task_fields_and_subcommands(sub_command, sub_sub_task)
 
 
 def _expand_alias_as_needed(tool_name: Text, trailing_arguments: List[Text]) -> List[Text]:

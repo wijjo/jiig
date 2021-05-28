@@ -10,7 +10,7 @@ configuration variables.
 import jiig
 
 
-class TaskCase(jiig.TaskHandler):
+class TaskCase(jiig.Task):
     """Convert text case (default is "smart" conversion)."""
 
     upper: jiig.boolean('convert to all-uppercase', cli_flags='-u')
@@ -33,7 +33,7 @@ class TaskCase(jiig.TaskHandler):
         print(output_text)
 
 
-class TaskWords(jiig.TaskHandler):
+class TaskWords(jiig.Task):
     """Count words using primitive whitespace splitting."""
 
     blocks: jiig.text('text block(s) with words to count', repeat=(1, None))
@@ -43,7 +43,7 @@ class TaskWords(jiig.TaskHandler):
         print(f'The word count is {count}.')
 
 
-class TaskCalc(jiig.TaskHandler):
+class TaskCalc(jiig.Task):
     """Evaluate formula using Python interpreter."""
 
     blocks: jiig.text('formula block(s) to evaluate', repeat=(1, None))
@@ -53,7 +53,7 @@ class TaskCalc(jiig.TaskHandler):
         print(f'The result is {result}.')
 
 
-class Task(jiig.TaskHandler,
+class Task(jiig.Task,
            tasks={'case': TaskCase,
                   'words': TaskWords,
                   'calc': TaskCalc}

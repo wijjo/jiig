@@ -5,14 +5,17 @@ Runner provides data and an API to task call-back functions..
 import os
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Text, Iterator
+from typing import Text, Iterator, Type, TypeVar
 
 from jiig.driver import Driver, DriverTask
+from jiig.scripter import ScripterBase, Scripter, Provisioner
 from jiig.util.alias_catalog import AliasCatalog, open_alias_catalog
 from jiig.util.console import abort
 
 from .runtime_task import RuntimeTask
 from .runtime_tool import RuntimeTool
+
+T_scripter = TypeVar('T_scripter', bound=ScripterBase)
 
 
 @dataclass
@@ -42,6 +45,9 @@ class Runtime:
 
     verbose: bool
     """True if displaying verbose messages."""
+
+    pause: bool
+    """True if pausing before significant activity."""
 
     def expand_string(self, text: Text, **more_params) -> Text:
         """
@@ -88,3 +94,37 @@ class Runtime:
         :param show_hidden: show hidden task help if True
         """
         self.driver.provide_help(self.driver_root_task, *names, show_hidden=show_hidden)
+
+    def custom_scripter(self, scripter_class: Type[T_scripter], **kwargs) -> T_scripter:
+        """
+        Create custom ScripterBase sub-class object with expansion symbols.
+
+        :param scripter_class: Scripter sub-class to construct
+        :param kwargs: expansion symbols
+        :return: configured Scripter
+        """
+        return scripter_class(debug=self.debug, dry_run=self.dry_run, pause=self.pause, **kwargs)
+
+    def scripter(self, **kwargs) -> Scripter:
+        """
+        Create Scripter with expansion symbols.
+
+        Primarily a convenient alternative to using custom_scripter() with the
+        Scripter class as an argument.
+
+        :param kwargs: expansion symbols
+        :return: configured Scripter
+        """
+        return self.custom_scripter(Scripter, **kwargs)
+
+    def provisioner(self, **kwargs) -> Provisioner:
+        """
+        Create Provisioner with expansion symbols.
+
+        Primarily a convenient alternative to using custom_scripter() with the
+        Provisioner class as an argument.
+
+        :param kwargs: expansion symbols
+        :return: configured Provisioner
+        """
+        return self.custom_scripter(Provisioner, **kwargs)

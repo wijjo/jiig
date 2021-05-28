@@ -180,7 +180,7 @@ class RuntimeTool:
 
         :return: tool options
         """
-        return self._tool.options
+        return self._tool.tool_options
 
     @property
     def parser_implementation(self) -> Text:

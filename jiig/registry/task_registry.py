@@ -3,7 +3,7 @@ import dataclasses
 import os
 import sys
 from dataclasses import dataclass
-from typing import Text, Dict, Type, get_type_hints, get_args
+from typing import Text, Dict, Type, get_type_hints, get_args, List
 
 from jiig.util.footnotes import NotesList, NotesDict
 
@@ -37,8 +37,38 @@ def register_task(cls: Type,
     :param tasks: sub-task classes, modules, or module full name, by name
     :param visibility: 0=normal, 1=secondary, 2=hidden
     """
-    def _default_description():
-        return cls.__doc__ and cls.__doc__.split(os.linesep)[0] or '(no task description)'
+    # The doc string can provide a default description and or notes.
+    doc_string_lines: List[Text] = []
+    if cls.__doc__ is not None:
+        doc_string = cls.__doc__.strip()
+        doc_string_lines.extend(doc_string.split(os.linesep))
+    # Make sure there's a description.
+    if not description:
+        if doc_string_lines:
+            description = doc_string_lines[0]
+        else:
+            description = '(no task description)'
+    # Make sure there's a notes list, even if empty.
+    if notes is None:
+        notes: NotesList = []
+    if not notes:
+        new_note = True
+        for note_line in doc_string_lines[1:]:
+            note_line = note_line.strip()
+            if note_line:
+                if new_note:
+                    notes.append(note_line)
+                    new_note = False
+                else:
+                    notes[-1] = os.linesep.join([notes[-1], note_line])
+            else:
+                new_note = True
+    # Make sure there's a footnotes dict, even if empty.
+    if footnotes is None:
+        footnotes: NotesDict = {}
+    # Make sure there's a tasks dict, even if empty.
+    if tasks is None:
+        tasks = {}
     # Wrap the class in a dataclass.
     if dataclasses.is_dataclass(cls):
         dataclass_class = cls
@@ -53,10 +83,10 @@ def register_task(cls: Type,
             fields[name] = hint_parts[1]
     # Build the final option map by converting flags to lists.
     task_spec = TaskSpecification(handler_class=dataclass_class,
-                                  description=description or _default_description(),
-                                  notes=notes or [],
-                                  footnotes=footnotes or {},
-                                  tasks=tasks or {},
+                                  description=description,
+                                  notes=notes,
+                                  footnotes=footnotes,
+                                  tasks=tasks,
                                   fields=fields,
                                   visibility=visibility)
     TaskRegistry.by_module_id[id(sys.modules[cls.__module__])] = task_spec

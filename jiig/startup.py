@@ -178,7 +178,7 @@ def _add_builtin_tasks(tool_config: Tool,
                        runtime_tool: RuntimeTool,
                        runtime_root_task: RuntimeTask,
                        ):
-    visibility = 2 if tool_config.options.hide_builtin_tasks else 1
+    visibility = 2 if tool_config.tool_options.hide_builtin_tasks else 1
 
     def _add_if_needed(name: Text, task_ref: Text):
         if f'{name}[s]' in runtime_root_task.sub_tasks:
@@ -188,9 +188,9 @@ def _add_builtin_tasks(tool_config: Tool,
         task = RuntimeTask.resolve(task_ref, name, visibility)
         runtime_root_task.sub_tasks[name] = task
 
-    if not tool_config.options.disable_help:
+    if not tool_config.tool_options.disable_help:
         _add_if_needed('help', 'jiig.tasks.help')
-    if not tool_config.options.disable_alias:
+    if not tool_config.tool_options.disable_alias:
         _add_if_needed('alias', 'jiig.tasks.alias.root')
     if runtime_tool.venv_needed:
         _add_if_needed('venv', 'jiig.tasks.venv.root')
@@ -208,7 +208,7 @@ def main(tool_config: Tool,
     :param tool_config: tool configuration object
     :param jiig_driver_class: pre-selected driver class to initialize and run the app
     :param driver_variant: driver implementation variant name (with default fall-back)
-    :param runner_args: optional runner, e.g. jiig-run, preamble
+    :param runner_args: optional Jiig runner preamble, e.g. for jiig-run
     :param cli_args: command line arguments to override the default, sys.argv[1:]
     """
     # TODO: There is a lot of data copying to keep driver world encapsulated.
@@ -229,9 +229,10 @@ def main(tool_config: Tool,
     # Construct the driver.
     options = DriverOptions(
         variant=driver_variant,
-        disable_debug=tool_config.options.disable_debug,
-        disable_dry_run=tool_config.options.disable_dry_run,
-        disable_verbose=tool_config.options.disable_verbose,
+        disable_debug=tool_config.tool_options.disable_debug,
+        disable_dry_run=tool_config.tool_options.disable_dry_run,
+        disable_verbose=tool_config.tool_options.disable_verbose,
+        enable_pause=tool_config.tool_options.enable_pause,
         raise_exceptions=True,
         top_task_label=TOP_TASK_LABEL,
         sub_task_label=SUB_TASK_LABEL,
@@ -249,7 +250,9 @@ def main(tool_config: Tool,
     # Push initialized options from the driver into the utility library.
     util.set_options(debug=jiig_driver.debug,
                      dry_run=jiig_driver.dry_run,
-                     verbose=jiig_driver.verbose)
+                     verbose=jiig_driver.verbose,
+                     pause=jiig_driver.pause,
+                     )
 
     # Check if a virtual environment is required, but not active. If so, it
     # restarts inside the virtual environment (and does not return from call).
@@ -305,7 +308,9 @@ def main(tool_config: Tool,
                       is_secondary=False,
                       debug=jiig_driver.debug,
                       dry_run=jiig_driver.dry_run,
-                      verbose=jiig_driver.verbose)
+                      verbose=jiig_driver.verbose,
+                      pause=jiig_driver.pause,
+                      )
 
     log_message('Executing application...', debug=True)
     _execute(runtime, task_stack, driver_app_data.data)

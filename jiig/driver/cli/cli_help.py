@@ -5,11 +5,12 @@ from dataclasses import dataclass
 from typing import Text, Sequence, List, Optional
 
 from jiig.util.console import abort
+from jiig.util.footnotes import NotesDict, NotesList
 from jiig.util.general import DefaultValue
 from jiig.util.repetition import Repetition
 from jiig.util.help_formatter import HelpProvider, HelpFormatter
 
-from ..driver_task import DriverTask
+from ..driver_task import DriverTask, DriverField
 
 from .cli_hints import CLI_HINT_FLAGS, CLI_HINT_TRAILING
 
@@ -53,21 +54,16 @@ class CLIHelpProvider(HelpProvider):
 
         :param show_hidden: show hidden task help if True
         """
-        formatter = HelpFormatter(self.tool_name,
-                                  [],
-                                  self.tool_description,
-                                  self.options.top_task_label)
-        for sub_task in sorted(self.root_task.sub_tasks, key=lambda t: t.name):
-            receives_trailing_arguments = task_receives_trailing_arguments(sub_task)
-            formatter.add_command(
-                sub_task.name,
-                sub_task.description,
-                is_secondary=sub_task.visibility == 1,
-                is_hidden=sub_task.visibility == 2,
-                has_sub_commands=bool(sub_task.sub_tasks),
-                receives_trailing_arguments=receives_trailing_arguments,
-            )
-        return formatter.format_help(show_hidden=show_hidden)
+        return self._format_help(self.tool_name,
+                                 [],
+                                 self.tool_description,
+                                 self.root_task.fields,
+                                 self.root_task.sub_tasks,
+                                 self.root_task.notes,
+                                 [self.root_task.footnotes],
+                                 self.options.top_task_label,
+                                 show_hidden,
+                                 )
 
     def format_task_help(self, names: Sequence[Text], show_hidden: bool = False) -> Text:
         """
@@ -84,21 +80,43 @@ class CLIHelpProvider(HelpProvider):
 
         active_task = task_stack[-1]
 
-        formatter = HelpFormatter(self.tool_name,
-                                  names,
-                                  active_task.description,
-                                  self.options.sub_task_label)
+        return self._format_help(self.tool_name,
+                                 names,
+                                 active_task.description,
+                                 active_task.fields,
+                                 active_task.sub_tasks,
+                                 active_task.notes,
+                                 [self.root_task.footnotes, active_task.footnotes],
+                                 self.options.sub_task_label,
+                                 show_hidden,
+                                 )
+
+    @classmethod
+    def _format_help(cls,
+                     tool_name: Text,
+                     names: Sequence[Text],
+                     description: Text,
+                     fields: List[DriverField],
+                     sub_tasks: List[DriverTask],
+                     notes: NotesList,
+                     footnotes_list: Sequence[NotesDict],
+                     task_label: Text,
+                     show_hidden: bool,
+                     ) -> Text:
+
+        formatter = HelpFormatter(tool_name, names, description, task_label)
 
         # Add notes and footnotes (extra footnotes are only provided for tasks).
-        for note in active_task.notes:
+        for note in notes:
             formatter.add_note(note)
-        if self.root_task.footnotes:
-            formatter.add_footnote_dictionary(self.root_task.footnotes)
-        if active_task.footnotes:
-            formatter.add_footnote_dictionary(active_task.footnotes)
+        for footnotes in footnotes_list:
+            formatter.add_footnote_dictionary(footnotes)
 
         # Add flagged options, if any (tasks only).
-        for field in active_task.fields:
+        task_receives_trailing = False
+        for field in fields:
+            if not task_receives_trailing and field.hints.get(CLI_HINT_TRAILING):
+                task_receives_trailing = True
             flags = field.hints.get(CLI_HINT_FLAGS)
             if flags is not None:
                 if field.repeat is None:
@@ -118,7 +136,7 @@ class CLIHelpProvider(HelpProvider):
                                      is_boolean=field.element_type is bool)
 
         # Add positional arguments, if any (tasks only).
-        for field in active_task.fields:
+        for field in fields:
             if field.hints.get(CLI_HINT_FLAGS) is None:
                 if field.repeat is None:
                     repeat = None
@@ -135,36 +153,25 @@ class CLIHelpProvider(HelpProvider):
                                        choices=field.choices)
 
         # Add help for sub-tasks.
-        for active_sub_task in sorted(active_task.sub_tasks, key=lambda t: t.name):
-            receives_trailing_arguments = task_receives_trailing_arguments(active_sub_task)
+        for active_sub_task in sorted(sub_tasks, key=lambda t: t.name):
+            sub_task_receives_trailing = False
+            for sub_task_field in active_sub_task.fields:
+                if not sub_task_receives_trailing and sub_task_field.hints.get(CLI_HINT_TRAILING):
+                    sub_task_receives_trailing = True
             formatter.add_command(
                 active_sub_task.name,
                 active_sub_task.description,
                 is_secondary=active_sub_task.visibility == 1,
                 is_hidden=active_sub_task.visibility == 2,
                 has_sub_commands=bool(active_sub_task.sub_tasks),
-                receives_trailing_arguments=receives_trailing_arguments,
+                receives_trailing_arguments=sub_task_receives_trailing,
             )
 
-        receives_trailing_arguments = task_receives_trailing_arguments(active_task)
         return formatter.format_help(show_hidden=show_hidden,
-                                     receives_trailing_arguments=receives_trailing_arguments)
+                                     receives_trailing_arguments=task_receives_trailing)
 
     def _resolve_task_stack(self, names: Sequence[Text]) -> Optional[List[DriverTask]]:
         try:
             return self.root_task.resolve_task_stack(names)
         except ValueError as exc:
             abort(str(exc))
-
-
-def task_receives_trailing_arguments(task: DriverTask) -> bool:
-    """
-    Check field hints to see if task requires trailing arguments.
-
-    :param task: task with fields to check
-    :return: True if a task field needs trailing arguments
-    """
-    for field in task.fields:
-        if field.hints.get(CLI_HINT_TRAILING):
-            return True
-    return False

@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import Text, List, Dict, Any, cast
 
 from jiig.util.alias_catalog import DEFAULT_ALIASES_PATH
-from jiig.util.console import abort
+from jiig.util.console import abort, log_warning
 from jiig.util.filesystem import search_folder_stack_for_file
 from jiig.util.python import symbols_to_dataclass, load_configuration_script
 
@@ -42,6 +42,9 @@ class ToolOptions:
     disable_verbose: bool = False
     """Disable verbose option if True."""
 
+    enable_pause: bool = False
+    """Enable pause option if True."""
+
     hide_builtin_tasks: bool = False
     """Hide tasks like help, alias, venv, etc. from help."""
 
@@ -51,7 +54,12 @@ class ToolOptions:
 
 @dataclass
 class Tool:
-    """Tool specification."""
+    """
+    Tool specification.
+
+    These members can also be initialized from jiig-run scripts with the
+    variables represented by uppercase globals.
+    """
 
     # === Required members.
 
@@ -99,7 +107,7 @@ class Tool:
     library_folders: List[Text] = field(default_factory=list)
     """Library folders to add to Python import path."""
 
-    options: ToolOptions = field(default_factory=ToolOptions)
+    tool_options: ToolOptions = field(default_factory=ToolOptions)
     """Various boolean behavior options."""
 
     parser_implementation: Text = None
@@ -141,6 +149,15 @@ class Tool:
         :param defaults: optional defaults that may be used for missing attributes
         """
         try:
+            # Convert tool options from a dictionary to a ToolOptions dataclass object.
+            if 'TOOL_OPTIONS' in symbols:
+                if isinstance(symbols['TOOL_OPTIONS'], dict):
+                    symbols['TOOL_OPTIONS'] = symbols_to_dataclass(symbols['TOOL_OPTIONS'],
+                                                                   ToolOptions)
+                else:
+                    log_warning('Ignoring TOOL_OPTIONS, because it is not a dictionary.')
+                    del symbols['TOOL_OPTIONS']
+            # Now convert all the relevant symbols to a Tool dataclass object.
             dataclass_obj = symbols_to_dataclass(
                 symbols,
                 cls,

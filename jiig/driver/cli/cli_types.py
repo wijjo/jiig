@@ -19,6 +19,7 @@ class CLIOptions:
     disable_debug: bool = False
     disable_dry_run: bool = False
     disable_verbose: bool = False
+    enable_pause: bool = False
 
 
 @dataclass

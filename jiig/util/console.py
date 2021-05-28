@@ -102,8 +102,11 @@ def log_error(text: Any, *args, **kwargs):
 
 def log_heading(level: int, heading: Text):
     """Display, and in the future log, a heading message to delineate blocks."""
-    decoration = '=====' if level == 1 else '---'
-    sys.stdout.write(f'{decoration} {heading} {decoration}{os.linesep}')
+    decoration = '=====' if level <= 1 else '---'
+    if heading:
+        sys.stdout.write(f'{decoration} {heading} {decoration}{os.linesep}')
+    else:
+        sys.stdout.write(f'{decoration}{os.linesep}')
 
 
 def log_block_begin(level: int, heading: Text):

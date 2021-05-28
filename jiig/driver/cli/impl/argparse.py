@@ -217,7 +217,7 @@ class Implementation(CLIImplementation):
                  command_line_arguments: Sequence[Text],
                  name: Text,
                  description: Text,
-                 commands: List[CLICommand],
+                 root_command: CLICommand,
                  parse_options: CLIOptions,
                  ) -> CLIResults:
         """
@@ -226,7 +226,7 @@ class Implementation(CLIImplementation):
         :param command_line_arguments: command line argument list
         :param name: program name
         :param description: program description
-        :param commands: top level commands
+        :param root_command: root command
         :param parse_options: options governing parser building and execution
         :return: object with argument data attributes
         """
@@ -234,11 +234,12 @@ class Implementation(CLIImplementation):
         # noinspection PyProtectedMember
         parser._dump('parse ArgumentParser', name=name, description=description)
         self._add_top_level_options(parser, parse_options)
+        self._prepare_fields(root_command, root_command.name, parser)
         self.parsers[self.top_task_dest_name] = parser
 
         top_group = parser.add_subparsers(dest=self.top_task_dest_name,
                                           required=True)
-        for command in commands:
+        for command in root_command.sub_commands:
             sub_parser = top_group.add_parser(command.name,
                                               help=command.description,
                                               add_help=False)
@@ -279,6 +280,9 @@ class Implementation(CLIImplementation):
         if not parse_options.disable_verbose:
             parser.add_argument('-v', dest='VERBOSE', action='store_true',
                                 help='display additional (verbose) messages')
+        if parse_options.enable_pause:
+            parser.add_argument('--pause', dest='PAUSE', action='store_true',
+                                help='pause before significant activity')
 
     @classmethod
     def _add_option_or_positional(cls,
@@ -322,15 +326,11 @@ class Implementation(CLIImplementation):
         parser.add_argument(*make_list(flags), **kwargs)
 
     @classmethod
-    def _prepare_recursive(cls,
-                           command: CLICommand,
-                           parser: argparse.ArgumentParser,
-                           parent_dest_name: Text,
-                           command_names: List[Text] = None,
-                           ):
-        if command_names is None:
-            command_names = []
-        command_name = ' '.join(command_names)
+    def _prepare_fields(cls,
+                        command: CLICommand,
+                        command_name: Text,
+                        parser: argparse.ArgumentParser,
+                        ):
         for option in command.options:
             cls._add_option_or_positional(parser,
                                           command_name,
@@ -349,6 +349,18 @@ class Implementation(CLIImplementation):
                                           repeat=argument.repeat,
                                           default=argument.default,
                                           choices=argument.choices)
+
+    @classmethod
+    def _prepare_recursive(cls,
+                           command: CLICommand,
+                           parser: argparse.ArgumentParser,
+                           parent_dest_name: Text,
+                           command_names: List[Text] = None,
+                           ):
+        if command_names is None:
+            command_names = []
+        command_name = ' '.join(command_names)
+        cls._prepare_fields(command, command_name, parser)
         if command.sub_commands:
             dest_name = DEST_NAME_SEPARATOR.join([parent_dest_name, command.name.upper()])
             sub_group = parser.add_subparsers(dest=dest_name,

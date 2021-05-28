@@ -31,6 +31,7 @@ class Driver:
         self.debug: bool = False
         self.dry_run: bool = False
         self.verbose: bool = False
+        self.pause: bool = False
         self.phase = 'construction'
 
     def initialize_driver(self,

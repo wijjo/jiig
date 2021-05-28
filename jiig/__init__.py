@@ -15,4 +15,4 @@ from .startup import main
 # Expose the top level public modules and sub-packages that have no external
 # dependencies. The tasks package depends on third party packages (in a virtual
 # environment). So it must not be exposed here.
-from . import adapters, driver, fields, runtime, tasks, util
+from . import adapters, driver, fields, runtime, scripter, tasks, util
