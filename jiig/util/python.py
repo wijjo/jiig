@@ -9,9 +9,9 @@ import traceback
 from dataclasses import fields, is_dataclass
 from inspect import isclass, isfunction
 from types import ModuleType
-from typing import Text, List, Tuple, Optional, IO, Dict, Type, Any
+from typing import Text, List, Tuple, Optional, IO, Dict, Type, Any, TypeVar
 
-from . import options
+from .options import Options
 from .console import abort, log_error, log_message, log_warning
 from .filesystem import delete_folder, short_path
 from .general import format_message_block, plural
@@ -120,11 +120,11 @@ def import_modules_from_folder(folder: Text,
                 if retry:
                     to_retry.append((module_name, module_path))
                 exceptions.append((module_name, module_path, exc))
-                if options.DEBUG:
+                if Options.debug:
                     raise
             except Exception as exc:
                 exceptions.append((module_name, module_path, exc))
-                if options.DEBUG:
+                if Options.debug:
                     raise
         to_import = []
         if to_retry:
@@ -232,14 +232,17 @@ def update_virtual_environment(venv_folder: Text, packages: List = None):
         run([pip_path, 'install'] + packages)
 
 
+T_dataclass = TypeVar('T_dataclass')
+
+
 def symbols_to_dataclass(symbols: Dict,
-                         dc_type: Type,
+                         dc_type: Type[T_dataclass],
                          from_uppercase: bool = False,
                          required: List[Text] = None,
                          protected: List[Text] = None,
                          overflow: Text = None,
                          defaults: Dict = None,
-                         ) -> object:
+                         ) -> T_dataclass:
     """
     Populate dataclass from symbols.
 
@@ -307,10 +310,16 @@ def symbols_to_dataclass(symbols: Dict,
     for name in valid_names.intersection(input_symbols.keys()):
         output_symbols[name] = input_symbols[name]
 
-    # Set overflow output symbols, if supported.
-    if overflow is not None:
-        for name in set(input_symbols.keys()).difference(valid_names):
+    # Handle unknown keys as overflow or warnings, based on overflow option.
+    unknown_keys: List[Text] = []
+    for name in set(input_symbols.keys()).difference(valid_names):
+        if overflow:
             output_symbols.setdefault(overflow, {})[name] = input_symbols[name]
+        else:
+            unknown_keys.append(name)
+    if unknown_keys:
+        log_warning(f'Unknown {plural("key", unknown_keys)} in {dc_type.__name__} source'
+                    f' dictionary: {" ".join(sorted(unknown_keys))}', symbols)
 
     try:
         return dc_type(**output_symbols)
@@ -319,7 +328,7 @@ def symbols_to_dataclass(symbols: Dict,
 
 
 def module_to_dataclass(module: object,
-                        dc_type: Type,
+                        dc_type: Type[T_dataclass],
                         required: List[Text] = None,
                         protected: List[Text] = None,
                         overflow: Text = None,

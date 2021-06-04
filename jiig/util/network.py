@@ -1,11 +1,14 @@
 """Network utilities."""
-
+import os
+import re
 from dataclasses import dataclass
-from typing import Text
+from typing import Text, Optional
 from urllib.error import URLError
 from urllib.request import urlopen
 
 from .console import abort
+from .options import Options
+from .process import run
 
 
 @dataclass
@@ -26,3 +29,14 @@ def curl(url: Text):
         )
     except URLError as exc:
         abort('cURL failed', url, exception=exc)
+
+
+def resolve_ip_address(host: str) -> Optional[str]:
+    if Options.dry_run:
+        return '1.1.1.1'
+    ip_extract_re = re.compile(rf'^PING {host} \((\d+\.\d+\.\d+\.\d+)\):')
+    for line in run(['ping', '-c', '1', host], capture=True).stdout.split(os.linesep):
+        result = ip_extract_re.search(line)
+        if result:
+            return result.group(1)
+    return None

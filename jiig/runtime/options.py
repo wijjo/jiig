@@ -1,5 +1,5 @@
 """
-Global option flags for util library.
+Global options for runtime library.
 """
 
 
@@ -9,5 +9,3 @@ class Options:
     dry_run = False
     pause = False
     keep_files = False
-    message_indent = '   '
-    column_separator = '  '

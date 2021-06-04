@@ -15,10 +15,9 @@ from . import \
     help_formatter, \
     init_file, \
     network, \
-    options, \
     process, \
     python, \
     stream, \
     template_expansion
 
-from .options import set_options
+from .options import Options

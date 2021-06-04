@@ -113,7 +113,9 @@ class _HelpLabeledListFormatter:
         self.items = []
 
     def format_block(self):
-        return os.linesep.join(self.format_lines())
+        block_text = os.linesep.join(self.format_lines())
+        self.headings = {}
+        return block_text
 
 
 class _HelpBlockFormatter:

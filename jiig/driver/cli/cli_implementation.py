@@ -14,11 +14,7 @@ class CLIImplementation:
     """
 
     def __init__(self):
-        # These are set from the outside a little later.
-        self.debug = False
-        self.dry_run = False
-        self.pause = False
-        self.verbose = False
+        # Set from outside after construction.
         self.top_task_dest_name = 'command'
 
     def on_pre_parse(self,

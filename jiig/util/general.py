@@ -12,11 +12,12 @@ import os
 import sys
 import traceback
 from dataclasses import dataclass, MISSING
+from subprocess import run
 from textwrap import wrap
 from typing import Iterable, Any, Text, Iterator, List, \
     Optional, Tuple, Sequence, Callable, Union, Dict
 
-from . import options
+from .options import Options
 
 
 class AttrDict(dict):
@@ -206,7 +207,7 @@ def format_table(*rows: Iterable[Any],
     last_width: Optional[int] = None
     if max_width is not None:
         left_columns_width = sum(widths[:-1])
-        left_separators_width = len(options.COLUMN_SEPARATOR) * (len(widths) - 1)
+        left_separators_width = len(Options.column_separator) * (len(widths) - 1)
         last_width = max_width - left_separators_width - left_columns_width
         if last_width < 20:
             last_width = None
@@ -215,10 +216,10 @@ def format_table(*rows: Iterable[Any],
 
         format_strings = ['{:%d}' % w for w in widths[:-1]]
         format_strings.append('{}')
-        format_string = options.COLUMN_SEPARATOR.join(format_strings)
+        format_string = Options.column_separator.join(format_strings)
         if headers is not None:
             yield format_string.format(*_get_strings(headers, padded=True))
-            yield options.COLUMN_SEPARATOR.join(['-' * width for width in widths])
+            yield Options.column_separator.join(['-' * width for width in widths])
 
         for row in rows:
             if last_width is None:
@@ -294,19 +295,19 @@ def format_message_lines(text: Any, *args, **kwargs) -> Iterator[Text]:
         for value in args:
             if isinstance(value, Exception):
                 for exc_value in _generate_exception_lines(value):
-                    yield f'{options.MESSAGE_INDENT}{exc_value}'
+                    yield f'{Options.message_indent}{exc_value}'
             else:
-                yield f'{options.MESSAGE_INDENT}{value}'
+                yield f'{Options.message_indent}{value}'
         for key, value in kwargs.items():
             if isinstance(value, (list, tuple)):
                 for idx, sub_value in enumerate(value):
                     if isinstance(sub_value, Exception):
                         sub_value = format_exception(sub_value)
-                    yield f'{options.MESSAGE_INDENT}{key}[{idx + 1}]: {sub_value}'
+                    yield f'{Options.message_indent}{key}[{idx + 1}]: {sub_value}'
             else:
                 if isinstance(value, Exception):
                     value = {format_exception(value)}
-                yield f'{options.MESSAGE_INDENT}{key}: {value}'
+                yield f'{Options.message_indent}{key}: {value}'
 
     if not tag:
         for line in _generate_raw_lines():
@@ -538,3 +539,73 @@ def package_for_path(path: Text) -> Package:
             break
         folder = new_folder
     return Package('.'.join(names), folder)
+
+
+def get_client_name() -> str:
+    client = run('uname -n', shell=True, capture_output=True, encoding='utf-8').stdout.strip()
+    if client.endswith('.local_command'):
+        client = client[:-6]
+    return client
+
+
+class BlockSplitter:
+    def __init__(self, *blocks: str, indent: int = None, double_spaced: bool = False):
+        self.lines: List[str] = []
+        self.indent = indent
+        self.double_spaced = double_spaced
+        self.found_indent: Optional[int] = None
+        self._trimmed_lines: Optional[List[str]] = None
+        for block in blocks:
+            self.add_block(block)
+
+    def add_block(self, block: str):
+        if self.lines and self.double_spaced:
+            self.lines.append('')
+        have_empty = False
+        have_non_empty = False
+        for line in block.split(os.linesep):
+            line = line.rstrip()
+            line_length = len(line)
+            indent = line_length - len(line.lstrip())
+            if indent == line_length:
+                have_empty = have_non_empty
+            else:
+                have_non_empty = True
+                if have_empty:
+                    self.lines.append('')
+                    have_empty = False
+                self.lines.append(line)
+                if self.found_indent is None or indent < self.found_indent:
+                    self.found_indent = indent
+
+    @property
+    def trimmed_lines(self) -> List[str]:
+        indent = ' ' * self.indent if self.indent else ''
+        if self._trimmed_lines is None:
+            if self.found_indent:
+                self._trimmed_lines = [indent + line[self.found_indent:] for line in self.lines]
+            else:
+                self._trimmed_lines = [indent + line for line in self.lines]
+        return self._trimmed_lines
+
+
+def trim_text_blocks(*blocks: str,
+                     indent: int = None,
+                     keep_indent: bool = False,
+                     double_spaced: bool = False,
+                     ) -> List[str]:
+    splitter = BlockSplitter(*blocks, indent=indent, double_spaced=double_spaced)
+    if keep_indent:
+        return splitter.lines
+    return splitter.trimmed_lines
+
+
+def trim_text_block(block: str,
+                    indent: int = None,
+                    keep_indent: bool = False,
+                    double_spaced: bool = False,
+                    ) -> str:
+    return os.linesep.join(trim_text_blocks(block,
+                                            indent=indent,
+                                            keep_indent=keep_indent,
+                                            double_spaced=double_spaced))

@@ -1,7 +1,7 @@
 """Help provider for tool data."""
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Text, Sequence, List, Optional
 
 from jiig.util.console import abort
@@ -13,12 +13,14 @@ from jiig.util.help_formatter import HelpProvider, HelpFormatter
 from ..driver_task import DriverTask, DriverField
 
 from .cli_hints import CLI_HINT_FLAGS, CLI_HINT_TRAILING
+from .global_options import GLOBAL_OPTIONS
 
 
 @dataclass
 class CLIHelpProviderOptions:
     top_task_label: Text = 'task'
     sub_task_label: Text = 'sub-task'
+    supported_global_options: List[Text] = field(default_factory=list)
 
 
 class CLIHelpProvider(HelpProvider):
@@ -91,8 +93,7 @@ class CLIHelpProvider(HelpProvider):
                                  show_hidden,
                                  )
 
-    @classmethod
-    def _format_help(cls,
+    def _format_help(self,
                      tool_name: Text,
                      names: Sequence[Text],
                      description: Text,
@@ -114,43 +115,52 @@ class CLIHelpProvider(HelpProvider):
 
         # Add flagged options, if any (tasks only).
         task_receives_trailing = False
-        for field in fields:
-            if not task_receives_trailing and field.hints.get(CLI_HINT_TRAILING):
+        for option_field in fields:
+            if not task_receives_trailing and option_field.hints.get(CLI_HINT_TRAILING):
                 task_receives_trailing = True
-            flags = field.hints.get(CLI_HINT_FLAGS)
+            flags = option_field.hints.get(CLI_HINT_FLAGS)
             if flags is not None:
-                if field.repeat is None:
+                if option_field.repeat is None:
                     repeat = None
                 else:
-                    repeat = Repetition(field.repeat.minimum, field.repeat.maximum)
-                if field.default is None:
+                    repeat = Repetition(option_field.repeat.minimum, option_field.repeat.maximum)
+                if option_field.default is None:
                     default = None
                 else:
-                    default = DefaultValue(field.default.value)
+                    default = DefaultValue(option_field.default.value)
                 formatter.add_option(flags=flags,
-                                     name=field.name,
-                                     description=field.description,
+                                     name=option_field.name,
+                                     description=option_field.description,
                                      repeat=repeat,
                                      default=default,
-                                     choices=field.choices,
-                                     is_boolean=field.element_type is bool)
+                                     choices=option_field.choices,
+                                     is_boolean=option_field.element_type is bool)
+        # Add global options only when displaying top level help.
+        if not names:
+            for global_option in GLOBAL_OPTIONS:
+                if global_option.name in self.options.supported_global_options:
+                    formatter.add_option(flags=global_option.flags,
+                                         name=global_option.name,
+                                         description=global_option.description,
+                                         is_boolean=True)
 
         # Add positional arguments, if any (tasks only).
-        for field in fields:
-            if field.hints.get(CLI_HINT_FLAGS) is None:
-                if field.repeat is None:
+        for positional_field in fields:
+            if positional_field.hints.get(CLI_HINT_FLAGS) is None:
+                if positional_field.repeat is None:
                     repeat = None
                 else:
-                    repeat = Repetition(field.repeat.minimum, field.repeat.maximum)
-                if field.default is None:
+                    repeat = Repetition(positional_field.repeat.minimum,
+                                        positional_field.repeat.maximum)
+                if positional_field.default is None:
                     default = None
                 else:
-                    default = DefaultValue(field.default.value)
-                formatter.add_argument(name=field.name,
-                                       description=field.description,
+                    default = DefaultValue(positional_field.default.value)
+                formatter.add_argument(name=positional_field.name,
+                                       description=positional_field.description,
                                        repeat=repeat,
                                        default=default,
-                                       choices=field.choices)
+                                       choices=positional_field.choices)
 
         # Add help for sub-tasks.
         for active_sub_task in sorted(sub_tasks, key=lambda t: t.name):

@@ -15,9 +15,9 @@ class Task(jiig.Task):
     trailing_arguments: jiig.text('Trailing CLI arguments.', cli_trailing=True)
 
     def on_run(self, runtime: jiig.Runtime):
-        ipython_path = runtime.expand_path_template('{VENV_FOLDER}/bin/ipython')
+        ipython_path = runtime.format_path('{VENV_FOLDER}/bin/ipython')
         if not os.path.exists(ipython_path):
-            pip_path = runtime.expand_path_template('{VENV_FOLDER}/bin/pip')
+            pip_path = runtime.format_path('{VENV_FOLDER}/bin/pip')
             log_message('Install iPython in virtual environment.')
             run([pip_path, 'install', 'ipython'] + self.trailing_arguments)
         try:

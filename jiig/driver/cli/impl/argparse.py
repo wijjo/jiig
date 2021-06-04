@@ -206,7 +206,11 @@ class Implementation(CLIImplementation):
         """
         # Don't use the primary argparse parser, since it may be initialized later.
         pre_parser = _ArgumentParser()
-        self._add_top_level_options(pre_parser, parse_options)
+        for option in parse_options.global_options:
+            pre_parser.add_argument(*option.flags,
+                                    dest=option.name.upper(),
+                                    action='store_true',
+                                    help=option.description)
         data, trailing_arguments = pre_parser.parse_known_args(
             command_line_arguments, raise_exceptions=parse_options.raise_exceptions)
         if getattr(data, 'DEBUG', False):
@@ -233,7 +237,11 @@ class Implementation(CLIImplementation):
         parser = _ArgumentParser(name, description)
         # noinspection PyProtectedMember
         parser._dump('parse ArgumentParser', name=name, description=description)
-        self._add_top_level_options(parser, parse_options)
+        for option in parse_options.global_options:
+            parser.add_argument(*option.flags,
+                                dest=option.name.upper(),
+                                action='store_true',
+                                help=option.description)
         self._prepare_fields(root_command, root_command.name, parser)
         self.parsers[self.top_task_dest_name] = parser
 
@@ -266,23 +274,6 @@ class Implementation(CLIImplementation):
         names = [name.lower() for name in command_dest.split(DEST_NAME_SEPARATOR)[1:]]
         names.append(getattr(args, command_dest))
         return CLIResults(args, names, trailing_args)
-
-    @staticmethod
-    def _add_top_level_options(parser: argparse.ArgumentParser,
-                               parse_options: CLIOptions,
-                               ):
-        if not parse_options.disable_debug:
-            parser.add_argument('--debug', dest='DEBUG', action='store_true',
-                                help='enable debug mode')
-        if not parse_options.disable_dry_run:
-            parser.add_argument('--dry-run', dest='DRY_RUN', action='store_true',
-                                help='display actions without executing (dry run)')
-        if not parse_options.disable_verbose:
-            parser.add_argument('-v', dest='VERBOSE', action='store_true',
-                                help='display additional (verbose) messages')
-        if parse_options.enable_pause:
-            parser.add_argument('--pause', dest='PAUSE', action='store_true',
-                                help='pause before significant activity')
 
     @classmethod
     def _add_option_or_positional(cls,

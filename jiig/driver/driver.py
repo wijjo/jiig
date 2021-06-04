@@ -28,10 +28,7 @@ class Driver:
         self.name = name
         self.description = description
         self.options = options or DriverOptions()
-        self.debug: bool = False
-        self.dry_run: bool = False
-        self.verbose: bool = False
-        self.pause: bool = False
+        self.enabled_global_options: List[Text] = []
         self.phase = 'construction'
 
     def initialize_driver(self,

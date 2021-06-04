@@ -3,7 +3,7 @@
 import os
 from dataclasses import dataclass
 from inspect import isclass
-from typing import Text, Sequence, List, Optional
+from typing import Text, Sequence, List, Optional, Type
 
 from jiig.util.alias_catalog import is_alias_name, open_alias_catalog
 from jiig.util.console import abort
@@ -20,7 +20,8 @@ from .cli_command import CLICommand
 from .cli_help import CLIHelpProvider, CLIHelpProviderOptions
 from .cli_hints import CLI_HINT_FLAGS, CLI_HINT_TRAILING
 from .cli_implementation import CLIImplementation
-from .cli_types import CLIOptions
+from .cli_types import CLIOptions, CLIOption
+from .global_options import GLOBAL_OPTIONS
 
 
 @dataclass
@@ -74,32 +75,30 @@ class CLIDriver(Driver):
             variant = 'argparse'
         module_path = os.path.join(os.path.dirname(__file__), 'impl', variant + '.py')
         parser_module = import_module_path(module_path)
-        implementation_class = getattr(parser_module, IMPLEMENTATION_CLASS_NAME, None)
+        implementation_class: Type[CLIImplementation] = getattr(
+            parser_module, IMPLEMENTATION_CLASS_NAME, None)
         if implementation_class is None:
             raise RuntimeError(f'{parser_module.__name__} missing'
                                f' {IMPLEMENTATION_CLASS_NAME} class.')
         cli_implementation = implementation_class()
-        cli_implementation.debug = self.debug
-        cli_implementation.dry_run = self.dry_run
-        cli_implementation.verbose = self.verbose
-        cli_implementation.pause = self.pause
         cli_implementation.top_task_dest_name = self.options.top_task_dest_name
-        options = CLIOptions(
-            raise_exceptions=self.options.raise_exceptions,
-            disable_debug=self.options.disable_debug,
-            disable_dry_run=self.options.disable_dry_run,
-            disable_verbose=self.options.disable_verbose,
-            enable_pause=self.options.enable_pause,
-        )
+        options = CLIOptions(raise_exceptions=self.options.raise_exceptions,
+                             global_options=self._get_supported_global_options())
         pre_parse_results = cli_implementation.on_pre_parse(command_line_arguments, options)
-        self.debug = getattr(pre_parse_results.data, 'DEBUG', False)
-        self.dry_run = getattr(pre_parse_results.data, 'DRY_RUN', False)
-        self.pause = getattr(pre_parse_results.data, 'PAUSE', False)
-        self.verbose = getattr(pre_parse_results.data, 'VERBOSE', False)
+        # Scrape up enabled global option names from parse result data attributes.
+        self.enabled_global_options: List[Text] = [
+            option.name for option in GLOBAL_OPTIONS
+            if getattr(pre_parse_results.data, option.dest, False)
+        ]
         # Expand alias as needed to produce final argument list.
         expanded_arguments = _expand_alias_as_needed(
             self.name, pre_parse_results.trailing_arguments)
         return CLIInitializationData(expanded_arguments, cli_implementation)
+
+    def _get_supported_global_options(self) -> List[CLIOption]:
+        return [CLIOption(option.name, option.description, option.flags, is_boolean=True)
+                for option in GLOBAL_OPTIONS
+                if option.name in self.options.supported_global_options]
 
     def on_initialize_application(self,
                                   initialization_data: CLIInitializationData,
@@ -119,31 +118,21 @@ class CLIDriver(Driver):
             command = root_command.add_sub_command(sub_task.name, sub_task.description)
             _add_task_fields_and_subcommands(command, sub_task)
 
-        options = CLIOptions(
-            capture_trailing=True,
-            raise_exceptions=False,
-            disable_debug=self.options.disable_debug,
-            disable_dry_run=self.options.disable_dry_run,
-            disable_verbose=self.options.disable_verbose,
-            enable_pause=self.options.enable_pause,
-        )
+        options = CLIOptions(capture_trailing=True,
+                             raise_exceptions=False,
+                             global_options=self._get_supported_global_options())
         parse_results = initialization_data.cli_implementation.on_parse(
             initialization_data.final_arguments,
             self.name,
             self.phase,
             root_command,
-            options)
+            options,
+        )
 
-        # Tweak parse results so that data so that valid DEBUG, DRY_RUN, and
-        # VERBOSE options are always available.
-        if self.options.disable_debug:
-            parse_results.data.DEBUG = False
-        if self.options.disable_dry_run:
-            parse_results.data.DRY_RUN = False
-        if self.options.disable_verbose:
-            parse_results.data.VERBOSE = False
-        if not self.options.enable_pause:
-            parse_results.data.PAUSE = False
+        # Make sure global options have values, even if disabled.
+        for global_option in GLOBAL_OPTIONS:
+            if global_option.name not in self.options.supported_global_options:
+                setattr(parse_results.data, global_option.dest, False)
 
         # Resolve the task stack.
         try:
@@ -179,13 +168,15 @@ class CLIDriver(Driver):
         :param names: name parts (task name stack)
         :param show_hidden: show hidden task help if True
         """
+        options = CLIHelpProviderOptions(
+            top_task_label=self.options.top_task_label,
+            sub_task_label=self.options.sub_task_label,
+            supported_global_options=self.options.supported_global_options,
+        )
         provider = CLIHelpProvider(self.name,
                                    self.description,
                                    root_task,
-                                   options=CLIHelpProviderOptions(
-                                        top_task_label=self.options.top_task_label,
-                                        sub_task_label=self.options.sub_task_label,
-                                    ))
+                                   options=options)
         text = provider.format_help(*names, show_hidden=show_hidden)
         if text:
             print(text)

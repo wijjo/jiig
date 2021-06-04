@@ -6,10 +6,26 @@ import traceback
 from contextlib import contextmanager
 from typing import Any, Text, Set, Iterator, List, Sequence, Dict, Tuple, Optional
 
-from . import options
+from .options import Options
 from .general import format_message_lines, get_exception_stack
 
 MESSAGES_ISSUED_ONCE: Set[Text] = set()
+LINES_WRITTEN = 0
+
+
+def _write_line(text: str, is_error: bool = False, extra_space: bool = False):
+    stream = sys.stderr if is_error else sys.stdout
+    global LINES_WRITTEN
+    if extra_space:
+        if LINES_WRITTEN > 0:
+            stream.write(os.linesep)
+    else:
+        LINES_WRITTEN += 1
+    stream.write(text)
+    stream.write(os.linesep)
+    if extra_space:
+        stream.write(os.linesep)
+        LINES_WRITTEN = 0
 
 
 def log_message(text: Any, *args, **kwargs):
@@ -27,19 +43,18 @@ def log_message(text: Any, *args, **kwargs):
     verbose = kwargs.pop('verbose', None)
     debug = kwargs.pop('debug', None)
     issue_once_tag = kwargs.pop('issue_once_tag', None)
-    stream = kwargs.pop('log_stream', sys.stdout)
+    is_error = kwargs.pop('is_error', False)
     exception_traceback = kwargs.pop('exception_traceback', None)
-    if verbose and not options.VERBOSE:
+    if verbose and not Options.verbose:
         return
-    if debug and not options.DEBUG:
+    if debug and not Options.debug:
         return
     if issue_once_tag:
         if issue_once_tag in MESSAGES_ISSUED_ONCE:
             return
         MESSAGES_ISSUED_ONCE.add(issue_once_tag)
     for line in format_message_lines(text, *args, **kwargs):
-        stream.write(line)
-        stream.write(os.linesep)
+        _write_line(line, is_error=is_error)
     has_exception = False
     for value in list(args) + list(kwargs.values()):
         if isinstance(value, Exception):
@@ -47,8 +62,10 @@ def log_message(text: Any, *args, **kwargs):
             break
     # Dump a traceback stack if DEBUG and an exception is being reported.
     if has_exception:
-        if options.DEBUG:
-            traceback.print_exc()
+        if Options.debug:
+            exc_lines = traceback.format_exc().split(os.linesep)
+            if exc_lines:
+                log_message('Exception stack:', *exc_lines, tag='DEBUG', is_error=True)
         elif exception_traceback:
             exc_stack = get_exception_stack()
             if exc_stack.items:
@@ -63,50 +80,51 @@ def log_message(text: Any, *args, **kwargs):
                     for item in exc_stack.items:
                         lines.append(f'{item.path}: {item.text}')
                 if lines:
-                    if not options.DEBUG:
+                    if not Options.debug:
                         lines.append('(enable the debug option for a complete exception stack)')
                     note = f' ({heading_note})' if heading_note else ''
-                    log_error(f'Exception stack{note}:', *lines)
+                    log_message(f'Exception stack{note}:', *lines, tag='ERROR', is_error=True)
 
 
 def abort(text: Any, *args, **kwargs):
     """Display, and in the future log, a fatal _error message (to stderr) and quit."""
-    from . import options
     skip = kwargs.pop('skip', 0)
     kwargs['tag'] = 'FATAL'
-    kwargs['log_stream'] = sys.stderr
+    kwargs['is_error'] = True
     kwargs['exception_traceback'] = True
     # kwargs['exception_traceback'] = True
     log_message(text, *args, **kwargs)
     # If DEBUG is enabled dump a call stack and strip off the non-meaningful tail.
-    if options.DEBUG:
+    if Options.debug:
         traceback_lines = traceback.format_stack()[:-(skip + 1)]
-        for line in traceback_lines:
-            sys.stderr.write(line)
+        for traceback_block in traceback_lines:
+            for traceback_line in traceback_block.split(os.linesep):
+                log_message(traceback_line, tag='DEBUG', is_error=True)
     sys.exit(255)
 
 
 def log_warning(text: Any, *args, **kwargs):
     """Display, and in the future log, a warning message (to stderr)."""
     kwargs['tag'] = 'WARNING'
-    kwargs['log_stream'] = sys.stderr
+    kwargs['is_error'] = True
     log_message(text, *args, **kwargs)
 
 
 def log_error(text: Any, *args, **kwargs):
     """Display, and in the future log, an _error message (to stderr)."""
     kwargs['tag'] = 'ERROR'
-    kwargs['log_stream'] = sys.stderr
+    kwargs['is_error'] = True
     log_message(text, *args, **kwargs)
 
 
 def log_heading(level: int, heading: Text):
     """Display, and in the future log, a heading message to delineate blocks."""
-    decoration = '=====' if level <= 1 else '---'
+    decoration = f'=====' if level <= 1 else f'---'
     if heading:
-        sys.stdout.write(f'{decoration} {heading} {decoration}{os.linesep}')
+        line = ' '.join([decoration, heading, decoration])
     else:
-        sys.stdout.write(f'{decoration}{os.linesep}')
+        line = decoration
+    _write_line(line, extra_space=True)
 
 
 def log_block_begin(level: int, heading: Text):
@@ -120,8 +138,7 @@ def log_block_begin(level: int, heading: Text):
 
 def log_block_end(level: int):
     """Display, and in the future log, a message to delineate block endings."""
-    decoration = '=====' if level == 1 else '---'
-    sys.stdout.write(f'{decoration}{os.linesep}')
+    log_heading(level, '')
 
 
 class Logger:

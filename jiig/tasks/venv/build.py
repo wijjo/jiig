@@ -13,9 +13,8 @@ class Task(jiig.Task):
     rebuild_venv: jiig.boolean('Force virtual environment rebuild.', cli_flags=('-r', '--rebuild'))
 
     def on_run(self, runtime: jiig.Runtime):
-        if not runtime.is_secondary:
-            log_heading(1, 'Build virtual environment')
+        log_heading(1, 'Build virtual environment')
         build_virtual_environment(runtime.tool.venv_folder,
                                   packages=runtime.tool.pip_packages,
                                   rebuild=self.rebuild_venv,
-                                  quiet=runtime.is_secondary)
+                                  quiet=False)

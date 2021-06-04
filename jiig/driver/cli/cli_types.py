@@ -1,6 +1,6 @@
 """Simple CLI types."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Text, Sequence, List, Optional
 
 from jiig.util.general import DefaultValue
@@ -9,17 +9,6 @@ from jiig.util.repetition import Repetition
 
 class CLIError(Exception):
     pass
-
-
-@dataclass
-class CLIOptions:
-    """CLI processing options."""
-    capture_trailing: bool = False
-    raise_exceptions: bool = False
-    disable_debug: bool = False
-    disable_dry_run: bool = False
-    disable_verbose: bool = False
-    enable_pause: bool = False
 
 
 @dataclass
@@ -32,6 +21,14 @@ class CLIOption:
     repeat: Repetition = None
     default: DefaultValue = None
     choices: Sequence = None
+
+
+@dataclass
+class CLIOptions:
+    """CLI processing options."""
+    capture_trailing: bool = False
+    raise_exceptions: bool = False
+    global_options: List[CLIOption] = field(default_factory=list)
 
 
 @dataclass

@@ -45,6 +45,9 @@ class ToolOptions:
     enable_pause: bool = False
     """Enable pause option if True."""
 
+    enable_keep_files: bool = False
+    """Enable keep files option if True."""
+
     hide_builtin_tasks: bool = False
     """Hide tasks like help, alias, venv, etc. from help."""
 

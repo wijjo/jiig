@@ -18,11 +18,8 @@ import dataclasses
 from inspect import ismethod
 from typing import List, Text, Type, Dict
 
-from . import util
-from .driver import Driver, DriverTask, DriverOptions, CLIDriver
-from .registry import Tool, SUB_TASK_LABEL, TOP_TASK_LABEL, TOP_TASK_DEST_NAME, \
-    add_supported_hints, get_bad_hints
-from .runtime import RuntimeTask, RuntimeTool, Runtime, Task
+from . import driver, registry, runtime, util
+
 from .util.console import log_message, log_error, abort
 from .util.general import format_exception, plural
 from .util.python import build_virtual_environment, PYTHON_NATIVE_ENVIRONMENT_NAME
@@ -30,7 +27,7 @@ from .util.python import build_virtual_environment, PYTHON_NATIVE_ENVIRONMENT_NA
 
 def _check_virtual_environment(runner_args: List[Text],
                                cli_args: List[Text],
-                               runtime_tool: RuntimeTool):
+                               runtime_tool: runtime.RuntimeTool):
     # Check if virtual environment needs to be activated.
     if not runtime_tool.venv_needed:
         log_message('Virtual environment is unnecessary.', debug=True)
@@ -69,7 +66,7 @@ class _ArgumentDataPreparer:
         self.prepared_data = {}
         self.errors: List[Text] = []
 
-    def prepare_argument_data(self, task_runtime: RuntimeTask):
+    def prepare_argument_data(self, task_runtime: runtime.RuntimeTask):
         # Convert raw argument data to prepared data.
         # Handle lower and upper case attribute names in raw data.
         for name, field in task_runtime.fields.items():
@@ -104,7 +101,9 @@ class _ArgumentDataPreparer:
                                          skip_stack_levels=1))
 
 
-def _invoke_task_handler(runtime_task: RuntimeTask, data_dict: Dict) -> Task:
+def _invoke_task_handler(runtime_task: runtime.RuntimeTask,
+                         data_dict: Dict,
+                         ) -> runtime.Task:
     # Extract the data needed to populate task dataclass fields.
     # noinspection PyDataclass
     task_field_data = {field.name: data_dict[field.name]
@@ -119,8 +118,8 @@ def _invoke_task_handler(runtime_task: RuntimeTask, data_dict: Dict) -> Task:
               exc)
 
 
-def _execute(runtime: Runtime,
-             active_task_stack: List[RuntimeTask],
+def _execute(runtime_obj: runtime.Runtime,
+             active_task_stack: List[runtime.RuntimeTask],
              data: object,
              ):
     # Prepare argument data using raw data and task option/argument definitions.
@@ -131,7 +130,7 @@ def _execute(runtime: Runtime,
         abort(f'{len(data_preparer.errors)} argument failure(s):', *data_preparer.errors)
     try:
         # Invoke task stack @run call-backs in top to bottom order.
-        handlers: List[Task] = []
+        handlers: List[runtime.Task] = []
         for task_runtime in active_task_stack:
             # Instantiate the task handler class with required field data. Non-field
             # data members and type mismatches may cause errors.
@@ -140,13 +139,13 @@ def _execute(runtime: Runtime,
             handlers.append(handler)
             run_method = getattr(handler, 'on_run', None)
             if ismethod(run_method):
-                run_method(runtime)
+                run_method(runtime_obj)
         # Invoke task stack @done call-backs in reverse order.
         while handlers:
             handler = handlers.pop()
             done_method = getattr(handler, 'on_done', None)
             if ismethod(done_method):
-                done_method(runtime)
+                done_method(runtime_obj)
     except KeyboardInterrupt:
         sys.stdout.write(os.linesep)
     except ArgumentNameError as exc:
@@ -156,7 +155,9 @@ def _execute(runtime: Runtime,
         abort(f'Task command failed:', ' '.join(active_names), exc)
 
 
-def _populate_driver_task(driver_task: DriverTask, runtime_task: RuntimeTask):
+def _populate_driver_task(driver_task: driver.DriverTask,
+                          runtime_task: runtime.RuntimeTask,
+                          ):
     for name, field in runtime_task.fields.items():
         driver_task.add_field(name=name,
                               description=field.description,
@@ -174,9 +175,9 @@ def _populate_driver_task(driver_task: DriverTask, runtime_task: RuntimeTask):
         _populate_driver_task(driver_sub_task, sub_task)
 
 
-def _add_builtin_tasks(tool_config: Tool,
-                       runtime_tool: RuntimeTool,
-                       runtime_root_task: RuntimeTask,
+def _add_builtin_tasks(tool_config: registry.Tool,
+                       runtime_tool: runtime.RuntimeTool,
+                       runtime_root_task: runtime.RuntimeTask,
                        ):
     visibility = 2 if tool_config.tool_options.hide_builtin_tasks else 1
 
@@ -185,7 +186,7 @@ def _add_builtin_tasks(tool_config: Tool,
             return
         if f'{name}[h]' in runtime_root_task.sub_tasks:
             return
-        task = RuntimeTask.resolve(task_ref, name, visibility)
+        task = runtime.RuntimeTask.resolve(task_ref, name, visibility)
         runtime_root_task.sub_tasks[name] = task
 
     if not tool_config.tool_options.disable_help:
@@ -196,8 +197,8 @@ def _add_builtin_tasks(tool_config: Tool,
         _add_if_needed('venv', 'jiig.tasks.venv.root')
 
 
-def main(tool_config: Tool,
-         jiig_driver_class: Type[Driver],
+def main(tool_config: registry.Tool,
+         jiig_driver_class: Type[driver.Driver],
          driver_variant: Text = None,
          runner_args: List[Text] = None,
          cli_args: List[Text] = None,
@@ -224,35 +225,48 @@ def main(tool_config: Tool,
         raw_arguments = cli_args
 
     # Wrap the tool configuration so that all necessary tool data is resolved.
-    runtime_tool = RuntimeTool(tool_config)
+    runtime_tool = runtime.RuntimeTool(tool_config)
 
     # Construct the driver.
-    options = DriverOptions(
+    supported_global_options: List[Text] = []
+    if not tool_config.tool_options.disable_debug:
+        supported_global_options.append('debug')
+    if not tool_config.tool_options.disable_dry_run:
+        supported_global_options.append('dry_run')
+    if not tool_config.tool_options.disable_verbose:
+        supported_global_options.append('verbose')
+    if tool_config.tool_options.enable_pause:
+        supported_global_options.append('pause')
+    if tool_config.tool_options.enable_keep_files:
+        supported_global_options.append('keep_files')
+    driver_options = driver.DriverOptions(
         variant=driver_variant,
-        disable_debug=tool_config.tool_options.disable_debug,
-        disable_dry_run=tool_config.tool_options.disable_dry_run,
-        disable_verbose=tool_config.tool_options.disable_verbose,
-        enable_pause=tool_config.tool_options.enable_pause,
         raise_exceptions=True,
-        top_task_label=TOP_TASK_LABEL,
-        sub_task_label=SUB_TASK_LABEL,
-        top_task_dest_name=TOP_TASK_DEST_NAME,
+        top_task_label=registry.TOP_TASK_LABEL,
+        sub_task_label=registry.SUB_TASK_LABEL,
+        top_task_dest_name=registry.TOP_TASK_DEST_NAME,
+        supported_global_options=supported_global_options,
     )
     jiig_driver = jiig_driver_class(tool_config.tool_name,
                                     tool_config.description,
-                                    options=options)
+                                    options=driver_options)
 
     # Initialize the driver. Only display message once.
     driver_initialization_data = jiig_driver.initialize_driver(raw_arguments)
     if not runtime_tool.venv_active:
         log_message('Jiig driver initialized.', debug=True)
 
-    # Push initialized options from the driver into the utility library.
-    util.set_options(debug=jiig_driver.debug,
-                     dry_run=jiig_driver.dry_run,
-                     verbose=jiig_driver.verbose,
-                     pause=jiig_driver.pause,
-                     )
+    # Push initialized options from the driver into libraries.
+    runtime.Options.debug = 'debug' in jiig_driver.enabled_global_options
+    runtime.Options.dry_run = 'dry_run' in jiig_driver.enabled_global_options
+    runtime.Options.verbose = 'verbose' in jiig_driver.enabled_global_options
+    runtime.Options.pause = 'pause' in jiig_driver.enabled_global_options
+    runtime.Options.keep_files = 'keep_files' in jiig_driver.enabled_global_options
+    util.Options.debug = runtime.Options.debug
+    util.Options.dry_run = runtime.Options.dry_run
+    util.Options.verbose = runtime.Options.verbose
+    util.Options.pause = runtime.Options.pause
+    util.Options.keep_files = runtime.Options.keep_files
 
     # Check if a virtual environment is required, but not active. If so, it
     # restarts inside the virtual environment (and does not return from call).
@@ -264,7 +278,7 @@ def main(tool_config: Tool,
             sys.path.insert(0, lib_folder)
 
     # Resolve the root task.
-    runtime_root_task = RuntimeTask.resolve(
+    runtime_root_task = runtime.RuntimeTask.resolve(
         runtime_tool.root_task_reference, tool_config.tool_name, 2)
     if runtime_root_task is None:
         abort('Failed to load tasks.')
@@ -276,7 +290,8 @@ def main(tool_config: Tool,
 
     # Convert the runtime task hierarchy to a driver task hierarchy.
     # Add automatic secondary ('...[s]') sub-tasks, if not disabled.
-    driver_root_task: DriverTask = DriverTask(tool_config.tool_name, '', [], [], [], {}, 0)
+    driver_root_task: driver.DriverTask = driver.DriverTask(
+        tool_config.tool_name, '', [], [], [], {}, 0)
     _populate_driver_task(driver_root_task, runtime_root_task)
 
     # Just display help if there are no arguments to process.
@@ -289,36 +304,30 @@ def main(tool_config: Tool,
     log_message('Application initialized.', debug=True)
 
     # Check hint usage.
-    add_supported_hints('repeat', 'choices')
+    registry.add_supported_hints('repeat', 'choices')
     if jiig_driver.supported_hints:
-        add_supported_hints(*jiig_driver.supported_hints)
-    bad_hints = get_bad_hints()
+        registry.add_supported_hints(*jiig_driver.supported_hints)
+    bad_hints = registry.get_bad_hints()
     if bad_hints:
         log_error(f'Bad field {plural("hint", bad_hints)}:', *bad_hints)
 
     # Convert driver task stack to RegisteredTask stack.
-    task_stack: List[RuntimeTask] = [runtime_root_task]
+    task_stack: List[runtime.RuntimeTask] = [runtime_root_task]
     for driver_task in driver_app_data.task_stack:
         task_stack.append(task_stack[-1].sub_tasks[driver_task.name])
 
-    runtime = Runtime(tool=runtime_tool,
-                      root_task=runtime_root_task,
-                      driver_root_task=driver_root_task,
-                      driver=jiig_driver,
-                      is_secondary=False,
-                      debug=jiig_driver.debug,
-                      dry_run=jiig_driver.dry_run,
-                      verbose=jiig_driver.verbose,
-                      pause=jiig_driver.pause,
-                      )
+    runtime_obj = runtime.Runtime(tool=runtime_tool,
+                                  root_task=runtime_root_task,
+                                  driver_root_task=driver_root_task,
+                                  driver=jiig_driver)
 
     log_message('Executing application...', debug=True)
-    _execute(runtime, task_stack, driver_app_data.data)
+    _execute(runtime_obj, task_stack, driver_app_data.data)
 
 
 def tool_script_main():
     """Called by program run by "shebang" line of tool script."""
-    main(Tool.from_script(sys.argv[1]),
-         CLIDriver,
+    main(registry.Tool.from_script(sys.argv[1]),
+         driver.CLIDriver,
          runner_args=sys.argv[:2],
          cli_args=sys.argv[2:])

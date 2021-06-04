@@ -1,7 +1,7 @@
 """Driver options data class."""
 
-from dataclasses import dataclass
-from typing import Text
+from dataclasses import dataclass, field
+from typing import Text, List
 
 
 @dataclass
@@ -9,14 +9,6 @@ class DriverOptions:
     """Options governing Jiig driver behavior."""
     variant: Text = None
     """Driver implementation variant name (default provided if missing)."""
-    disable_debug: bool = False
-    """Disable the debug option."""
-    disable_dry_run: bool = False
-    """Disable the dry run option."""
-    disable_verbose: bool = False
-    """Disable the verbose option."""
-    enable_pause: bool = False
-    """Enable the pause option."""
     raise_exceptions: bool = False
     """Raise exceptions if True."""
     top_task_label: Text = 'TASK'
@@ -25,3 +17,5 @@ class DriverOptions:
     """Label used in help for sub-tasks."""
     top_task_dest_name: Text = 'TASK'
     """Top task destination name"""
+    supported_global_options: List[Text] = field(default_factory=list)
+    """List of global option names to be made available to the user."""

@@ -4,75 +4,58 @@ Runner provides data and an API to task call-back functions..
 
 import os
 from contextlib import contextmanager
-from dataclasses import dataclass
-from typing import Text, Iterator, Type, TypeVar
+from typing import Text, Iterator, TypeVar, ContextManager
 
-from jiig.driver import Driver, DriverTask
-from jiig.scripter import ScripterBase, Scripter, Provisioner
 from jiig.util.alias_catalog import AliasCatalog, open_alias_catalog
-from jiig.util.console import abort
+from jiig.driver import Driver, DriverTask
+from jiig.util.general import get_client_name
+from jiig.util.network import resolve_ip_address
 
+from .host_context import HostContext
+from .runtime_context import RuntimeContext
 from .runtime_task import RuntimeTask
 from .runtime_tool import RuntimeTool
 
-T_scripter = TypeVar('T_scripter', bound=ScripterBase)
+T_runtime = TypeVar('T_runtime', bound='Runtime')
 
 
-@dataclass
-class Runtime:
+class Runtime(RuntimeContext):
     """Application runtime data and options."""
 
-    tool: RuntimeTool
-    """Tool runtime data."""
-
-    root_task: RuntimeTask
-    """Active root task."""
-
-    driver_root_task: DriverTask
-    """Active root task used by driver."""
-
-    driver: Driver
-    """Active Jiig interface driver."""
-
-    is_secondary: bool
-    """True if the current task is secondary, i.e. a dependency or parent task."""
-
-    debug: bool
-    """True if debugging mode is in effect."""
-
-    dry_run: bool
-    """True if performing a non-destructive dry run."""
-
-    verbose: bool
-    """True if displaying verbose messages."""
-
-    pause: bool
-    """True if pausing before significant activity."""
-
-    def expand_string(self, text: Text, **more_params) -> Text:
+    def __init__(self,
+                 tool: RuntimeTool,
+                 root_task: RuntimeTask,
+                 driver_root_task: DriverTask,
+                 driver: Driver,
+                 ):
         """
-        Expands string template against symbols from configuration and more_params.
+        Construct root runtime object.
 
-        :param text: input string to expand
-        :param more_params: additional dictionary to use for expansion
-        :return: expanded string
-        """
-        try:
-            return text.format(**self.tool.expansion_symbols, **more_params)
-        except KeyError as exc:
-            abort('Failed to expand template string.', text, exc)
+        Passed to Task call-back methods to provide a runtime API and text
+        symbol expansion.
 
-    def expand_path_template(self, path: Text, **more_params) -> Text:
+        :param tool: tool data
+        :param root_task: active root task
+        :param driver_root_task: active root task used by driver
+        :param driver: active Jiig interface driver
         """
-        Calls expand_string() after fixing slashes, as needed.
+        super().__init__()
+        self.tool = tool
+        self.root_task = root_task
+        self.driver_root_task = driver_root_task
+        self.driver = driver
+        super().copy_symbols(**self.tool.expansion_symbols)
 
-        :param path: input path to expand
-        :param more_params: additional dictionary to use for expansion
-        :return: expanded path string
+    def clone(self) -> T_runtime:
         """
-        if os.path.sep != '/':
-            path = path.replace('/', os.path.sep)
-        return self.expand_string(path, **more_params)
+        Overridable method to clone a context.
+
+        Subclasses with extended constructors and or extra data members should
+        override this method to properly initialize a new instance.
+
+        :return: cloned context instance
+        """
+        return self.__class__(self.tool, self.root_task, self.driver_root_task, self.driver)
 
     @contextmanager
     def open_alias_catalog(self) -> Iterator[AliasCatalog]:
@@ -95,36 +78,57 @@ class Runtime:
         """
         self.driver.provide_help(self.driver_root_task, *names, show_hidden=show_hidden)
 
-    def custom_scripter(self, scripter_class: Type[T_scripter], **kwargs) -> T_scripter:
+    def host_context(self,
+                     host: str,
+                     host_ip: str = None,
+                     user: str = None,
+                     home_folder: str = None,
+                     client_ssh_key_name: str = None,
+                     host_ssh_source_key_name: str = None,
+                     client: str = None,
+                     ) -> ContextManager[HostContext]:
         """
-        Create custom ScripterBase sub-class object with expansion symbols.
+        Host sub-context context manager.
 
-        :param scripter_class: Scripter sub-class to construct
-        :param kwargs: expansion symbols
-        :return: configured Scripter
+        :param host: host name
+        :param host_ip: optional host address (default: queried at runtime)
+        :param user: optional user name (default: local client user)
+        :param home_folder: optional home folder (default: /home/{user})
+        :param client_ssh_key_name: optional client SSH key file base name (default: id_rsa_client)
+        :param host_ssh_source_key_name: optional host SSH source key file base name (default: id_rsa_host)
+        :param client: optional client name (default: queried at runtime)
         """
-        return scripter_class(debug=self.debug, dry_run=self.dry_run, pause=self.pause, **kwargs)
-
-    def scripter(self, **kwargs) -> Scripter:
-        """
-        Create Scripter with expansion symbols.
-
-        Primarily a convenient alternative to using custom_scripter() with the
-        Scripter class as an argument.
-
-        :param kwargs: expansion symbols
-        :return: configured Scripter
-        """
-        return self.custom_scripter(Scripter, **kwargs)
-
-    def provisioner(self, **kwargs) -> Provisioner:
-        """
-        Create Provisioner with expansion symbols.
-
-        Primarily a convenient alternative to using custom_scripter() with the
-        Provisioner class as an argument.
-
-        :param kwargs: expansion symbols
-        :return: configured Provisioner
-        """
-        return self.custom_scripter(Provisioner, **kwargs)
+        if user is None:
+            user = os.environ['USER']
+        host_string = f'{user}@{host}'
+        if home_folder is None:
+            home_folder = f'/home/{user}'
+        if host_ip is None:
+            host_ip = resolve_ip_address(host)
+            if host_ip is None:
+                self.abort(f'Unable to resolve host "{host}" IP address.')
+        if client is None:
+            client = get_client_name()
+        if client_ssh_key_name is None:
+            client_ssh_key_name = 'id_rsa_client'
+        if host_ssh_source_key_name is None:
+            host_ssh_source_key_name = 'id_rsa_host'
+        client_ssh_key = os.path.expanduser(f'~/.ssh/{client_ssh_key_name}')
+        client_ssh_config = os.path.expanduser('~/.ssh/config')
+        client_known_hosts = os.path.expanduser('~/.ssh/known_hosts')
+        host_ssh_source_key = os.path.expanduser(f'~/.ssh/{host_ssh_source_key_name}')
+        host_ssh_key = os.path.expanduser(f'{home_folder}/.ssh/id_rsa')
+        return self.custom_context(
+            HostContext,
+            host=host,
+            host_ip=host_ip,
+            user=user,
+            home_folder=home_folder,
+            host_string=host_string,
+            client_ssh_key=client_ssh_key,
+            client_ssh_config=client_ssh_config,
+            client_known_hosts=client_known_hosts,
+            host_ssh_source_key=host_ssh_source_key,
+            host_ssh_key=host_ssh_key,
+            client=client,
+        )

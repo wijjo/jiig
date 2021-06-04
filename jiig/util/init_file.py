@@ -6,7 +6,7 @@ import os
 from typing import Text, Any, Dict, Optional, Union, List, Tuple
 
 from .console import abort
-from .filesystem import chdir
+from .filesystem import temporary_working_folder
 
 
 class NoDefault:
@@ -238,7 +238,7 @@ class ParamLoader:
         # Be forgiving about missing files. Do nothing.
         if os.path.isfile(path):
             # Change the work folder to properly handle relative paths.
-            with chdir(os.path.dirname(path), quiet=True):
+            with temporary_working_folder(os.path.dirname(path), quiet=True):
                 symbols = {}
                 try:
                     with open(os.path.basename(path), encoding='utf-8') as init_file:
