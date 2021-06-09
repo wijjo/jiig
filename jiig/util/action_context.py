@@ -240,10 +240,12 @@ class ActionContext(Context):
         :param keep_temporary: do not delete temporary file if True
         :return: open file object, usable in a `with` statement for automatic closing
         """
-        opened_file_data = stream.open_output_file(self.format(path),
-                                                   binary=binary,
-                                                   keep_temporary=keep_temporary)
-        return ContextOutputFile(opened_file_data.open_file, self, opened_file_data.path)
+        with Context(self, path=path) as context:
+            opened_file_data = stream.open_output_file(context.symbols.path,
+                                                       binary=binary,
+                                                       keep_temporary=keep_temporary,
+                                                       create_parent_folder=True)
+            return ContextOutputFile(opened_file_data.open_file, self, opened_file_data.path)
 
     # noinspection PyShadowingBuiltins
     def run_subprocess(self,

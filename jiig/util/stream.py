@@ -16,7 +16,7 @@ from typing import Text, IO, Iterator, Any, Dict, Optional, Callable, AnyStr, It
 from urllib.request import urlopen, Request
 
 from .console import abort, log_error
-from .filesystem import get_folder_stack
+from .filesystem import get_folder_stack, create_folder
 from .options import Options
 
 # Used in open_output_file() paths to indicate a temporary file, and also to
@@ -452,6 +452,7 @@ class OutputFile(IO):
 def open_output_file(path: str,
                      binary: bool = False,
                      keep_temporary: bool = False,
+                     create_parent_folder: bool = False,
                      ) -> OutputFile:
     """
     Convenient opening of text or binary files, temporary or permanent, for writing.
@@ -461,6 +462,7 @@ def open_output_file(path: str,
     :param path: file path, possibly including a '?' marker to create a temporary file
     :param binary: open the file in binary mode (defaults to utf-8 text)
     :param keep_temporary: do not delete temporary file if True
+    :param create_parent_folder: create parent folder as needed if True
     :return: open file object, usable in a `with` statement for automatic closing
     """
     kwargs = {'mode': 'w'}
@@ -481,4 +483,8 @@ def open_output_file(path: str,
         # Temporary file.
         return OutputFile(temp_file, temp_file.name)
     # Permanent file.
+    if create_parent_folder:
+        parent_folder = os.path.dirname(path)
+        if not os.path.exists(parent_folder):
+            create_folder(parent_folder)
     return OutputFile(open(path, **kwargs), path)
