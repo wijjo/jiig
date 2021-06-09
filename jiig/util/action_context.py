@@ -151,44 +151,44 @@ class ActionContext(Context):
         :param messages: messages to add to output
         :return: subprocess run() result
         """
-        with Context(self, command=command, predicate=predicate) as sub_context:
+        with ActionContext(self, command=command, predicate=predicate) as context:
 
             action_messages = ActionMessages.from_dict(messages)
 
             if action_messages.before:
-                sub_context.heading(1, action_messages.before)
+                context.heading(1, action_messages.before)
 
-            sub_context.message('command: {command}')
+            context.message('command: {command}')
             if predicate:
-                self.message('predicate: {predicate}')
+                context.message('predicate: {predicate}')
 
             if Options.dry_run and not ignore_dry_run:
                 return subprocess.CompletedProcess(command, 0)
 
             if predicate is not None:
-                predicate_proc = self.run_subprocess('{predicate}', shell=True)
+                predicate_proc = context.run_subprocess('{predicate}', shell=True)
                 if predicate_proc.returncode != 0:
                     if action_messages.skip:
-                        self.message(action_messages.skip)
+                        context.message(action_messages.skip)
                 return subprocess.CompletedProcess(command, 0)
 
             run_kwargs = dict(shell=True)
             if capture:
                 run_kwargs.update(capture_output=True, encoding='utf-8')
 
-            proc = self.run_subprocess('{command}', **run_kwargs)
+            proc = context.run_subprocess('{command}', **run_kwargs)
 
             if proc.returncode == 0:
                 if action_messages.success:
-                    self.message(action_messages.success)
+                    context.message(action_messages.success)
             else:
                 if action_messages.failure:
-                    self.message(action_messages.failure)
+                    context.message(action_messages.failure)
                 if not unchecked:
-                    self.abort('Command failed.')
+                    context.abort('Command failed.')
 
             if action_messages.after:
-                self.message(action_messages.after)
+                context.message(action_messages.after)
 
             return proc
 
