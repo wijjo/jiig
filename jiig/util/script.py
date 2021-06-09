@@ -3,25 +3,17 @@ Scripter script.
 """
 
 import os
-import sys
 from contextlib import contextmanager
-from subprocess import CompletedProcess, run
-from tempfile import NamedTemporaryFile
-from typing import List, ContextManager, Union, Sequence, Optional, TypeVar
+from typing import List, ContextManager, Union, Sequence
 
 from .action_messages import ActionMessages
-from .context import Context
-from .general import make_list
-from .options import Options
-
-T_script = TypeVar('T_script', bound='Script')
+from .general import make_list, trim_text_blocks
 
 
 class Script:
     """Used to build a script piecemeal and then execute it."""
 
     def __init__(self,
-                 context: Context,
                  unchecked: bool = False,
                  run_by_root: bool = False,
                  blocks: List[str] = None,
@@ -29,7 +21,6 @@ class Script:
         """
         Construct script.
 
-        :param context: text expansion context
         :param unchecked: do not check return code if True
         :param run_by_root: script will be run by root user (don't need sudo)
         :param blocks: initial script blocks (not typically used)
@@ -37,27 +28,21 @@ class Script:
         self.unchecked = unchecked
         self.run_by_root = run_by_root
         self.blocks: List[str] = blocks if blocks is not None else []
-        self.context = context.create_child_context()
 
-    def update(self, **kwargs):
-        self.context.update(**kwargs)
+    def action(self,
+               command_string_or_sequence: Union[str, Sequence],
+               location: str = None,
+               predicate: str = None,
+               messages: dict = None,
+               ):
+        """
+        Add script action.
 
-    def copy_symbols(self, **kwargs):
-        self.context.copy_symbols(**kwargs)
-
-    @contextmanager
-    def sub_script(self, **kwargs) -> ContextManager[T_script]:
-        yield self.__class__(self.context.create_child_context(**kwargs),
-                             unchecked=self.unchecked,
-                             run_by_root=self.run_by_root,
-                             blocks=self.blocks)
-
-    def add_block(self,
-                  command_string_or_sequence: Union[str, Sequence],
-                  location: str = None,
-                  predicate: str = None,
-                  messages: dict = None,
-                  ):
+        :param command_string_or_sequence: command or commands
+        :param location: optional temporary working folder
+        :param predicate: condition to test before executing commands
+        :param messages: optional display messages
+        """
         self.blocks.append(
             self.format_script_block(
                 command_string_or_sequence,
@@ -67,34 +52,34 @@ class Script:
             )
         )
 
-    def action(self,
-               command: Union[str, Sequence],
-               location: str = None,
-               predicate: str = None,
-               messages: dict = None,
-               ):
-        self.blocks.append(
-            self.format_script_block(
-                command,
-                predicate=predicate,
-                location=location,
-                messages=messages,
-            )
-        )
+    def working_folder(self, folder: str, messages: dict = None):
+        """
+        Set working folder in script.
+
+        :param folder: folder switch to
+        :param messages: optional display messages
+        """
+        self.action(f'cd {folder}', messages=messages)
 
     @contextmanager
     def temporary_working_folder(self,
                                  folder: str,
                                  messages: dict = None,
                                  ) -> ContextManager[None]:
-        with self.sub_script(folder=folder) as sub_script:
-            sub_script.add_block('pushd {folder} > /dev/null', messages=messages)
-            yield
-            sub_script.add_block('popd > /dev/null')
+        """
+        Set temporary working folder in script.
+
+        :param folder: folder to temporarily switch to
+        :param messages: optional display messages
+        :return: context manager that will restore working folder with popd
+        """
+        self.action(f'pushd {folder} > /dev/null', messages=messages)
+        yield
+        self.action('popd > /dev/null')
 
     def _wrap_command(self, command: str, need_root: bool = False) -> str:
         """
-        Prefix, e.g. with "sudo", as needed.
+        Prefix with "sudo" as needed.
 
         :param command: command to wrap, e.g. with sudo
         :param need_root: prefix with sudo if True
@@ -102,15 +87,37 @@ class Script:
         """
         return f'sudo {command}' if need_root and not self.run_by_root else command
 
-    @classmethod
-    def format_host_string(cls, host: str = None, user: str = None) -> Optional[str]:
-        if not host:
-            return None
-        if not user:
-            return host
-        return f'{user}@{host}' if user else host
+    @staticmethod
+    def format_blocks(*blocks: str,
+                      indent: int = None,
+                      double_spaced: bool = False,
+                      ) -> str:
+        """
+        Format text blocks.
 
-    def format_script_block(self,
+        :param blocks: text blocks to format
+        :param indent: optional indentation amount
+        :param double_spaced: add extra line separators between blocks if true
+        :return: formatted text
+        """
+        lines = trim_text_blocks(*blocks, indent=indent, double_spaced=double_spaced)
+        return os.linesep.join(lines)
+
+    @staticmethod
+    def format_quoted(text: str) -> str:
+        """
+        Expands symbols, wraps in double quotes as needed, and escapes embedded quotes.
+
+        :param text: text to expand, escape, and quote
+        :return: quoted expanded text
+        """
+        if not set(text).intersection((' ', '"')):
+            return text
+        escaped = text.replace('"', '\\"')
+        return f'"{escaped}"'
+
+    @classmethod
+    def format_script_block(cls,
                             command_string_or_sequence: Union[str, Sequence],
                             location: str = None,
                             predicate: str = None,
@@ -127,94 +134,61 @@ class Script:
         """
         # TODO: Handle message quoting/escaping for echo statements.
         action_messages = ActionMessages.from_dict(messages)
-
         output_blocks: List[str] = []
         if action_messages.before:
             output_blocks.append(
-                self.context.format_blocks(
-                    f'echo -e "\\n=== {action_messages.before}"',
-                )
-            )
+                f'echo -e "\\n=== {action_messages.before}"')
         if predicate:
             output_blocks.append(
-                self.context.format_blocks(
-                    f'if {predicate}; then',
-                )
-            )
+                f'if {predicate}; then')
             indent = 4
         else:
             indent = 0
         if location:
-            output_blocks.append(
-                self.context.format_blocks(
-                    f'cd {self.context.format_quoted(location)}',
-                    indent=indent,
-                )
-            )
+            output_blocks.append(cls.format_blocks(
+                f'cd {cls.format_quoted(location)}', indent=indent))
         commands = make_list(command_string_or_sequence)
         if commands:
-            output_blocks.append(
-                self.context.format_blocks(
-                    *commands,
-                    indent=indent,
-                )
-            )
+            output_blocks.append(cls.format_blocks(
+                    *commands, indent=indent))
             if action_messages.success and action_messages.failure:
-                output_blocks.append(
-                    self.context.format_blocks(
-                        f'''
-                        if [[ $? -eq 0 ]]; then
-                            echo "{self.context.format(action_messages.success)}"
-                        else
-                            echo "{self.context.format(action_messages.failure)}"
-                        fi
-                        ''',
-                        indent=indent,
-                    )
-                )
+                output_blocks.append(cls.format_blocks(
+                    f'''
+                    if [[ $? -eq 0 ]]; then
+                        echo "{action_messages.success}"
+                    else
+                        echo "{action_messages.failure}"
+                    fi
+                    ''', indent=indent))
             elif action_messages.success and not action_messages.failure:
-                output_blocks.append(
-                    self.context.format_blocks(
-                        f'''
-                        if [[ $? -eq 0 ]]; then
-                            echo "{self.context.format(action_messages.success)}"
-                        fi
-                        ''',
-                        indent=indent,
-                    )
-                )
+                output_blocks.append(cls.format_blocks(
+                    f'''
+                    if [[ $? -eq 0 ]]; then
+                        echo "{action_messages.success}"
+                    fi
+                    ''', indent=indent))
             elif not action_messages.success and action_messages.failure:
-                output_blocks.append(
-                    self.context.format_blocks(
-                        f'''
-                        if [[ $? -ne 0 ]]; then
-                            echo "{self.context.format(action_messages.failure)}"
-                        fi
-                        ''',
-                        indent=indent,
-                    )
-                )
+                output_blocks.append(cls.format_blocks(
+                    f'''
+                    if [[ $? -ne 0 ]]; then
+                        echo "{action_messages.failure}"
+                    fi
+                    ''', indent=indent))
         if predicate:
             if action_messages.skip:
-                output_blocks.append(
-                    self.context.format_blocks(
-                        f'''
-                        else
-                            echo "{self.context.format(action_messages.skip)}"
-                        fi
-                        ''',
-                    )
-                )
+                output_blocks.append(cls.format_blocks(
+                    f'''
+                    else
+                        echo "{action_messages.skip}"
+                    fi
+                    '''))
             else:
                 output_blocks.append(
                     'fi',
                 )
         if action_messages.after:
-            output_blocks.append(
-                self.context.format_blocks(
-                    f'echo -e "\\n{self.context.format(action_messages.after)}"',
-                )
-            )
+            output_blocks.append(cls.format_blocks(
+                f'echo -e "\\n{action_messages.after}"'))
         return os.linesep.join(output_blocks)
 
     def get_script_body(self) -> str:
@@ -230,76 +204,3 @@ class Script:
         body_text = f'{os.linesep}{os.linesep}'.join(self.blocks)
         self.blocks = []
         return body_text
-
-    def execute(self, host: str = None, user: str = None) -> CompletedProcess:
-        # Parameters may have symbols needing expansion.
-        if host:
-            host = self.context.format(host)
-        if user:
-            user = self.context.format(user)
-
-        if not self.blocks:
-            self.context.error('Script is empty.')
-            return CompletedProcess('', 0)
-
-        with NamedTemporaryFile(mode='w',
-                                encoding='utf-8',
-                                suffix='.sh',
-                                prefix='scripter_',
-                                dir='/tmp',
-                                delete=not (Options.keep_files or Options.debug),
-                                ) as fp:
-
-            host_string = self.format_host_string(host=host, user=user)
-            output_label = f'[host={host}] ' if host else ''
-
-            with self.context.sub_context(host=host,
-                                          user=user,
-                                          host_string=host_string,
-                                          tempfile=fp.name,
-                                          ) as sub_context:
-                # NB: It's important not to re-expand symbols, e.g. by using
-                # format...() methods, because the script body may have curly
-                # braces that look like symbol markers. We assume all text
-                # expansion happened as blocks were added.
-                script_text = f'{os.linesep}{os.linesep}'.join([
-                    '#!/usr/bin/env bash',
-                    f'set -e{"x" if Options.debug else ""}',
-                    'echo "::: ${BASH_SOURCE[0]} :::"',
-                    self.get_script_body(),
-                ])
-
-                # Save the script to a temporary file.
-                if Options.debug:
-                    sub_context.heading(1, 'Script (begin)')
-                    sys.stdout.write(script_text)
-                    sys.stdout.write(os.linesep)
-                    sub_context.heading(1, 'Script (end)')
-                fp.write(f'{script_text}{os.linesep}')
-                fp.flush()
-                sub_context.message('Temporary script saved: {tempfile}')
-                if Options.pause:
-                    input('Press Enter to continue:')
-
-                # Execute the temporary script locally or using SSH.
-                if host:
-                    final_command = sub_context.format('ssh -qt {host_string} bash {tempfile}')
-                else:
-                    final_command = sub_context.format('/bin/bash {tempfile}')
-                if Options.dry_run:
-                    run(['cat', fp.name])
-                    return CompletedProcess(final_command, 0)
-                if host:
-                    proc = run(['scp', fp.name, f'{host_string}:{fp.name}'])
-                    if proc.returncode != 0:
-                        sub_context.abort('Failed to copy script to host.')
-                sub_context.message(f'command: {final_command}')
-
-                # Run the script.
-                self.context.heading(1, f'{output_label}output (start)')
-                proc = run(final_command, shell=True)
-                self.context.heading(1, f'{output_label}output (end)')
-
-                if proc.returncode != 0 and not self.unchecked:
-                    sub_context.abort('Script execution failed.')
-                return proc

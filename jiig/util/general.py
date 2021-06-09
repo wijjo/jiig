@@ -20,13 +20,86 @@ from typing import Iterable, Any, Text, Iterator, List, \
 from .options import Options
 
 
-class AttrDict(dict):
+class MetaAttrDict(type):
+    """
+    Meta-class for creating dictionary-based classes with attribute style access.
 
-    def __getattr__(self, name):
-        return self.get(name, None)
+    This can be used directly for user-created attribute dictionaries, but for
+    convenience, all combinations of options are wrapped in canned AttrDict...
+    classes below.
+    """
 
-    def __setattr__(self, name, value):
-        self[name] = value
+    # noinspection PyUnresolvedReferences
+    def __new__(mcs, mcs_name, bases, namespace, **kwargs):
+        """
+        Create a new attribute-dictionary class.
+
+        :param mcs_name: class name
+        :param bases: base classes
+        :param namespace: class attributes
+        :param kwargs: keyword arguments with options from class declaration
+        """
+
+        # Safety check that the class inherits from dict.
+        if dict not in bases:
+            raise TypeError(f'Class {mcs_name} is not based on dict.')
+
+        # Create the class before mixing in attribute access methods below.
+        new_class = super(MetaAttrDict, mcs).__new__(mcs, mcs_name, bases, namespace)
+
+        # Attribute read access with no_defaults=True raises AttributeError for non-existent key.
+        if kwargs.get('no_defaults', False):
+            def getattr_stub(self, name):
+                try:
+                    return self[name]
+                except KeyError:
+                    raise AttributeError(f"Attempt to read missing attribute '{name}' in {mcs_name}.")
+            setattr(new_class, '__getattr__', getattr_stub)
+
+        # Attribute read access otherwise uses get() to return value or None.
+        else:
+            setattr(new_class, '__getattr__', new_class.get)
+
+        # Attribute write access attempt with read_only=True raises AttributeError.
+        if kwargs.get('read_only', False):
+            # noinspection PyUnusedLocal
+            def setattr_stub(self, name, value):
+                raise AttributeError(f"Attempt to write to attribute '{name}' in read-only {mcs_name}.")
+            setattr(new_class, '__setattr__', setattr_stub)
+
+        # Attribute write access otherwise performs dictionary assignment.
+        else:
+            setattr(new_class, '__setattr__', new_class.__setitem__)
+
+        return new_class
+
+
+class AttrDict(dict, metaclass=MetaAttrDict):
+    """Dictionary wrapper with attribute-based item access."""
+    pass
+
+
+class AttrDictReadOnly(dict, metaclass=MetaAttrDict, read_only=True):
+    """Dictionary wrapper with read-only attribute-based item access."""
+    pass
+
+
+class AttrDictNoDefaults(dict, metaclass=MetaAttrDict, no_defaults=True):
+    """
+    Dictionary wrapper with attribute-based item access.
+
+    Raises AttributeError when attempting to read a non-existent name.
+    """
+    pass
+
+
+class AttrDictNoDefaultsReadOnly(dict, metaclass=MetaAttrDict, no_defaults=True, read_only=True):
+    """
+    Dictionary wrapper with read-only attribute-based item access.
+
+    Raises AttributeError when attempting to read a non-existent name.
+    """
+    pass
 
 
 @dataclass

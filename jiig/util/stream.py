@@ -10,11 +10,18 @@ import sys
 from contextlib import contextmanager
 from dataclasses import dataclass
 from io import StringIO
-from typing import Text, IO, Iterator, Any, Dict, Optional, Callable
+from tempfile import NamedTemporaryFile
+from types import TracebackType
+from typing import Text, IO, Iterator, Any, Dict, Optional, Callable, AnyStr, Iterable, Type
 from urllib.request import urlopen, Request
 
 from .console import abort, log_error
 from .filesystem import get_folder_stack
+from .options import Options
+
+# Used in open_output_file() paths to indicate a temporary file, and also to
+# separate prefix from suffix.
+TEMPORARY_FILE_MARKER = '?'
 
 
 # noinspection PyBroadException
@@ -326,3 +333,152 @@ class OutputRedirector:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.end_capture()
+
+
+def open_input_file(path: str, binary: bool = False) -> IO:
+    """
+    Convenient opening of text or binary files for reading.
+
+    I/O exceptions are fully the caller's responsibility.
+
+    :param path: file path
+    :param binary: open the file in binary mode (defaults to utf-8 text)
+    :return: open file object, usable in a `with` statement for automatic closing
+    """
+    kwargs = {'mode': 'r'}
+    if not binary:
+        kwargs['encoding'] = 'utf-8'
+    return open(path, **kwargs)
+
+
+class OutputFile(IO):
+    """
+    Special output file wrapper additional data, i.e. the file path.
+
+    Generally not used directly. It is returned by stream.open_output_file().
+    """
+
+    def __init__(self, open_file: IO, path: Optional[str]):
+        """
+        Output file constructor.
+
+        :param open_file: open file
+        :param path: file path
+        """
+        self.open_file = open_file
+        self.path = path
+
+    def close(self):
+        """Close the file"""
+        self.open_file.close()
+
+    def fileno(self) -> int:
+        """Provide the numeric file handle. See IO.fileno()."""
+        return self.open_file.fileno()
+
+    def flush(self):
+        """Flush output. See IO.flush()."""
+        self.open_file.flush()
+
+    def isatty(self) -> bool:
+        """Detect TTY output device. See IO.isatty()."""
+        return self.open_file.isatty()
+
+    def read(self, n: int = ...) -> AnyStr:
+        """Read data from file. See IO.read()."""
+        return self.open_file.read(n=n)
+
+    def readable(self) -> bool:
+        """Check if file is readable. See IO.readable()."""
+        return self.open_file.readable()
+
+    def readline(self, limit: int = ...) -> AnyStr:
+        """Read line from file. See IO.readline()."""
+        return self.open_file.readline(limit=limit)
+
+    def readlines(self, hint: int = ...) -> list[AnyStr]:
+        """Read lines from file. See IO.readlines()."""
+        return self.open_file.readlines(hint=hint)
+
+    def seek(self, offset: int, whence: int = ...) -> int:
+        """Seek to position in file. See IO.seek()."""
+        return self.open_file.seek(offset, whence=whence)
+
+    def seekable(self) -> bool:
+        """Check if file is seekable. See IO.seekable()."""
+        return self.open_file.seekable()
+
+    def tell(self) -> int:
+        """Report position in file. See IO.tell()."""
+        return self.open_file.tell()
+
+    def truncate(self, size: Optional[int] = ...) -> int:
+        """Truncate file. See IO.truncate()."""
+        return self.open_file.truncate(size=size)
+
+    def writable(self) -> bool:
+        """Check if file is writable. See IO.writable()."""
+        return self.open_file.writable()
+
+    def write(self, s: str) -> int:
+        """Write data to file. See IO.write()."""
+        return self.open_file.write(s)
+
+    def writelines(self, lines: Iterable[str]):
+        """Write lines to file. See IO.writelines()."""
+        return self.open_file.writelines(lines)
+
+    def __next__(self) -> AnyStr:
+        """Iteration support. See IO.__next__()."""
+        return self.open_file.__next__()
+
+    def __iter__(self) -> Iterator[AnyStr]:
+        """Iteration support. See IO.__iter__()."""
+        return self.open_file.__iter__()
+
+    def __enter__(self) -> 'OutputFile':
+        """Context manager support. See IO.__enter__()."""
+        return self
+
+    def __exit__(self,
+                 t: Optional[Type[BaseException]],
+                 value: Optional[BaseException],
+                 traceback: Optional[TracebackType],
+                 ) -> Optional[bool]:
+        """Context manager support. See IO.__exit__()."""
+        return self.open_file.__exit__(t, value, traceback)
+
+
+def open_output_file(path: str,
+                     binary: bool = False,
+                     keep_temporary: bool = False,
+                     ) -> OutputFile:
+    """
+    Convenient opening of text or binary files, temporary or permanent, for writing.
+
+    I/O exceptions are fully the caller's responsibility.
+
+    :param path: file path, possibly including a '?' marker to create a temporary file
+    :param binary: open the file in binary mode (defaults to utf-8 text)
+    :param keep_temporary: do not delete temporary file if True
+    :return: open file object, usable in a `with` statement for automatic closing
+    """
+    kwargs = {'mode': 'w'}
+    if not binary:
+        kwargs['encoding'] = 'utf-8'
+    temporary_path_parts = path.split(TEMPORARY_FILE_MARKER, maxsplit=1)
+    if len(temporary_path_parts) == 2:
+        prefix, suffix = temporary_path_parts
+        if prefix:
+            kwargs['prefix'] = prefix
+        if suffix:
+            kwargs['suffix'] = suffix
+        dir_path = os.path.dirname(path)
+        if dir_path:
+            kwargs['dir'] = dir_path
+        kwargs['delete'] = not (keep_temporary or Options.debug)
+        temp_file = NamedTemporaryFile(**kwargs)
+        # Temporary file.
+        return OutputFile(temp_file, temp_file.name)
+    # Permanent file.
+    return OutputFile(open(path, **kwargs), path)

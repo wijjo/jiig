@@ -35,6 +35,20 @@ def shell_command_string(command: Text, *args) -> Text:
     return ' '.join([shell_quote_arg(str(arg)) for arg in [command] + list(args)])
 
 
+def shell_quote_path(path: str) -> str:
+    """
+    Wrap path in double quotes as needed.
+
+    Does not handle everything. For one, it intentionally does not quote ~.
+
+    :param path: input path
+    :return: possibly-quoted path
+    """
+    if set(path).intersection(' \t<>!$`*?(){}|;'):
+        return f'"{path}"'
+    return path
+
+
 def run(cmd_args: List[Text],
         unchecked: bool = False,
         replace_process: bool = False,

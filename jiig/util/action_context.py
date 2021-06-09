@@ -1,49 +1,122 @@
 """
 Context for text expansion and external command execution environment.
 """
-
 import os
 import re
 import shutil
 import subprocess
-from contextlib import contextmanager
-from typing import List, Union, ContextManager, TypeVar, Sequence, Iterator
+from getpass import getpass
+from typing import List, Union, Sequence, Iterator, Optional, IO, Iterable
 
+from . import stream
 from .action_messages import ActionMessages
 from .context import Context
-from .general import trim_text_blocks
+from .general import trim_text_blocks, plural
+from .network import format_host_string
+from .options import Options
 from .script import Script
 
-T_action_context = TypeVar('T_action_context', bound='ActionContext')
-T_script = TypeVar('T_script', bound=Script)
+# Precedes the script body in generated script files.
+SCRIPT_PREAMBLE = '''
+#!/usr/bin/env bash
+
+set -e%s
+
+echo "::: ${{BASH_SOURCE[0]}} :::"
+'''.strip()
+
+
+class ContextOutputFile(stream.OutputFile):
+    """
+    Special output file with additional context expansion methods and data.
+
+    Generally not used directly. It is returned by Context.open_output_file().
+
+    Additional data:
+    - path: open file path
+
+    Additional methods:
+    - write_expanded(): write data to file with symbolic expansion
+    - writelines_expanded(): write lines to file with symbolic expansion
+    """
+
+    def __init__(self, open_file: IO, context: 'ActionContext', path: Optional[str]):
+        """
+        Context output file constructor.
+
+        :param open_file: open file
+        :param context: context with expansion symbols
+        :param path: file path
+        """
+        super().__init__(open_file, path)
+        self.context = context
+
+    def write_expanded(self, s: str) -> int:
+        """
+        Write data to file with symbolic expansion.
+
+        See IO.write().
+
+        :param s: text to write
+        :return: same as return from IO.write()
+        """
+        return self.open_file.write(self.context.format(s))
+
+    def writelines_expanded(self, lines: Iterable[str]):
+        """
+        Write lines to file with symbolic expansion.
+
+        See IO.writelines().
+
+        :param lines: lines to write
+        """
+        return self.open_file.writelines([self.context.format(line) for line in lines])
 
 
 class ActionContext(Context):
     """Nestable execution context with text expansion symbols."""
 
-    def __init__(self):
-        """Construct action context."""
-        super().__init__()
+    def __init__(self, parent: Optional[Context], **kwargs):
+        """
+        Construct action context.
+
+        :param parent: optional parent context for symbol inheritance
+        :param kwargs: initial symbols
+        """
+        super().__init__(parent, **kwargs)
+        self.initial_working_folder = os.getcwd()
         self.working_folder_changed = False
 
-    @contextmanager
-    def script(self,
-               messages: dict = None,
-               unchecked: bool = False,
-               run_by_root: bool = False,
-               script_class: T_script = None,
-               ) -> ContextManager[T_script]:
-        action_messages = ActionMessages.from_dict(messages)
-        if script_class is None:
-            script_class = Script
-        if action_messages.before:
-            self.heading(1, action_messages.before)
-        script = script_class(self, unchecked=unchecked, run_by_root=run_by_root)
-        if self.symbols:
-            script.copy_symbols(**self.symbols)
-        yield script
-        if action_messages.after:
-            self.message(action_messages.after)
+    def __enter__(self) -> 'ActionContext':
+        """
+        Context management protocol enter method.
+
+        Called at the start when an ActionContext is used in a with block. Saves
+        the working directory.
+
+        :return: Context object
+        """
+        self.initial_working_folder = os.getcwd()
+        self.working_folder_changed = True
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+        """
+        Context management protocol exit method.
+
+        Called at the end when an ActionContext is used in a with block.
+        Restores the original working directory if it was changed by calling
+        working_folder() method.
+
+        :param exc_type: exception type
+        :param exc_val: exception value
+        :param exc_tb: exception traceback
+        :return: True to suppress an exception that occurred in the with block
+        """
+        if self.working_folder_changed:
+            os.chdir(self.initial_working_folder)
+            self.working_folder_changed = False
+        return False
 
     def working_folder(self, folder: str) -> str:
         """
@@ -55,17 +128,16 @@ class ActionContext(Context):
         :param folder: new working folder
         :return: previous working folder
         """
-        previous_working_folder = os.getcwd()
         os.chdir(folder)
         self.working_folder_changed = True
-        return previous_working_folder
+        return os.getcwd()
 
     def run_command(self,
                     command: Union[str, Sequence],
                     predicate: str = None,
                     capture: bool = False,
                     unchecked: bool = False,
-                    dry_run: bool = False,
+                    ignore_dry_run: bool = False,
                     messages: dict = None,
                     ) -> subprocess.CompletedProcess:
         """
@@ -75,50 +147,50 @@ class ActionContext(Context):
         :param predicate: optional predicate condition to apply
         :param capture: capture output if True
         :param unchecked: do not check for failure
-        :param dry_run: avoid execution if True
+        :param ignore_dry_run: execute even if it is a dry run
         :param messages: messages to add to output
         :return: subprocess run() result
         """
-        action_messages = ActionMessages.from_dict(messages)
-        expanded_command = self.format(command)
-        expanded_predicate = self.format(predicate)
+        with Context(self, command=command, predicate=predicate) as sub_context:
 
-        if action_messages.before:
-            self.heading(1, action_messages.before)
+            action_messages = ActionMessages.from_dict(messages)
 
-        self.message(f'command: {expanded_command}')
-        if expanded_predicate:
-            self.message('predicate: {expanded_predicate}')
+            if action_messages.before:
+                sub_context.heading(1, action_messages.before)
 
-        if dry_run:
-            return subprocess.CompletedProcess([expanded_command], 0)
+            sub_context.message('command: {command}')
+            if predicate:
+                self.message('predicate: {predicate}')
 
-        if predicate is not None:
-            predicate_proc = subprocess.run(expanded_predicate, shell=True)
-            if predicate_proc.returncode != 0:
-                if action_messages.skip:
-                    self.message(action_messages.skip)
-            return subprocess.CompletedProcess([expanded_command], 0)
+            if Options.dry_run and not ignore_dry_run:
+                return subprocess.CompletedProcess(command, 0)
 
-        run_kwargs = dict(shell=True)
-        if capture:
-            run_kwargs.update(capture_output=True, encoding='utf-8')
+            if predicate is not None:
+                predicate_proc = self.run_subprocess('{predicate}', shell=True)
+                if predicate_proc.returncode != 0:
+                    if action_messages.skip:
+                        self.message(action_messages.skip)
+                return subprocess.CompletedProcess(command, 0)
 
-        proc = subprocess.run(expanded_command, **run_kwargs)
+            run_kwargs = dict(shell=True)
+            if capture:
+                run_kwargs.update(capture_output=True, encoding='utf-8')
 
-        if proc.returncode == 0:
-            if action_messages.success:
-                self.message(action_messages.success)
-        else:
-            if action_messages.failure:
-                self.message(action_messages.failure)
-            if not unchecked:
-                self.abort('Command failed.')
+            proc = self.run_subprocess('{command}', **run_kwargs)
 
-        if action_messages.after:
-            self.message(action_messages.after)
+            if proc.returncode == 0:
+                if action_messages.success:
+                    self.message(action_messages.success)
+            else:
+                if action_messages.failure:
+                    self.message(action_messages.failure)
+                if not unchecked:
+                    self.abort('Command failed.')
 
-        return proc
+            if action_messages.after:
+                self.message(action_messages.after)
+
+            return proc
 
     def pipe(self, raw_command: Union[str, List]) -> str:
         """
@@ -138,6 +210,207 @@ class ActionContext(Context):
         :return: command output lines
         """
         return self.pipe(raw_command).split(os.linesep)
+
+    def open_input_file(self, path: str, binary: bool = False) -> IO:
+        """
+        Convenient layer over open() with better defaults and symbol expansion.
+
+        Provides an IO-compatible object, usable in a `with` statement, that
+        performs symbolic text expansion.
+
+        :param path: file path, possibly including a '?' marker to create a temporary file
+        :param binary: open the file in binary mode (defaults to utf-8 text)
+        :return: open file object, usable in a `with` statement for automatic closing
+        """
+        return stream.open_input_file(self.format(path), binary=binary)
+
+    def open_output_file(self,
+                         path: str,
+                         binary: bool = False,
+                         keep_temporary: bool = False,
+                         ) -> ContextOutputFile:
+        """
+        Uses stream.open_output_file to open a temporary or permanent file.
+
+        Provides an IO-compatible object, usable in a `with` statement, that
+        performs symbolic text expansion.
+
+        :param path: file path, possibly including a '?' marker to create a temporary file
+        :param binary: open the file in binary mode (defaults to utf-8 text)
+        :param keep_temporary: do not delete temporary file if True
+        :return: open file object, usable in a `with` statement for automatic closing
+        """
+        opened_file_data = stream.open_output_file(self.format(path),
+                                                   binary=binary,
+                                                   keep_temporary=keep_temporary)
+        return ContextOutputFile(opened_file_data.open_file, self, opened_file_data.path)
+
+    # noinspection PyShadowingBuiltins
+    def run_subprocess(self,
+                       command_or_commands: Union[str, Sequence[str]],
+                       **kwargs,
+                       ) -> subprocess.CompletedProcess:
+        """Context-based front end to subprocess.run() with text expansion."""
+        if isinstance(command_or_commands, (list, tuple)):
+            return subprocess.run([self.format(arg) for arg in command_or_commands], **kwargs)
+        return subprocess.run(self.format(command_or_commands), **kwargs)
+
+    def run_script(self,
+                   script_text_or_object: Union[str, Sequence[str], Script],
+                   script_path: str = None,
+                   host: str = None,
+                   user: str = None,
+                   messages: dict = None,
+                   unchecked: bool = False,
+                   ignore_dry_run: bool = False,
+                   ) -> subprocess.CompletedProcess:
+        """
+        Execute a local or remote Bash script file.
+
+        The saved script file defaults to being temporary, but the caller can
+        specify a permanent path via script_path to override that behavior.
+
+        :param script_text_or_object: script body text from string, list or Script object
+        :param script_path: optional script output path (temporary if it contains '?')
+        :param host: optional target host for remote command
+        :param user: optional target host user name for remote command
+        :param messages: optional display messages
+        :param unchecked: do not check return code for success
+        :param ignore_dry_run: execute even if it is a dry run
+        :return: subprocess.CompletedProcess result
+        """
+        dry_run = Options.dry_run and not ignore_dry_run
+
+        if host:
+            command = 'ssh -qt {target_host_string} bash {script_file}'
+            deploy_command = 'scp {script_file} {target_host_string}:{script_file}'
+        else:
+            command = '/bin/bash {script_file}'
+            deploy_command = None
+
+        # Outer context has immediately-resolvable symbols, e.g. expanded for file output.
+        with ActionContext(self,
+                           target_host=host,
+                           target_user=user,
+                           target_host_string=format_host_string(host=host, user=user),
+                           script_preamble=_get_script_preamble(),
+                           script_body=_get_script_body(script_text_or_object),
+                           output_label='[host={target_host}] ' if host else ''
+                           ) as script_context:
+
+            # The stream from self.open_output_file() automatically expands text symbols.
+            with script_context.open_output_file(script_path or '/tmp/scripter_?.sh') as output_file:
+
+                # Inner context symbols needed the script file path to resolve.
+                with ActionContext(script_context,
+                                   script_file=output_file.path,
+                                   command=command,
+                                   deploy_command=deploy_command,
+                                   ) as run_context:
+
+                    run_context._script_execution_start(messages)
+
+                    if Options.debug or dry_run:
+                        run_context.heading(1, 'Script {script_file} (begin)')
+                        run_context.message('{script_preamble}{nl}{nl}{script_body}')
+                        run_context.heading(1, 'Script {script_file} (end)')
+
+                    # Write script file.
+                    output_file.write_expanded('{script_preamble}{nl}{nl}{script_body}')
+                    output_file.flush()
+                    run_context.message('Script saved: {script_file}')
+                    if Options.pause:
+                        input('Press Enter to continue:')
+
+                    if dry_run:
+                        return subprocess.CompletedProcess(command, 0)
+
+                    # Deploy the script?
+                    if deploy_command:
+                        proc = run_context.run_subprocess('{deploy_command}', shell=True)
+                        if proc.returncode != 0:
+                            run_context.abort('Failed to deploy script.')
+
+                    # Run the script.
+                    run_context.message('command: {command}')
+                    run_context.heading(1, '{output_label}output (start)')
+                    proc = run_context.run_subprocess('{command}', shell=True)
+                    run_context.heading(1, '{output_label}output (end)')
+
+                    # Display final messages and handle failure.
+                    return run_context._script_execution_finish(proc, messages, unchecked)
+
+    def run_script_code(self,
+                        script_text_or_object: Union[str, Sequence[str], Script],
+                        host: str = None,
+                        user: str = None,
+                        messages: dict = None,
+                        unchecked: bool = False,
+                        ignore_dry_run: bool = False,
+                        ) -> subprocess.CompletedProcess:
+        """
+        Execute a local or remote Bash script without saving to a file.
+
+        Note that direct script execution is primarily provided so that a host
+        user without key-based SSH connections can avoid triggering an extra
+        password prompt for a separate deploy command, e.g. scp.
+
+        NB: Be aware that quoting and escaping is currently simplistic and will
+        not handle all scenarios with embedded quotes. The safest thing to do is
+        to always use double quotes for internal command arguments and to escape
+        any quotes within those argument strings. The `direct` option may add
+        complications because of the further quoting needed to pass the script
+        as a single argument to bash on the SSH command line.
+
+        TODO: Reduce or eliminate the caveats related to quoting and escaping.
+
+        :param script_text_or_object: script body text from string, list or Script object
+        :param host: optional host for remote command
+        :param user: optional user name for remote command
+        :param messages: optional display messages
+        :param unchecked: do not check return code for success
+        :param ignore_dry_run: execute even if it is a dry run
+        :return: subprocess.CompletedProcess result
+        """
+        dry_run = Options.dry_run and not ignore_dry_run
+
+        if host:
+            command = 'ssh -qt {host_string} bash -c "\'{script_body}\'"'
+            quoted = True
+        else:
+            command = 'bash -c "{script_body}"'
+            quoted = False
+
+        with ActionContext(self,
+                           host=host,
+                           user=user,
+                           host_string=format_host_string(host=host, user=user),
+                           script_body=_get_script_body(script_text_or_object, quoted=quoted),
+                           command=command,
+                           output_label='[host={host}] ' if host else ''
+                           ) as sub_context:
+
+            sub_context._script_execution_start(messages)
+
+            if Options.debug or dry_run:
+                sub_context.heading(1, 'Script code (begin)')
+                sub_context.message('{script_body}')
+                sub_context.heading(1, 'Script code (end)')
+
+            if dry_run:
+                return subprocess.CompletedProcess(command, 0)
+
+            if Options.pause:
+                input('Press Enter to continue:')
+
+            sub_context.message('command: {command}')
+
+            # Run the script.
+            sub_context.heading(1, '{output_label}output (start)')
+            proc = sub_context.run_subprocess('{command}', shell=True)
+            sub_context.heading(1, '{output_label}output (end)')
+
+            return sub_context._script_execution_finish(proc, messages, unchecked)
 
     def grep(self, path: str, raw_pattern: str, case_insensitive: bool = False) -> Iterator[str]:
         """
@@ -175,9 +448,10 @@ class ActionContext(Context):
 
         :param paths: file paths to check
         """
-        missing = [path for path in paths if not os.path.exists(path)]
-        if missing:
-            self.abort(f'Required file(s) are missing: {" ".join(missing)}')
+        with Context(self, paths=paths) as context:
+            missing = [path for path in context.symbols.paths if not os.path.exists(path)]
+            if missing:
+                context.abort(f'Required {plural("file", missing)} missing:', *missing)
 
     def add_text(self,
                  path: str,
@@ -224,3 +498,50 @@ class ActionContext(Context):
             self.run_command(f'chmod {permissions} {expanded_path}')
         if action_messages.after:
             self.message(action_messages.after)
+
+    def input_password(self, prompt: str = None) -> Optional[str]:
+        """
+        Input user password.
+
+        :param prompt: optional prompt (default provided by getpass.getpass())
+        :return: password
+        """
+        with ActionContext(self, prompt=prompt) as input_context:
+            return getpass(prompt=input_context.symbols.prompt)
+
+    def _script_execution_start(self, messages: Optional[dict]):
+        action_messages = ActionMessages.from_dict(messages)
+        if action_messages.before:
+            self.message(action_messages.before)
+
+    def _script_execution_finish(self,
+                                 proc: subprocess.CompletedProcess,
+                                 messages: Optional[dict],
+                                 unchecked: bool,
+                                 ) -> subprocess.CompletedProcess:
+        action_messages = ActionMessages.from_dict(messages)
+        if proc.returncode == 0:
+            if action_messages.success:
+                self.message(action_messages.success)
+        else:
+            if action_messages.failure:
+                self.message(action_messages.failure)
+            if not unchecked:
+                self.abort('Script execution failed.')
+        return proc
+
+
+def _get_script_preamble():
+    return SCRIPT_PREAMBLE % ('x' if Options.debug else '')
+
+
+def _get_script_body(script_text_or_object: Union[str, Sequence[str], Script],
+                     quoted: bool = False,
+                     ) -> str:
+    if isinstance(script_text_or_object, Script):
+        text = script_text_or_object.get_script_body()
+    elif isinstance(script_text_or_object, (list, tuple)):
+        text = os.linesep.join(script_text_or_object)
+    else:
+        text = script_text_or_object
+    return text.replace("'", "\\'") if quoted else text

@@ -4,104 +4,91 @@ Context for text expansion and external command execution environment.
 
 import os
 import sys
-from contextlib import contextmanager
 from pprint import pformat
-from typing import List, Union, ContextManager, Optional, Any, TypeVar, Type
+from typing import List, Union, Optional
 
 from .console import log_heading, log_warning, log_error, log_message, abort
-from .general import trim_text_blocks
+from .general import trim_text_blocks, AttrDictNoDefaults
 from .options import Options
-
-T_context = TypeVar('T_context', bound='Context')
 
 
 class Context:
-    """Nestable execution context with text expansion symbols."""
+    """
+    Nestable execution context with text expansion symbols.
 
-    def __init__(self):
-        """Construct context."""
+    Public data members:
+    - symbols: Dictionary and attribute style access to expansion symbols.
+    """
+
+    def __init__(self, parent: Optional['Context'], **kwargs):
+        """
+        Construct context, possibly inheriting from a parent context.
+
+        :param parent: optional parent context
+        :param kwargs: initial symbols
+        """
+        if parent is not None:
+            self.symbols = AttrDictNoDefaults()
+            self.copy_symbols(**parent.symbols)
+            self.update(**kwargs)
+        else:
+            self.symbols = AttrDictNoDefaults(kwargs)
         # Give useful symbols for free, e.g. newline.
-        self.symbols = {'nl': os.linesep}
+        if 'nl' not in self.symbols:
+            self.symbols['nl'] = os.linesep
 
-    def update(self, **kwargs):
+    def __enter__(self) -> 'Context':
+        """
+        Context management protocol enter method.
+
+        Called at the start when used in a with block. Implemented only for
+        consistency with sub-classes that have actual state to save and restore.
+
+        :return: Context object
+        """
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+        """
+        Context management protocol exit method.
+
+        :param exc_type: exception type
+        :param exc_val: exception value
+        :param exc_tb: exception traceback
+        :return: True to suppress an exception that occurred in the with block
+        """
+        return False
+
+    def update(self, **kwargs) -> 'Context':
         """
         Update context symbols with text expansion.
 
         Expands in original caller's keyword argument order, which allows
         dependencies to resolve within this one operation. (see PEP-468)
 
+        This is chainable to allow use in the same `with` statement that creates
+        the context.
+
         :param kwargs: keyword symbols to expand and copy
         """
         try:
             for key, value in kwargs.items():
                 self.symbols[key] = self.format(value)
+            return self
         except ValueError as exc:
             self.abort(str(exc))
 
-    def copy_symbols(self, **kwargs):
+    def copy_symbols(self, **kwargs) -> 'Context':
         """
         Copy symbols to context without text expansion.
+
+        This is chainable to allow use in the same `with` statement that creates
+        the context.
 
         :param kwargs: keyword symbols to copy
         """
         self.symbols.update(kwargs)
-
-    @contextmanager
-    def sub_context(self, **kwargs) -> ContextManager[T_context]:
-        """
-        Create sub-context with a contextmanager wrapper.
-
-        :param kwargs: keyword symbols for expansion
-        :return: child context
-        """
-        original_working_folder = os.getcwd()
-        child_context = self.create_child_context(**kwargs)
-        yield child_context
-        # Restore working folder, but only if changed using Context.chdir().
-        if child_context.working_folder_changed:
-            os.chdir(original_working_folder)
-
-    @contextmanager
-    def custom_context(self,
-                       context_class: Type[T_context],
-                       **kwargs,
-                       ) -> ContextManager[T_context]:
-        """
-        Create custom sub-context with a contextmanager wrapper.
-
-        :param context_class: custom context class
-        :param kwargs: additional keyword symbols for expansion
-        :return: child context
-        """
-        with context_class().sub_context(**kwargs) as sub_context:
-            original_working_folder = os.getcwd()
-            sub_context.copy_symbols(**self.symbols)
-            yield sub_context
-            if sub_context.working_folder_changed:
-                os.chdir(original_working_folder)
-
-    def clone(self) -> T_context:
-        """
-        Overridable method to clone a context.
-
-        Subclasses with extended constructors and or extra data members should
-        override this method to properly initialize a new instance.
-
-        :return: cloned context instance
-        """
-        return self.__class__()
-
-    def create_child_context(self, **kwargs) -> T_context:
-        """
-        Create child context without a contextmanager wrapper.
-
-        :param kwargs: keyword symbols for expansion
-        :return: child context
-        """
-        child_context = self.clone()
-        child_context.copy_symbols(**self.symbols)
-        child_context.update(**kwargs)
-        return child_context
+        return self
 
     def format(self, text: Optional[Union[str, list, tuple]]) -> Optional[Union[str, List[str]]]:
         """
@@ -160,25 +147,6 @@ class Context:
         lines = trim_text_blocks(*blocks, indent=indent, double_spaced=double_spaced)
         return os.linesep.join([self.format(line) for line in lines])
 
-    def get(self, name, default: Any = None) -> Optional[Any]:
-        """
-        Get a symbol's value.
-
-        :param name: symbol name
-        :param default: optional default value (default: None)
-        :return: value or None if name not found
-        """
-        return self.symbols.get(name, default)
-
-    def has(self, name) -> bool:
-        """
-        Check if a symbol is present.
-
-        :param name: symbol name
-        :return: True if the symbol exists
-        """
-        return name in self.symbols
-
     def message(self, message: Optional[str], *args, **kwargs):
         """
         Display console message with symbol expansion.
@@ -230,16 +198,3 @@ class Context:
         :param message: message to expand and display
         """
         log_heading(level, self.format(message))
-
-    def format_quoted(self, text: str) -> str:
-        """
-        Expands symbols, wraps in double quotes as needed, and escapes embedded quotes.
-
-        :param text: text to expand, escape, and quote
-        :return: quoted expanded text
-        """
-        expanded = self.format(text)
-        if not set(expanded).intersection((' ', '"')):
-            return expanded
-        escaped = expanded.replace('"', '\\"')
-        return f'"{escaped}"'

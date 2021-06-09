@@ -40,3 +40,11 @@ def resolve_ip_address(host: str) -> Optional[str]:
         if result:
             return result.group(1)
     return None
+
+
+def format_host_string(host: str = None, user: str = None) -> Optional[str]:
+    if not host:
+        return None
+    if not user:
+        return host
+    return f'{user}@{host}' if user else host
