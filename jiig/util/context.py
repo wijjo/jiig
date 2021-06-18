@@ -5,7 +5,7 @@ Context for text expansion and external command execution environment.
 import os
 import sys
 from pprint import pformat
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Any
 
 from .console import log_heading, log_warning, log_error, log_message, abort
 from .general import trim_text_blocks, AttrDictNoDefaults
@@ -147,7 +147,7 @@ class Context:
         lines = trim_text_blocks(*blocks, indent=indent, double_spaced=double_spaced)
         return os.linesep.join([self.format(line) for line in lines])
 
-    def message(self, message: Optional[str], *args, **kwargs):
+    def message(self, message: Any, *args, **kwargs):
         """
         Display console message with symbol expansion.
 
@@ -157,7 +157,7 @@ class Context:
         """
         log_message(self.format(message), *args, **kwargs)
 
-    def warning(self, message: Optional[str], *args, **kwargs):
+    def warning(self, message: Any, *args, **kwargs):
         """
         Display console warning message with symbol expansion.
 
@@ -167,7 +167,7 @@ class Context:
         """
         log_warning(self.format(message), *args, **kwargs)
 
-    def error(self, message: Optional[str], *args, **kwargs):
+    def error(self, message: Any, *args, **kwargs):
         """
         Display console error message with symbol expansion.
 
@@ -177,7 +177,7 @@ class Context:
         """
         log_error(self.format(message), *args, **kwargs)
 
-    def abort(self, message: Optional[str], *args, **kwargs):
+    def abort(self, message: Any, *args, **kwargs):
         """
         Display console fatal error message with symbol expansion and abort execution.
 
@@ -190,7 +190,7 @@ class Context:
             lines.append('(use debug option for more details)')
         abort(*lines, *args, **kwargs)
 
-    def heading(self, level: int, message: Optional[str]):
+    def heading(self, level: int, message: Any):
         """
         Display console heading message with symbol expansion.
 

@@ -280,31 +280,3 @@ class RuntimeTool:
         :return: version label
         """
         return self._tool.version
-
-    @property
-    def expansion_symbols(self) -> Dict:
-        """
-        Symbols used for string and path template expansion.
-
-        :return: full expansion symbol dictionary
-        """
-        if self._expansion_symbols is None:
-            self._expansion_symbols = {
-                'ALIASES_PATH': self.aliases_path,
-                'AUTHOR': self.author,
-                'BUILD_FOLDER': self.build_folder,
-                'COPYRIGHT': self.copyright,
-                'DESCRIPTION': self.description,
-                'DOC_FOLDER': self.doc_folder,
-                'JIIG_LIBRARY_FOLDER': self.jiig_library_folder,
-                'JIIG_ROOT_FOLDER': self.jiig_root_folder,
-                'PROJECT_NAME': self.project_name,
-                'SUB_TASK_LABEL': self.sub_task_label,
-                'TOOL_NAME': self.name,
-                'TOOL_ROOT_FOLDER': self.tool_root_folder,
-                'TOP_TASK_LABEL': self.top_task_label,
-                'VENV_FOLDER': self.venv_folder,
-                'VERSION': self.version,
-            }
-            self._expansion_symbols.update(self._tool.expansion_symbols)
-        return self._expansion_symbols

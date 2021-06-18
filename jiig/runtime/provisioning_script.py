@@ -93,9 +93,31 @@ class ProvisioningScript(Script):
                 'before': f'Deleting folder (as needed): {folder}',
                 'skip': f'Folder "{folder}" does not exist.',
             }
+        quoted_folder = shell_quote_path(folder)
         self.action(
-            self._wrap_command(f'rm -rf {folder}{redirect}', need_root=need_root),
-            predicate=f'[[ -d {folder} ]]',
+            self._wrap_command(f'rm -rf {quoted_folder}{redirect}', need_root=need_root),
+            predicate=f'[[ -d {quoted_folder} ]]',
+            messages=messages,
+        )
+
+    def delete_file(self, file: str, need_root: bool = False, messages: dict = None):
+        """
+        Add folder deletion to script.
+
+        :param file: file to delete
+        :param need_root: requires root to successfully delete
+        :param messages: output messages (defaults provided)
+        """
+        quoted_file = shell_quote_path(file)
+        if messages is None:
+            messages = {
+                'before': f'Deleting file (as needed): {file}',
+                'skip': f'File {quoted_file} does not exist.',
+            }
+        verbose_option = 'v' if Options.debug or Options.verbose else ''
+        self.action(
+            self._wrap_command(f'rm -f{verbose_option} {quoted_file}', need_root=need_root),
+            predicate=f'[[ -e {quoted_file} ]]',
             messages=messages,
         )
 

@@ -1,5 +1,5 @@
 """
-Task specification derived from decorated task class data.
+Task specification that eventually feeds into a runtime task object.
 """
 
 from dataclasses import dataclass
@@ -9,9 +9,8 @@ from jiig.util.footnotes import NotesList, NotesDict
 
 from .field import Field
 
-# Task reference, i.e. a registered class, or a module name or loaded module.
-# Object is a stand-in for a loaded module, because the typing module doesn't
-# offer a better alternative.
+# Reference to registered Task class, module name, or loaded module, with
+# `object` representing loaded module, due to lack of better alternative.
 TaskReference = Union[Type, Text, object]
 
 

@@ -6,7 +6,7 @@ import re
 import shutil
 import subprocess
 from getpass import getpass
-from typing import List, Union, Sequence, Iterator, Optional, IO, Iterable
+from typing import List, Union, Sequence, Iterator, Optional, IO, Iterable, Tuple
 
 from . import stream
 from .action_messages import ActionMessages
@@ -15,6 +15,7 @@ from .general import trim_text_blocks, plural
 from .network import format_host_string
 from .options import Options
 from .script import Script
+from .template_expansion import expand_folder
 
 # Precedes the script body in generated script files.
 SCRIPT_PREAMBLE = '''
@@ -139,9 +140,11 @@ class ActionContext(Context):
                     unchecked: bool = False,
                     ignore_dry_run: bool = False,
                     messages: dict = None,
+                    working_folder: str = None,
+                    **subprocess_run_kwargs,
                     ) -> subprocess.CompletedProcess:
         """
-        Run a command.
+        Run a command with support for predicate, messages, and dry-run.
 
         :param command: command as string or argument list
         :param predicate: optional predicate condition to apply
@@ -149,6 +152,8 @@ class ActionContext(Context):
         :param unchecked: do not check for failure
         :param ignore_dry_run: execute even if it is a dry run
         :param messages: messages to add to output
+        :param working_folder: temporary working folder for command execution
+        :param subprocess_run_kwargs: additional subprocess.run() keyword arguments
         :return: subprocess run() result
         """
         with ActionContext(self, command=command, predicate=predicate) as context:
@@ -172,11 +177,15 @@ class ActionContext(Context):
                         context.message(action_messages.skip)
                 return subprocess.CompletedProcess(command, 0)
 
-            run_kwargs = dict(shell=True)
+            if 'shell' not in subprocess_run_kwargs:
+                subprocess_run_kwargs['shell'] = True
             if capture:
-                run_kwargs.update(capture_output=True, encoding='utf-8')
+                subprocess_run_kwargs.update(capture_output=True, encoding='utf-8')
 
-            proc = context.run_subprocess('{command}', **run_kwargs)
+            if working_folder:
+                context.working_folder(working_folder)
+
+            proc = context.run_subprocess('{command}', **subprocess_run_kwargs)
 
             if proc.returncode == 0:
                 if action_messages.success:
@@ -250,18 +259,39 @@ class ActionContext(Context):
     # noinspection PyShadowingBuiltins
     def run_subprocess(self,
                        command_or_commands: Union[str, Sequence[str]],
-                       **kwargs,
+                       **subprocess_run_kwargs,
                        ) -> subprocess.CompletedProcess:
-        """Context-based front end to subprocess.run() with text expansion."""
+        """
+        Context-based front end to subprocess.run() with text expansion.
+
+        :param command_or_commands: command string or sequence
+        :param subprocess_run_kwargs: additional keyword arguments to subprocess.run()
+        :return: subprocess.run() CompletedProcess return value
+        """
         if isinstance(command_or_commands, (list, tuple)):
-            return subprocess.run([self.format(arg) for arg in command_or_commands], **kwargs)
-        return subprocess.run(self.format(command_or_commands), **kwargs)
+            return subprocess.run([self.format(arg) for arg in command_or_commands],
+                                  **subprocess_run_kwargs)
+        return subprocess.run(self.format(command_or_commands),
+                              **subprocess_run_kwargs)
+
+    def _get_host_user(self,
+                       host: Optional[str],
+                       user: Optional[str],
+                       host_string: Optional[str],
+                       ) -> Tuple[str, str]:
+        if host_string:
+            user_host = host_string.split('@', maxsplit=1)
+            if len(user_host) == 2:
+                return user_host[1], user_host[0]
+            self.error(f'Bad host_string value: {host_string}')
+        return host, user
 
     def run_script(self,
                    script_text_or_object: Union[str, Sequence[str], Script],
                    script_path: str = None,
                    host: str = None,
                    user: str = None,
+                   host_string: str = None,
                    messages: dict = None,
                    unchecked: bool = False,
                    ignore_dry_run: bool = False,
@@ -276,12 +306,15 @@ class ActionContext(Context):
         :param script_path: optional script output path (temporary if it contains '?')
         :param host: optional target host for remote command
         :param user: optional target host user name for remote command
+        :param host_string: alternate user@host form for host and user
         :param messages: optional display messages
         :param unchecked: do not check return code for success
         :param ignore_dry_run: execute even if it is a dry run
         :return: subprocess.CompletedProcess result
         """
         dry_run = Options.dry_run and not ignore_dry_run
+
+        host, user = self._get_host_user(host, user, host_string)
 
         if host:
             command = 'ssh -qt {target_host_string} bash {script_file}'
@@ -346,6 +379,7 @@ class ActionContext(Context):
                         script_text_or_object: Union[str, Sequence[str], Script],
                         host: str = None,
                         user: str = None,
+                        host_string: str = None,
                         messages: dict = None,
                         unchecked: bool = False,
                         ignore_dry_run: bool = False,
@@ -369,12 +403,15 @@ class ActionContext(Context):
         :param script_text_or_object: script body text from string, list or Script object
         :param host: optional host for remote command
         :param user: optional user name for remote command
+        :param host_string: alternate user@host form for host and user
         :param messages: optional display messages
         :param unchecked: do not check return code for success
         :param ignore_dry_run: execute even if it is a dry run
         :return: subprocess.CompletedProcess result
         """
         dry_run = Options.dry_run and not ignore_dry_run
+
+        host, user = self._get_host_user(host, user, host_string)
 
         if host:
             command = 'ssh -qt {host_string} bash -c "\'{script_body}\'"'
@@ -510,6 +547,51 @@ class ActionContext(Context):
         """
         with ActionContext(self, prompt=prompt) as input_context:
             return getpass(prompt=input_context.symbols.prompt)
+
+    def expand_template_folder(self,
+                               source_root: str,
+                               target_root: str,
+                               sub_folder: str = None,
+                               includes: Sequence[str] = None,
+                               excludes: Sequence[str] = None,
+                               overwrite: bool = False,
+                               symbols: dict = None,
+                               add_context_symbols: bool = False,
+                               ):
+        """
+        Expand source template folder or sub-folder to target folder.
+
+        Reads source template configuration, if found to determine what kind of
+        special handling may be needed.
+
+        :param source_root: template source root folder path
+        :param target_root: base target folder
+        :param sub_folder: optional relative sub-folder path applied to source and target roots
+        :param includes: optional relative paths, supporting wildcards, for files to include
+        :param excludes: optional relative paths, supporting wildcards, for files to exclude
+        :param overwrite: force overwriting of existing files if True
+        :param symbols: symbols used for template expansion
+        :param add_context_symbols: add context symbols to template expansion symbols if True
+        """
+        with ActionContext(self,
+                           source_root=source_root,
+                           target_root=target_root,
+                           sub_folder=sub_folder,
+                           includes=includes,
+                           excludes=excludes) as context:
+            expansion_symbols = {}
+            if add_context_symbols:
+                expansion_symbols.update(self.symbols)
+            if symbols:
+                expansion_symbols.update(symbols)
+            expand_folder(source_root,
+                          target_root,
+                          sub_folder=context.symbols.sub_folder,
+                          includes=context.symbols.includes,
+                          excludes=context.symbols.excludes,
+                          overwrite=overwrite,
+                          symbols=expansion_symbols,
+                          )
 
     def _script_execution_start(self, messages: Optional[dict]):
         action_messages = ActionMessages.from_dict(messages)

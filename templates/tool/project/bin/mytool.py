@@ -11,22 +11,25 @@ restart in it or activate the virtual environment prior to running this script.
 import os
 import sys
 
-# Add Jiig root to Python path so that Jiig modules can be loaded.
-# Alternatively, can use PYTHONPATH or any other supported mechanism for
-# extending the library load path.
-sys.path.insert(0, 'jiig_root')
 
-import jiig
-
-if __name__ == '__main__':
+def main():
+    # Add Jiig root to Python path so that Jiig modules can be loaded.
+    # Alternatively, can use PYTHONPATH or any other supported mechanism for
+    # extending the library load path.
+    sys.path.insert(0, 'jiig_root')
+    import jiig
     jiig.main(
         jiig.Tool(
             tool_name='mytool',
             tool_root_folder=os.path.dirname(os.path.dirname(__file__)),
             description='mytool description.',
-            root_task='mytool.tasks.root',
+            root_task='mytool.tasks',
             # pip_packages=[],
             # options=jiig.ToolOptions(),
         ),
         jiig.CLIDriver,
     )
+
+
+if __name__ == '__main__':
+    main()

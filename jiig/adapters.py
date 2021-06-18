@@ -68,11 +68,11 @@ def num_limit(minimum: Optional[float], maximum: Optional[float]) -> ArgumentAda
     """
     def _number_range_inner(value: float) -> float:
         if not isinstance(value, (int, float)):
-            raise TypeError('not int/float')
+            raise TypeError(f'{value} is not int or float')
         if minimum is not None and value < minimum:
-            raise ValueError(f'less than {minimum}')
+            raise ValueError(f'{value} is less than {minimum}')
         if maximum is not None and value > maximum:
-            raise ValueError(f'more than {maximum}')
+            raise ValueError(f'{value} is greater than {maximum}')
         return value
     return _number_range_inner
 
@@ -85,7 +85,7 @@ def path_exists(value: str) -> str:
     :return: unchanged path
     """
     if not os.path.exists(value):
-        raise ValueError('path does not exist')
+        raise ValueError(f'path "{value}" does not exist')
     return value
 
 
@@ -117,7 +117,7 @@ def path_is_file(value: str) -> str:
     :return: unchanged path
     """
     if not os.path.isfile(value):
-        raise ValueError('path is not a file')
+        raise ValueError(f'"{value}" is not a file')
     return value
 
 
@@ -129,7 +129,7 @@ def path_is_folder(value: str) -> str:
     :return: unchanged path
     """
     if not os.path.isdir(value):
-        raise ValueError('path is not a folder')
+        raise ValueError(f'"{value}" is not a folder')
     return value
 
 
@@ -170,7 +170,7 @@ def str_to_bool(value: str) -> bool:
         return True
     if lowercase_value in ('no', 'false'):
         return False
-    raise ValueError(f'bad boolean string')
+    raise ValueError(f'bad boolean string "{value}"')
 
 
 def str_to_comma_tuple(value: str) -> Tuple[Text]:
@@ -223,5 +223,5 @@ def str_to_timestamp(value: str) -> float:
     """
     parsed_time_struct = parse_date_time(value)
     if not parsed_time_struct:
-        raise ValueError('bad date/time string')
+        raise ValueError(f'bad date/time string "{value}"')
     return mktime(parsed_time_struct)

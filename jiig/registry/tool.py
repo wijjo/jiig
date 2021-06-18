@@ -9,6 +9,7 @@ from jiig.util.console import abort, log_warning
 from jiig.util.filesystem import search_folder_stack_for_file
 from jiig.util.python import symbols_to_dataclass, load_configuration_script
 
+from .runtime_specification import RuntimeReference
 from .task_specification import TaskReference
 
 DEFAULT_AUTHOR = '(unknown author)'
@@ -137,8 +138,11 @@ class Tool:
     version: Text = '(unknown version)'
     """Tool version identifier."""
 
-    expansion_symbols: Dict[Text, Any] = field(default_factory=dict)
-    """Symbols used for string and path template expansion."""
+    extra_symbols: Dict[Text, Any] = field(default_factory=dict)
+    """Imported symbols that from_symbols() could not assign."""
+
+    runtime: RuntimeReference = None
+    """Custom runtime context module or class reference (Runtime subclass)."""
 
     @classmethod
     def from_symbols(cls, symbols: Dict, **defaults) -> 'Tool':
@@ -166,7 +170,7 @@ class Tool:
                 cls,
                 required=['tool_name', 'tool_root_folder', 'root_task'],
                 protected=['init_hook_functions', 'exit_hook_functions'],
-                overflow='expansion_symbols',
+                overflow='extra_symbols',
                 from_uppercase=True,
                 defaults=defaults,
             )

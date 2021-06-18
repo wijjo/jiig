@@ -12,10 +12,12 @@ from .runtime import Runtime
 
 class Task:
     """
-    Base Task call-back class.
+    Base Task handler (call-back class).
 
     Use as a base for registered task classes. It provides type-checked method
     overrides and automatic class registration and wrapping as a dataclass.
+
+    Self-registers to the task registry.
 
     The class declaration accepts the following keyword arguments:
         - description: task description

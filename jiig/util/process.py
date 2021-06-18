@@ -44,7 +44,7 @@ def shell_quote_path(path: str) -> str:
     :param path: input path
     :return: possibly-quoted path
     """
-    if set(path).intersection(' \t<>!$`*?(){}|;'):
+    if path and path[0] != '"' and set(path).intersection(' \t<>!$`*?(){}|;'):
         return f'"{path}"'
     return path
 

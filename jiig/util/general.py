@@ -106,6 +106,7 @@ class AttrDictNoDefaultsReadOnly(dict, metaclass=MetaAttrDict, no_defaults=True,
 class DefaultValue:
     value: Any
 
+    # noinspection PyUnresolvedReferences
     @classmethod
     def from_dataclass_field(cls, field: Optional[object]) -> Optional['DefaultValue']:
         """

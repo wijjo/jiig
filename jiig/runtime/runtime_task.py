@@ -166,9 +166,8 @@ class RuntimeTask:
                 else:
                     visibility = 0
                 runtime_task = self.resolve(task_ref, name, visibility)
-                if runtime_task is None:
-                    continue
-                self._sub_tasks[runtime_task.name] = runtime_task
+                if runtime_task is not None:
+                    self._sub_tasks[runtime_task.name] = runtime_task
         return self._sub_tasks
 
     @classmethod
@@ -198,7 +197,7 @@ class RuntimeTask:
                 task_ref = import_module(task_ref)
             except Exception as exc:
                 log_error(f'Failed to load task module.',
-                          exc, task_module_name=task_ref, exception_traceback=True)
+                          exc, module_name=task_ref, exception_traceback=True)
                 return None
         # Reference is a module? Hopefully it's one that was registered.
         if ismodule(task_ref):

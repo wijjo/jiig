@@ -314,6 +314,8 @@ def symbols_to_dataclass(symbols: Dict,
     unknown_keys: List[Text] = []
     for name in set(input_symbols.keys()).difference(valid_names):
         if overflow:
+            if from_uppercase:
+                name = name.lower()
             output_symbols.setdefault(overflow, {})[name] = input_symbols[name]
         else:
             unknown_keys.append(name)

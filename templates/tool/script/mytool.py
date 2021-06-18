@@ -16,25 +16,26 @@ import sys
 # extending the library load path.
 sys.path.insert(0, 'jiig_root')
 
-import jiig
+import jiig     # noqa: E402
 
 
 class TaskCalc(jiig.Task):
     """Evaluate formula using Python interpreter."""
     blocks: jiig.text('formula block(s) to evaluate', repeat=(1, None))
 
-    def on_run(self, _runtime: jiig.Runtime):
+    def on_run(self, runtime: jiig.Runtime):
         result = eval(' '.join(self.blocks))
         print(f'The result is {result}.')
 
 
+# noinspection DuplicatedCode
 class TaskCase(jiig.Task):
     """Convert text case (default is "smart" conversion)."""
     upper: jiig.boolean('convert to all-uppercase', cli_flags='-u')
     lower: jiig.boolean('convert to all-lowercase', cli_flags='-l')
     blocks: jiig.text('text block(s) to convert', repeat=(1, None))
 
-    def on_run(self, _runtime: jiig.Runtime):
+    def on_run(self, runtime: jiig.Runtime):
         if self.upper and self.lower:
             raise RuntimeError('Conflicting upper/lower options specified.')
         if not self.upper and not self.lower:

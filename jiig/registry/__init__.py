@@ -2,6 +2,8 @@
 
 from .field import Field, ArgumentAdapter
 from .hints import add_supported_hints, add_used_hints, get_bad_hints
+from .runtime_registry import RuntimeRegistry, register_runtime
+from .runtime_specification import RuntimeSpecification, RuntimeReference
 from .task_specification import TaskSpecification, TaskReference
 from .task_registry import TaskRegistry, register_task
 from .tool import Tool, ToolOptions, \

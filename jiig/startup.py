@@ -18,7 +18,7 @@ import dataclasses
 from inspect import ismethod
 from typing import List, Text, Type, Dict
 
-from . import driver, registry, runtime, util
+from . import driver, registry, runtime, util, Runtime
 
 from .util.console import log_message, log_error, abort
 from .util.general import format_exception, plural
@@ -127,7 +127,9 @@ def _execute(runtime_obj: runtime.Runtime,
     for task_runtime in active_task_stack:
         data_preparer.prepare_argument_data(task_runtime)
     if len(data_preparer.errors) > 0:
-        abort(f'{len(data_preparer.errors)} argument failure(s):', *data_preparer.errors)
+        abort(f'{len(data_preparer.errors)} argument'
+              f' {plural("failure", data_preparer.errors)}:',
+              *data_preparer.errors)
     try:
         # Invoke task stack @run call-backs in top to bottom order.
         handlers: List[runtime.Task] = []
@@ -187,14 +189,15 @@ def _add_builtin_tasks(tool_config: registry.Tool,
         if f'{name}[h]' in runtime_root_task.sub_tasks:
             return
         task = runtime.RuntimeTask.resolve(task_ref, name, visibility)
-        runtime_root_task.sub_tasks[name] = task
+        if task is not None:
+            runtime_root_task.sub_tasks[name] = task
 
     if not tool_config.tool_options.disable_help:
         _add_if_needed('help', 'jiig.tasks.help')
     if not tool_config.tool_options.disable_alias:
-        _add_if_needed('alias', 'jiig.tasks.alias.root')
+        _add_if_needed('alias', 'jiig.tasks.alias')
     if runtime_tool.venv_needed:
-        _add_if_needed('venv', 'jiig.tasks.venv.root')
+        _add_if_needed('venv', 'jiig.tasks.venv')
 
 
 def main(tool_config: registry.Tool,
@@ -277,6 +280,14 @@ def main(tool_config: registry.Tool,
         if os.path.isdir(lib_folder) and lib_folder not in sys.path:
             sys.path.insert(0, lib_folder)
 
+    # Resolve a custom runtime context class.
+    if tool_config.runtime is not None:
+        runtime_class = Runtime.resolve(tool_config.runtime)
+        if runtime_class is None:
+            abort('Failed to resolve Runtime class.', tool_config.runtime)
+    else:
+        runtime_class = runtime.Runtime
+
     # Resolve the root task.
     runtime_root_task = runtime.RuntimeTask.resolve(
         runtime_tool.root_task_reference, tool_config.tool_name, 2)
@@ -316,10 +327,11 @@ def main(tool_config: registry.Tool,
     for driver_task in driver_app_data.task_stack:
         task_stack.append(task_stack[-1].sub_tasks[driver_task.name])
 
-    runtime_obj = runtime.Runtime(tool=runtime_tool,
-                                  root_task=runtime_root_task,
-                                  driver_root_task=driver_root_task,
-                                  driver=jiig_driver)
+    runtime_obj = runtime_class(tool=runtime_tool,
+                                root_task=runtime_root_task,
+                                driver_root_task=driver_root_task,
+                                driver=jiig_driver,
+                                data=driver_app_data.data)
 
     log_message('Executing application...', debug=True)
     _execute(runtime_obj, task_stack, driver_app_data.data)

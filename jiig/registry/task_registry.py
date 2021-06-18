@@ -1,4 +1,5 @@
 """Task registry."""
+
 import dataclasses
 import os
 import sys
@@ -92,42 +93,3 @@ def register_task(cls: Type,
     TaskRegistry.by_module_id[id(sys.modules[cls.__module__])] = task_spec
     TaskRegistry.by_class_id[id(cls)] = task_spec
     return dataclass_class
-
-
-# TODO: The decorator is obsolete, and should disappear completely.
-# XXX def task(description_or_class: Union[Text, Type] = None,
-# XXX          notes: NotesList = None,
-# XXX          footnotes: NotesDict = None,
-# XXX          tasks: Dict[Text, TaskReference] = None,
-# XXX          visibility: int = 0,
-# XXX          ) -> Callable:
-# XXX     """
-# XXX     Decorator for declaring task classes.
-# XXX
-# XXX     Supports use either as a naked decorator (not called) or by calling as a
-# XXX     function with parameters.
-# XXX
-# XXX     If used naked, i.e. without being called, `description_or_class` will be a
-# XXX     task handler class.
-# XXX
-# XXX     :param description_or_class: description (default: doc string) or task handler class
-# XXX     :param notes: task help notes
-# XXX     :param footnotes: named footnotes displayed in task help if referenced by "[<name>]"
-# XXX     :param tasks: sub-task classes, modules, or module full name, by name
-# XXX     :param visibility: 0=normal, 1=secondary, 2=hidden
-# XXX     :return: inner function that receives the class
-# XXX     """
-# XXX     # Naked decorators should register immediately.
-# XXX     if isclass(description_or_class):
-# XXX         return register_task(description_or_class)
-# XXX
-# XXX     # Parameterized decorators wait for the inner call to register.
-# XXX     def inner(cls: Type = None) -> Type:
-# XXX         return register_task(cls,
-# XXX                              description=description_or_class,
-# XXX                              notes=notes,
-# XXX                              footnotes=footnotes,
-# XXX                              tasks=tasks,
-# XXX                              visibility=visibility)
-# XXX
-# XXX     return inner

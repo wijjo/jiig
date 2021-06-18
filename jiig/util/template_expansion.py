@@ -48,7 +48,7 @@ import re
 from dataclasses import dataclass
 from fnmatch import fnmatch
 from string import Template
-from typing import Text, Dict, Tuple, List, Optional, Sequence
+from typing import Text, Dict, Tuple, List, Optional, Sequence, cast
 
 from .options import Options
 from .console import abort, log_topic, TopicLogger, log_block_begin, log_block_end, \
@@ -127,7 +127,7 @@ def _get_configuration_expansions(config_path: Text,
         return []
     expansion_items: List[_ConfigExpansionItem] = []
     with log_topic(f'"{config_path}" issues', delayed=True) as topic:
-        config_json = _read_configuration_json(config_path, symbols)
+        config_json = cast(dict, _read_configuration_json(config_path, symbols))
         config_templates = config_json.get('templates')
         if config_templates:
             if isinstance(config_templates, list):

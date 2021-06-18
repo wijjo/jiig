@@ -31,7 +31,7 @@ class ActionButtonSpec:
 HandlerFunction = Callable[['AdminPanel', Any], NoReturn]
 
 
-# noinspection PyUnresolvedReferences,PyUnresolvedReferences,PyUnresolvedReferences,PyUnresolvedReferences
+# noinspection PyUnresolvedReferences
 class AdminPanel:
 
     def __init__(self, title: Text = None):

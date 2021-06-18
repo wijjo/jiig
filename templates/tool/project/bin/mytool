@@ -11,6 +11,6 @@ TOOL_NAME = 'mytool'
 
 DESCRIPTION = 'mytool description.'
 
-ROOT_TASK = 'mytool.tasks.root'
+ROOT_TASK = 'mytool.tasks'
 
 # PIP_PACKAGES = []

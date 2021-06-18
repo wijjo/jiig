@@ -1,3 +1,15 @@
 """Jiig task sub-task imports."""
 
-from . import create, root
+import jiig
+
+from . import create
+
+
+class Task(
+    jiig.Task,
+    tasks={
+        'create': create,
+    }
+):
+    """Manage task modules."""
+    pass
