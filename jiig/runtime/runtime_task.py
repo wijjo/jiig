@@ -6,7 +6,7 @@ import re
 from dataclasses import fields
 from importlib import import_module
 from inspect import isclass, ismodule
-from typing import Text, Optional, Dict, Type, Any, List
+from typing import Text, Optional, Dict, Type, List
 
 from jiig.registry import TaskReference
 from jiig.util.console import log_error
@@ -80,7 +80,7 @@ class RuntimeTask:
         """
         if self._fields is None:
             self._fields = {}
-            default_values: Dict[Text, Any] = {}
+            default_values: Dict[Text, DefaultValue] = {}
             try:
                 # noinspection PyDataclass
                 for field in fields(self.handler_class):
@@ -90,6 +90,8 @@ class RuntimeTask:
                           f' may not be a dataclass.', exc)
             for name, field_spec in self._spec.fields.items():
                 default = default_values.get(name, None)
+                if default is None and 'default' in field_spec.hints:
+                    default = DefaultValue(field_spec.hints['default'])
                 if 'repeat' in field_spec.hints:
                     repeat = Repetition.from_spec(field_spec.hints['repeat'])
                 else:

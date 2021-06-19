@@ -17,6 +17,7 @@ from . import \
     network, \
     process, \
     python, \
+    repetition, \
     stream, \
     template_expansion
 

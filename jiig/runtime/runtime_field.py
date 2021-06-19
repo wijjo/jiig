@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Text, List, Optional, Collection, Dict
 
 from jiig.registry import ArgumentAdapter
+from jiig.util.general import DefaultValue
 from jiig.util.repetition import Repetition
 
 
@@ -15,7 +16,7 @@ class RuntimeField:
     element_type: Any
     field_type: Any
     description: Text
-    default: Any
+    default: Optional[DefaultValue]
     adapters: List[ArgumentAdapter]
     repeat: Optional[Repetition]
     choices: Optional[Collection]

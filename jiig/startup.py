@@ -92,7 +92,7 @@ class _ArgumentDataPreparer:
                                 else:
                                     value = adapter(value)
                     else:
-                        value = field.default
+                        value = field.default.value if field.default is not None else None
                     self.prepared_data[name] = value
                 except (TypeError, ValueError) as exc:
                     self.errors.append(
@@ -315,7 +315,7 @@ def main(tool_config: registry.Tool,
     log_message('Application initialized.', debug=True)
 
     # Check hint usage.
-    registry.add_supported_hints('repeat', 'choices')
+    registry.add_supported_hints('repeat', 'choices', 'default')
     if jiig_driver.supported_hints:
         registry.add_supported_hints(*jiig_driver.supported_hints)
     bad_hints = registry.get_bad_hints()
