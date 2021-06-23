@@ -6,7 +6,7 @@ import os
 from contextlib import contextmanager
 from typing import List, ContextManager, Union, Sequence
 
-from jiig.util.contexts.messages import Messages
+from jiig.contexts import Messages
 from jiig.util.general import make_list, trim_text_blocks
 
 

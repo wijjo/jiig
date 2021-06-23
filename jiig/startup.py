@@ -23,16 +23,17 @@ from typing import List, Text, Dict
 # names to avoid naming conflicts between local variables and packages.
 import jiig.driver
 import jiig.registry
-import jiig.runtime
 import jiig.util
 
 from .hints import add_supported_hints, get_bad_hints
+from .runtime_task import RuntimeTask
+from .runtime_tool import RuntimeTool
 from .tool import Tool, TOP_TASK_LABEL, SUB_TASK_LABEL, TOP_TASK_DEST_NAME
 
 
 def _check_virtual_environment(runner_args: List[Text],
                                cli_args: List[Text],
-                               tool: jiig.runtime.RuntimeTool):
+                               tool: RuntimeTool):
     # Check if virtual environment needs to be activated.
     if not tool.venv_needed:
         jiig.util.console.log_message('Virtual environment is unnecessary.', debug=True)
@@ -71,7 +72,7 @@ class _ArgumentDataPreparer:
         self.prepared_data = {}
         self.errors: List[Text] = []
 
-    def prepare_argument_data(self, task: jiig.runtime.RuntimeTask):
+    def prepare_argument_data(self, task: RuntimeTask):
         # Convert raw argument data to prepared data.
         # Handle lower and upper case attribute names in raw data.
         for name, field in task.fields.items():
@@ -106,9 +107,7 @@ class _ArgumentDataPreparer:
                                                            skip_stack_levels=1))
 
 
-def _invoke_task_handler(task: jiig.runtime.RuntimeTask,
-                         data_dict: Dict,
-                         ) -> jiig.runtime.RuntimeTask:
+def _invoke_task_handler(task: RuntimeTask, data_dict: Dict,) -> RuntimeTask:
     # Extract the data needed to populate task dataclass fields.
     # noinspection PyDataclass
     task_field_data = {field.name: data_dict[field.name]
@@ -123,10 +122,7 @@ def _invoke_task_handler(task: jiig.runtime.RuntimeTask,
                                 exc)
 
 
-def _execute(runtime: jiig.runtime.Runtime,
-             task_stack: List[jiig.runtime.RuntimeTask],
-             data: object,
-             ):
+def _execute(runtime: jiig.contexts.Runtime, task_stack: List[RuntimeTask], data: object):
     # Prepare argument data using raw data and task option/argument definitions.
     data_preparer = _ArgumentDataPreparer(data)
     for task in task_stack:
@@ -137,7 +133,7 @@ def _execute(runtime: jiig.runtime.Runtime,
                                 *data_preparer.errors)
     try:
         # Invoke task stack @run call-backs in top to bottom order.
-        handlers: List[jiig.runtime.RuntimeTask] = []
+        handlers: List[RuntimeTask] = []
         for task in task_stack:
             # Instantiate the task handler class with required field data. Non-field
             # data members and type mismatches may cause errors.
@@ -165,9 +161,7 @@ def _execute(runtime: jiig.runtime.Runtime,
                                 exception_traceback_skip=1)
 
 
-def _populate_driver_task(driver_task: jiig.driver.DriverTask,
-                          task: jiig.runtime.RuntimeTask,
-                          ):
+def _populate_driver_task(driver_task: jiig.driver.DriverTask, task: RuntimeTask):
     for name, field in task.fields.items():
         driver_task.add_field(name=name,
                               description=field.description,
@@ -185,7 +179,7 @@ def _populate_driver_task(driver_task: jiig.driver.DriverTask,
         _populate_driver_task(driver_sub_task, sub_task)
 
 
-def _add_builtin_tasks(tool: jiig.runtime.RuntimeTool):
+def _add_builtin_tasks(tool: RuntimeTool):
     visibility = 2 if tool.options.hide_builtin_tasks else 1
 
     def _add_if_needed(name: Text, task_ref: Text):
@@ -193,7 +187,7 @@ def _add_builtin_tasks(tool: jiig.runtime.RuntimeTool):
             return
         if f'{name}[h]' in tool.root_task.sub_tasks:
             return
-        task = jiig.runtime.RuntimeTask.resolve(task_ref, name, visibility)
+        task = RuntimeTask.resolve(task_ref, name, visibility)
         if task is not None:
             tool.root_task.sub_tasks[name] = task
 
@@ -229,7 +223,7 @@ def main(registered_tool: Tool,
         raw_arguments = cli_args
 
     # Wrap the tool configuration so that all necessary tool data is resolved.
-    tool = jiig.runtime.RuntimeTool(registered_tool)
+    tool = RuntimeTool(registered_tool)
 
     # Construct the driver.
     supported_global_options: List[Text] = []
@@ -262,16 +256,16 @@ def main(registered_tool: Tool,
         jiig.util.console.log_message('Jiig driver initialized.', debug=True)
 
     # Push initialized options from the driver into libraries.
-    jiig.runtime.runtime_options.Options.debug = 'debug' in driver.enabled_global_options
-    jiig.runtime.runtime_options.Options.dry_run = 'dry_run' in driver.enabled_global_options
-    jiig.runtime.runtime_options.Options.verbose = 'verbose' in driver.enabled_global_options
-    jiig.runtime.runtime_options.Options.pause = 'pause' in driver.enabled_global_options
-    jiig.runtime.runtime_options.Options.keep_files = 'keep_files' in driver.enabled_global_options
-    jiig.util.options.Options.debug = jiig.runtime.runtime_options.Options.debug
-    jiig.util.options.Options.dry_run = jiig.runtime.runtime_options.Options.dry_run
-    jiig.util.options.Options.verbose = jiig.runtime.runtime_options.Options.verbose
-    jiig.util.options.Options.pause = jiig.runtime.runtime_options.Options.pause
-    jiig.util.options.Options.keep_files = jiig.runtime.runtime_options.Options.keep_files
+    jiig.options.Options.debug = 'debug' in driver.enabled_global_options
+    jiig.options.Options.dry_run = 'dry_run' in driver.enabled_global_options
+    jiig.options.Options.verbose = 'verbose' in driver.enabled_global_options
+    jiig.options.Options.pause = 'pause' in driver.enabled_global_options
+    jiig.options.Options.keep_files = 'keep_files' in driver.enabled_global_options
+    jiig.util.options.Options.debug = jiig.options.Options.debug
+    jiig.util.options.Options.dry_run = jiig.options.Options.dry_run
+    jiig.util.options.Options.verbose = jiig.options.Options.verbose
+    jiig.util.options.Options.pause = jiig.options.Options.pause
+    jiig.util.options.Options.keep_files = jiig.options.Options.keep_files
 
     # Check if a virtual environment is required, but not active. If so, it
     # restarts inside the virtual environment (and does not return from call).
@@ -288,7 +282,7 @@ def main(registered_tool: Tool,
                                                                     required=True)
         runtime_class = registered_runtime.registered_class
     else:
-        runtime_class = jiig.runtime.Runtime
+        runtime_class = jiig.contexts.Runtime
 
     # Resolve the root task.
     if not tool.root_task.sub_tasks:
@@ -322,14 +316,15 @@ def main(registered_tool: Tool,
         jiig.util.console.log_error(f'Bad field {plural_hint}:', *bad_hints)
 
     # Convert driver task stack to RegisteredTask stack.
-    task_stack: List[jiig.runtime.RuntimeTask] = [tool.root_task]
+    task_stack: List[RuntimeTask] = [tool.root_task]
     for driver_task in driver_app_data.task_stack:
         task_stack.append(task_stack[-1].sub_tasks[driver_task.name])
 
-    class HelpGenerator(jiig.runtime.RuntimeHelpGenerator):
+    class HelpGenerator(jiig.contexts.RuntimeHelpGenerator):
         def generate_help(self, *names: Text, show_hidden: bool = False):
             driver.provide_help(driver_root_task, *names, show_hidden=show_hidden)
 
+    # Create and initialize Runtime.
     runtime = runtime_class(tool=tool,
                             help_generator=HelpGenerator(),
                             data=driver_app_data.data)

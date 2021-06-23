@@ -1,7 +1,7 @@
 from getpass import getpass
 from typing import Sequence, Optional
 
-from ..template_expansion import expand_folder
+from jiig.util.template_expansion import expand_folder
 
 from .context import Context
 

@@ -4,8 +4,6 @@ Runtime registry.
 
 from typing import TypeVar
 
-from jiig.util.contexts import ActionContext
-
 from ._registry import Registration, Registry
 
 T_context = TypeVar('T_context')
@@ -16,7 +14,7 @@ class ContextRegistration(Registration[T_context]):
     pass
 
 
-class RegisteredContext(ActionContext):
+class RegisteredContext:
     """Self-registering action context class."""
     def __init_subclass__(cls, /, **kwargs):
         """Self-register Runtime subclasses."""

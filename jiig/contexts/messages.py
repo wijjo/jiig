@@ -2,11 +2,10 @@
 Action messages dataclass.
 """
 
+from dataclasses import dataclass
 from typing import Optional
 
-from dataclasses import dataclass
-
-from ..python import symbols_to_dataclass
+from jiig.util.python import symbols_to_dataclass
 
 
 @dataclass

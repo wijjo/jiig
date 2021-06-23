@@ -2,9 +2,9 @@ import os
 import subprocess
 from typing import Sequence, Union, Tuple, Optional, List
 
-from ..network import format_host_string
-from ..options import Options
-from ..scripts.script import Script
+from jiig.scripts import Script
+from jiig.util.network import format_host_string
+from jiig.util.options import Options
 
 from .context import Context
 from .messages import Messages

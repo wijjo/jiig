@@ -6,13 +6,13 @@ import os
 import subprocess
 from typing import Optional, Union, Sequence
 
+from jiig.contexts import Context
+from jiig.scripts import Script, ProvisioningScript
 from jiig.util.console import abort
-from jiig.util.contexts import Context
 from jiig.util.general import trim_text_block, get_client_name
 from jiig.util.network import resolve_ip_address
-from jiig.util.scripts import Script, ProvisioningScript
 
-from .runtime_context import RuntimeContext
+from jiig.contexts.runtime_context import RuntimeContext
 
 
 class HostContext(RuntimeContext):
@@ -45,10 +45,8 @@ class HostContext(RuntimeContext):
         """
         Construct new child HostContext with symbols and methods relevant to host connections.
 
-        Note that **kwargs were not added here to allow specifying more
-        expansion symbols. This was to avoid confusion with the special host-
-        related keyword arguments. To work around this limitation you can chain
-        a call to update() following the constructor call.
+        To avoid confusion with host-related keywords, **kwargs is not supported
+        here. Use a sub-context or call update() to add expansion symbols.
 
         :param parent: parent context for symbol inheritance
         :param host: host name
@@ -143,7 +141,7 @@ class HostContext(RuntimeContext):
             script.action(
                 '''
                 cp -f {client_known_hosts} {client_known_hosts}.backup
-                egrep -v "^({host}|{host_ip})" {client_known_hosts}.backup > {client_known_hosts} 
+                egrep -v "^({host}|{host_ip})" {client_known_hosts}.backup > {client_known_hosts}
                 ''',
                 predicate='egrep -q "^({host}|{host_ip})" {client_known_hosts}',
                 messages=messages,

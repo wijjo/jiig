@@ -63,7 +63,7 @@ class Driver(RegisteredDriver):
         """
         Application initialization.
 
-        :param initialization_data: driver initialization data
+        :param initialization_data: application initialization data
         :param root_task: root task
         :return: driver application data
         """

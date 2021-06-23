@@ -6,9 +6,8 @@ import os
 import sys
 from typing import List, Text, Optional
 
+from jiig.runtime_task import RuntimeTask
 from jiig.tool import Tool, JIIG_VENV_ROOT, ToolOptions
-
-from .runtime_task import RuntimeTask
 
 
 class RuntimeTool:

@@ -5,10 +5,10 @@ Scripter provisioning script.
 from typing import List, Sequence, Union
 
 from jiig.util.general import make_list
-from jiig.util.process import shell_quote_path
-from jiig.util.scripts.script import Script
-
 from jiig.util.options import Options
+from jiig.util.process import shell_quote_path
+
+from .script import Script
 
 
 class ShellScript(Script):

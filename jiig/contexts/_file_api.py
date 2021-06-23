@@ -3,8 +3,8 @@ import re
 import shutil
 from typing import Iterator, IO
 
-from .. import stream
-from ..general import trim_text_blocks, plural
+from jiig.util import stream
+from jiig.util.general import trim_text_blocks, plural
 
 from .context import Context
 from .messages import Messages

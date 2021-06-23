@@ -6,10 +6,11 @@ from contextlib import contextmanager
 from typing import Text, Iterator
 
 from jiig.registry import RegisteredContext
+from jiig.runtime_tool import RuntimeTool
 from jiig.util.alias_catalog import AliasCatalog, open_alias_catalog
 
-from .runtime_options import Options
-from .runtime_tool import RuntimeTool
+from .host_context import HostContext
+from .runtime_context import RuntimeContext
 
 
 class RuntimeHelpGenerator:
@@ -24,7 +25,7 @@ class RuntimeHelpGenerator:
         raise NotImplementedError
 
 
-class Runtime(RegisteredContext):
+class Runtime(RuntimeContext, RegisteredContext):
     """
     Application Runtime class.
 
@@ -57,7 +58,6 @@ class Runtime(RegisteredContext):
         self.tool = tool
         self.help_generator = help_generator
         self.data = data
-        self.options = Options
         super().__init__(
             None,
             aliases_path=tool.aliases_path,
@@ -99,3 +99,44 @@ class Runtime(RegisteredContext):
         :param show_hidden: show hidden task help if True
         """
         self.help_generator.generate_help(*names, show_hidden=show_hidden)
+
+    def context(self, **kwargs) -> RuntimeContext:
+        """
+        Create a runtime sub-context.
+
+        :param kwargs: sub-context symbols
+        :return: runtime sub-context
+        """
+        return RuntimeContext(self, **kwargs)
+
+    def host_context(self,
+                     host: str,
+                     host_ip: str = None,
+                     user: str = None,
+                     home_folder: str = None,
+                     client_ssh_key_name: str = None,
+                     host_ssh_source_key_name: str = None,
+                     client: str = None,
+                     ):
+        """
+        Construct new child HostContext with symbols and methods relevant to host connections.
+
+        To avoid confusion with host-related keywords, **kwargs is not supported
+        here. Use a sub-context or call update() to add expansion symbols.
+
+        :param host: host name
+        :param host_ip: optional host address (default: queried at runtime)
+        :param user: optional user name (default: local client user)
+        :param home_folder: optional home folder (default: /home/{user})
+        :param client_ssh_key_name: optional client SSH key file base name (default: id_rsa_client)
+        :param host_ssh_source_key_name: optional host SSH source key file base name (default: id_rsa_host)
+        :param client: optional client name (default: queried at runtime)
+        """
+        return HostContext(self,
+                           host,
+                           host_ip=host_ip,
+                           user=user,
+                           home_folder=home_folder,
+                           client_ssh_key_name=client_ssh_key_name,
+                           host_ssh_source_key_name=host_ssh_source_key_name,
+                           client=client)

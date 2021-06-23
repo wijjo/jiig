@@ -1,7 +1,7 @@
 """Task handler."""
 
+from .contexts import ActionContext
 from .registry import RegisteredTask
-from .util.contexts import ActionContext
 
 
 # The `skip_registration` class keyword argument makes sure this abstract

@@ -9,7 +9,6 @@ Jiig utility library.
 from . import \
     alias_catalog, \
     console, \
-    contexts, \
     date_time, \
     filesystem, \
     footnotes, \
@@ -22,6 +21,5 @@ from . import \
     python, \
     repetition, \
     scanners, \
-    scripts, \
     stream, \
     template_expansion

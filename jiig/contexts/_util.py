@@ -1,9 +1,9 @@
 import subprocess
 from typing import Union, Sequence, Optional, Iterable, IO
 
-from ..options import Options
-from ..filesystem import temporary_working_folder
-from ..stream import OutputFile, open_output_file
+from jiig.util.options import Options
+from jiig.util.filesystem import temporary_working_folder
+from jiig.util.stream import OutputFile, open_output_file
 
 from .context import Context
 from .messages import Messages

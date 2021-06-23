@@ -8,7 +8,8 @@ from typing import List
 from jiig.util.general import plural
 from jiig.util.git import repo_name_from_url
 from jiig.util.process import shell_quote_path
-from jiig.util.scripts.shell import ShellScript
+
+from .shell import ShellScript
 
 
 class ProvisioningScript(ShellScript):
@@ -264,7 +265,7 @@ class ProvisioningScript(ShellScript):
         if oh_my_zsh:
             self.action(
                 '''
-                pushd /tmp > /dev/null 
+                pushd /tmp > /dev/null
                 wget https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
                 popd > /dev/null
                 echo "Running oh-my-zsh installer..."
@@ -299,7 +300,7 @@ class ProvisioningScript(ShellScript):
             self.action(
                 f'''
                 git clone {vundle_url} {vundle_path}
-                nvim +PluginInstall +qall 
+                nvim +PluginInstall +qall
                 ''',
                 predicate=f'[[ ! -d {vundle_path} ]]',
                 messages={

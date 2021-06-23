@@ -7,9 +7,9 @@ import sys
 from pprint import pformat
 from typing import List, Union, Optional, Any
 
-from ..console import log_heading, log_warning, log_error, log_message, abort
-from ..general import trim_text_blocks, AttrDictNoDefaults
-from ..options import Options
+from jiig.options import Options
+from jiig.util.console import log_heading, log_warning, log_error, log_message, abort
+from jiig.util.general import trim_text_blocks, AttrDictNoDefaults
 
 
 class Context:
@@ -36,6 +36,15 @@ class Context:
         # Give useful symbols for free, e.g. newline.
         if 'nl' not in self.symbols:
             self.symbols['nl'] = os.linesep
+        self.on_initialize()
+
+    def on_initialize(self):
+        """
+        Sub-class initialization call-back.
+
+        Allows some sub-classes to avoid overriding the constructor.
+        """
+        pass
 
     def __enter__(self) -> 'Context':
         """
