@@ -24,10 +24,11 @@ def main():
             tool_root_folder=os.path.dirname(os.path.dirname(__file__)),
             description='mytool description.',
             root_task='mytool.tasks',
+            # driver='jiig.driver.cli',
+            # driver_variant='argparse',
             # pip_packages=[],
             # options=jiig.ToolOptions(),
         ),
-        jiig.CLIDriver,
     )
 
 

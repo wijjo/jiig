@@ -1,18 +1,16 @@
 """
-Runtime execution and symbol expansion context.
+Runtime context.
 """
 
 from typing import Optional
 
-from jiig.util.action_context import ActionContext
-from jiig.util.context import Context
+from jiig.util.contexts import ActionContext, Context
 
-from .options import Options
-from .runtime_options import RuntimeOptions
+from .runtime_options import Options
 
 
 class RuntimeContext(ActionContext):
-    """Nestable runtime context for context-sensitive symbol expansion."""
+    """Runtime sub-context for context-sensitive symbol expansion."""
 
     def __init__(self, parent: Optional[Context], **kwargs):
         """
@@ -24,8 +22,5 @@ class RuntimeContext(ActionContext):
         :param parent: parent context for symbol inheritance
         :param kwargs: initial symbols
         """
-        self.options = RuntimeOptions(Options.debug,
-                                      Options.dry_run,
-                                      Options.verbose,
-                                      Options.pause)
+        self.options = Options
         super().__init__(parent, **kwargs)

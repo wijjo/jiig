@@ -2,6 +2,8 @@
 
 from typing import Text, Sequence, List
 
+from jiig.registry import RegisteredDriver
+
 from .driver_task import DriverTask
 from .driver_types import DriverApplicationData, DriverInitializationData
 from .driver_options import DriverOptions
@@ -9,7 +11,7 @@ from .driver_options import DriverOptions
 IMPLEMENTATION_CLASS_NAME = 'Implementation'
 
 
-class Driver:
+class Driver(RegisteredDriver):
     """Jiig driver base class."""
     supported_hints: List[Text] = []
 

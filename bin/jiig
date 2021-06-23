@@ -24,4 +24,4 @@ DOC_API_PACKAGES_EXCLUDED = [
     'jiig.tasks',
 ]
 
-ROOT_TASK = 'jiig.tasks.root'
+ROOT_TASK = 'jiig.tasks'

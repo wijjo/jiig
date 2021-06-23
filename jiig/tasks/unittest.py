@@ -16,8 +16,8 @@ from jiig.util.python import import_module_path
 
 class Task(jiig.Task):
     """Run unit tests using Python standard library unittest module."""
-    tests: jiig.text('Run unit tests using Python standard library unittest module.',
-                     repeat=None)
+    tests: jiig.f.text('Run unit tests using Python standard library unittest module.',
+                       repeat=None)
 
     def on_run(self, runtime: jiig.Runtime):
         check_folder_exists(runtime.tool.test_folder)

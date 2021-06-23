@@ -8,8 +8,8 @@ import jiig
 class Task(jiig.Task):
     """Rename alias."""
 
-    alias: jiig.text('Existing alias name.')
-    alias_new: jiig.text('New alias name.')
+    alias: jiig.f.text('Existing alias name.')
+    alias_new: jiig.f.text('New alias name.')
 
     def on_run(self, runtime: jiig.Runtime):
         with runtime.open_alias_catalog() as catalog:

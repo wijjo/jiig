@@ -6,11 +6,11 @@ from typing import Optional
 
 from dataclasses import dataclass
 
-from jiig.util.python import symbols_to_dataclass
+from ..python import symbols_to_dataclass
 
 
 @dataclass
-class ActionMessages:
+class Messages:
     before: str = None
     after: str = None
     success: str = None
@@ -18,7 +18,7 @@ class ActionMessages:
     skip: str = None
 
     @classmethod
-    def from_dict(cls, messages: Optional[dict]) -> 'ActionMessages':
+    def from_dict(cls, messages: Optional[dict]) -> 'Messages':
         if messages is None:
             return cls()
         return symbols_to_dataclass(messages, cls)

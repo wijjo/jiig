@@ -6,8 +6,8 @@ import os
 from contextlib import contextmanager
 from typing import List, ContextManager, Union, Sequence
 
-from .action_messages import ActionMessages
-from .general import make_list, trim_text_blocks
+from jiig.util.contexts.messages import Messages
+from jiig.util.general import make_list, trim_text_blocks
 
 
 class Script:
@@ -133,7 +133,7 @@ class Script:
         :return: formatted script text
         """
         # TODO: Handle message quoting/escaping for echo statements.
-        action_messages = ActionMessages.from_dict(messages)
+        action_messages = Messages.from_dict(messages)
         output_blocks: List[str] = []
         if action_messages.before:
             output_blocks.append(

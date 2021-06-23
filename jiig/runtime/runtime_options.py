@@ -1,13 +1,11 @@
 """
-Jiig runtime options.
+Global options for runtime library.
 """
 
-from dataclasses import dataclass
 
-
-@dataclass
-class RuntimeOptions:
-    debug: bool
-    dry_run: bool
-    verbose: bool
-    pause: bool
+class Options:
+    verbose = False
+    debug = False
+    dry_run = False
+    pause = False
+    keep_files = False

@@ -13,8 +13,8 @@ from jiig.util.general import format_table
 class Task(jiig.Task):
     """List aliases."""
 
-    expand_names: jiig.boolean('Display expanded paths in names.',
-                               cli_flags=('-e', '--expand-names'))
+    expand_names: jiig.f.boolean('Display expanded paths in names.',
+                                 cli_flags=('-e', '--expand-names'))
 
     def on_run(self, runtime: jiig.Runtime):
         displayed_line_count = 0

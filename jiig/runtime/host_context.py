@@ -7,12 +7,11 @@ import subprocess
 from typing import Optional, Union, Sequence
 
 from jiig.util.console import abort
-from jiig.util.context import Context
+from jiig.util.contexts import Context
 from jiig.util.general import trim_text_block, get_client_name
 from jiig.util.network import resolve_ip_address
-from jiig.util.script import Script
+from jiig.util.scripts import Script, ProvisioningScript
 
-from .provisioning_script import ProvisioningScript
 from .runtime_context import RuntimeContext
 
 
@@ -110,7 +109,7 @@ class HostContext(RuntimeContext):
                             host=host or '{host}',
                             user=user or '{user}',
                             ) as sub_context:
-            proc = sub_context.run_script(
+            proc = sub_context.run.script(
                 'ssh -o PasswordAuthentication=no {user}@{host} true 2> /dev/null',
                 ignore_dry_run=True,
                 unchecked=True,
@@ -149,7 +148,7 @@ class HostContext(RuntimeContext):
                 predicate='egrep -q "^({host}|{host_ip})" {client_known_hosts}',
                 messages=messages,
             )
-            sub_context.run_script(script)
+            sub_context.run.script(script)
 
     def create_user(self,
                     host: str = None,
@@ -179,7 +178,7 @@ class HostContext(RuntimeContext):
             create_user_script = ProvisioningScript(
                 run_by_root=(sub_context.symbols.admin_user == 'root'))
             create_user_script.create_user('{user}', 'sudo', messages=messages)
-            sub_context.run_script(create_user_script, host='{host}', user='{admin_user}')
+            sub_context.run.script(create_user_script, host='{host}', user='{admin_user}')
 
     def setup_ssh_key(self,
                       host: str = None,
@@ -205,7 +204,7 @@ class HostContext(RuntimeContext):
             client_ssh_key_script.setup_ssh_key(key_path='{client_ssh_key}',
                                                 label='{user}@{client}_{host}')
             client_ssh_key_script.install_ssh_key('{host}', '{user}', '{client_ssh_key}')
-            sub_context.run_script(client_ssh_key_script)
+            sub_context.run.script(client_ssh_key_script)
 
     def configure_ssh_host_settings(self,
                                     host: str = None,
@@ -250,7 +249,7 @@ class HostContext(RuntimeContext):
                     'skip': 'SSH configuration "{client_ssh_config}" already has "{host}" stanza.'
                 },
             )
-            sub_context.run_script(script)
+            sub_context.run.script(script)
 
     def setup_host_ssh_key(self,
                            host_string: str = None,
@@ -281,7 +280,7 @@ class HostContext(RuntimeContext):
             script.synchronize_files('{host_ssh_source_key}.pub',
                                      '{host_string}:{home_folder}/.ssh/id_rsa.pub',
                                      skip_existing=True)
-            sub_context.run_script(script)
+            sub_context.run.script(script)
 
     def run_remote_script(self,
                           script_text_or_object: Union[str, Sequence[str], Script],
@@ -305,7 +304,7 @@ class HostContext(RuntimeContext):
         :return: subprocess.CompletedProcess result
         """
         with RuntimeContext(self, host=host or '{host}', user=user or '{user}') as sub_context:
-            return sub_context.run_script(script_text_or_object,
+            return sub_context.run.script(script_text_or_object,
                                           host='{host}',
                                           user='{user}',
                                           messages=messages,
@@ -334,7 +333,7 @@ class HostContext(RuntimeContext):
         :return: subprocess.CompletedProcess result
         """
         with RuntimeContext(self, host=host or '{host}', user=user or '{user}') as sub_context:
-            return sub_context.run_script_code(script_text_or_object,
+            return sub_context.run.script_code(script_text_or_object,
                                                host='{host}',
                                                user='{user}',
                                                messages=messages,

@@ -21,7 +21,7 @@ import jiig     # noqa: E402
 
 class TaskCalc(jiig.Task):
     """Evaluate formula using Python interpreter."""
-    blocks: jiig.text('formula block(s) to evaluate', repeat=(1, None))
+    blocks: jiig.f.text('formula block(s) to evaluate', repeat=(1, None))
 
     def on_run(self, runtime: jiig.Runtime):
         result = eval(' '.join(self.blocks))
@@ -31,9 +31,9 @@ class TaskCalc(jiig.Task):
 # noinspection DuplicatedCode
 class TaskCase(jiig.Task):
     """Convert text case (default is "smart" conversion)."""
-    upper: jiig.boolean('convert to all-uppercase', cli_flags='-u')
-    lower: jiig.boolean('convert to all-lowercase', cli_flags='-l')
-    blocks: jiig.text('text block(s) to convert', repeat=(1, None))
+    upper: jiig.f.boolean('convert to all-uppercase', cli_flags='-u')
+    lower: jiig.f.boolean('convert to all-lowercase', cli_flags='-l')
+    blocks: jiig.f.text('text block(s) to convert', repeat=(1, None))
 
     def on_run(self, runtime: jiig.Runtime):
         if self.upper and self.lower:
@@ -53,18 +53,21 @@ class TaskCase(jiig.Task):
 
 class TaskWords(jiig.Task):
     """Count words using primitive whitespace splitting."""
-    blocks: jiig.text('text block(s) with words to count', repeat=(1, None))
+    blocks: jiig.f.text('text block(s) with words to count', repeat=(1, None))
 
     def on_run(self, _runtime: jiig.Runtime):
         count = len(' '.join(self.blocks).split())
         print(f'The word count is {count}.')
 
 
-class TaskRoot(jiig.Task,
-               tasks={'case': TaskCase,
-                      'words': TaskWords,
-                      'calc': TaskCalc}
-               ):
+class TaskRoot(
+    jiig.Task,
+    tasks={
+        'case': TaskCase,
+        'words': TaskWords,
+        'calc': TaskCalc,
+    }
+):
     """Various text manipulations."""
     pass
 
@@ -74,10 +77,12 @@ TOOL = jiig.Tool(
     tool_root_folder=os.path.dirname(__file__),
     description='mytool description.',
     root_task=TaskRoot,
+    # driver='jiig.driver.cli',
+    # driver_variant='argparse',
     # pip_packages=[],
     # options=jiig.ToolOptions(),
 )
 
 
 if __name__ == '__main__':
-    jiig.main(TOOL, jiig.CLIDriver)
+    jiig.main(TOOL)

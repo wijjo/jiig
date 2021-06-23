@@ -3,7 +3,7 @@
 import os
 import jiig
 
-from . import project, root, script
+from . import project, script
 
 
 class Task(

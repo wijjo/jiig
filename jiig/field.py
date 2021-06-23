@@ -1,14 +1,14 @@
 """
 Field specification.
+
+Fields are not themselves registered, but are incorporated into registered tasks.
 """
 
-from typing import Any, Text, Collection, Dict, Callable
+from typing import Any, Text, Collection, Dict
 
-from jiig.util.general import make_list
-
+from .adapters import ArgumentAdapter
 from .hints import add_used_hints
-
-ArgumentAdapter = Callable[..., Any]
+from .util.general import make_list
 
 
 class Field:

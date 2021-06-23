@@ -10,9 +10,9 @@ import jiig
 class Task(jiig.Task):
     """mytask help description"""
 
-    template_bool_option: jiig.boolean('a boolean option', cli_flags='-b')
-    template_string_option: jiig.text('a string option', cli_flags='-s')
-    template_argument_positional: jiig.text('a positional argument')
+    template_bool_option: jiig.f.boolean('a boolean option', cli_flags='-b')
+    template_string_option: jiig.f.text('a string option', cli_flags='-s')
+    template_argument_positional: jiig.f.text('a positional argument')
 
     def on_run(self, _runtime: jiig.Runtime):
         if self.template_bool_option:

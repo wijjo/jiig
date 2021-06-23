@@ -9,10 +9,13 @@ from jiig.util.template_expansion import expand_folder
 class Task(jiig.Task):
     """Create monolithic Jiig tool script."""
 
-    force: jiig.boolean('Force overwriting of target files.', cli_flags=('-f', '--force'))
-    tool_name: jiig.text('Tool name (default: <folder name>).', cli_flags=('-T', '--tool-name'))
-    tool_folder: jiig.filesystem_folder('Generated tool output folder.',
-                                        absolute_path=True) = '.'
+    force: jiig.f.boolean('Force overwriting of target files.',
+                          cli_flags=('-f', '--force'))
+    tool_name: jiig.f.text('Tool name (default: <folder name>).',
+                           cli_flags=('-T', '--tool-name'))
+    tool_folder: jiig.f.filesystem_folder('Generated tool output folder.',
+                                          absolute_path=True,
+                                          ) = '.'
 
     def on_run(self, runtime: jiig.Runtime):
         expand_folder(

@@ -18,7 +18,7 @@ def _module_path(module):
 class Task(jiig.Task):
     """Use Pdoc3 to build HTML format documentation."""
 
-    force: jiig.boolean('Overwrite existing files.', cli_flags=('-f', '--force'))
+    force: jiig.f.boolean('Overwrite existing files.', cli_flags=('-f', '--force'))
 
     def on_run(self, runtime: jiig.Runtime):
         builder = PdocBuilder(runtime.tool.doc_api_packages,

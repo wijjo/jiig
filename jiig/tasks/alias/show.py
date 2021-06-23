@@ -9,7 +9,7 @@ from jiig.util.console import log_error, log_message
 class Task(jiig.Task):
     """Display alias(es)."""
 
-    aliases: jiig.text('Alias name(s) to display.', repeat=(1, None))
+    aliases: jiig.f.text('Alias name(s) to display.', repeat=(1, None))
 
     def on_run(self, runtime: jiig.Runtime):
         """

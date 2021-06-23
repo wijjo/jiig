@@ -7,9 +7,9 @@ import sys
 from pprint import pformat
 from typing import List, Union, Optional, Any
 
-from .console import log_heading, log_warning, log_error, log_message, abort
-from .general import trim_text_blocks, AttrDictNoDefaults
-from .options import Options
+from ..console import log_heading, log_warning, log_error, log_message, abort
+from ..general import trim_text_blocks, AttrDictNoDefaults
+from ..options import Options
 
 
 class Context:

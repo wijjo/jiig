@@ -3,7 +3,7 @@
 from typing import Text, List, Optional, Set
 
 
-class _Data:
+class HintRegistry:
 
     supported_hints: Set[Text] = set()
     used_hints: Set[Text] = set()
@@ -44,7 +44,7 @@ def add_supported_hints(*names: Text):
 
     :param names: hint name(s)
     """
-    _Data.add_supported_hints(*names)
+    HintRegistry.add_supported_hints(*names)
 
 
 def add_used_hints(*names: Text):
@@ -53,7 +53,7 @@ def add_used_hints(*names: Text):
 
     :param names: hint name(s)
     """
-    _Data.add_used_hints(*names)
+    HintRegistry.add_used_hints(*names)
 
 
 def get_bad_hints() -> List[Text]:
@@ -62,4 +62,4 @@ def get_bad_hints() -> List[Text]:
 
     :return: sorted list of unsupported hint names
     """
-    return _Data.get_bad_hints()
+    return HintRegistry.get_bad_hints()

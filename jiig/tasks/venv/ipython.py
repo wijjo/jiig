@@ -12,7 +12,7 @@ from jiig.util.process import run
 class Task(jiig.Task):
     """Run ipython from virtual environment."""
 
-    trailing_arguments: jiig.text('Trailing CLI arguments.', cli_trailing=True)
+    trailing_arguments: jiig.f.text('Trailing CLI arguments.', cli_trailing=True)
 
     def on_run(self, runtime: jiig.Runtime):
         ipython_path = runtime.format_path('{venv_folder}/bin/ipython')

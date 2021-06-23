@@ -8,10 +8,12 @@ import jiig
 class Task(jiig.Task):
     """Create or update alias."""
 
-    description: jiig.text('New alias description.', cli_flags=('-d', '--description'))
-    alias: jiig.text('Name of alias to create or update.')
-    command: jiig.text('Aliased command name.')
-    command_arguments: jiig.text('Aliased command arguments.', cli_trailing=True)
+    description: jiig.f.text('New alias description.',
+                             cli_flags=('-d', '--description'))
+    alias: jiig.f.text('Name of alias to create or update.')
+    command: jiig.f.text('Aliased command name.')
+    command_arguments: jiig.f.text('Aliased command arguments.',
+                                   cli_trailing=True)
 
     def on_run(self, runtime: jiig.Runtime):
         with runtime.open_alias_catalog() as catalog:

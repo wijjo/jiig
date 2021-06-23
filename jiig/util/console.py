@@ -33,18 +33,20 @@ def log_message(text: Any, *args, **kwargs):
     Display message line(s) and indented lines for relevant keyword data.
 
     Keywords:
-       tag                  prefix for all lines displayed in uppercase
-       sub_tag              optional text to enclose in square brackets next to the tag
-       verbose              True if requires VERBOSE mode
-       debug                True if requires DEBUG mode
-       issue_once_tag       unique tag to prevent issuing the message more than once
-       exception_traceback  dump traceback stack if an exception is being reported
+       tag                       prefix for all lines displayed in uppercase
+       sub_tag                   optional text to enclose in square brackets next to the tag
+       verbose                   True if requires VERBOSE mode
+       debug                     True if requires DEBUG mode
+       issue_once_tag            unique tag to prevent issuing the message more than once
+       exception_traceback       dump traceback stack if an exception is being reported
+       exception_traceback_skip  number of stack frames to skip
     """
     verbose = kwargs.pop('verbose', None)
     debug = kwargs.pop('debug', None)
     issue_once_tag = kwargs.pop('issue_once_tag', None)
     is_error = kwargs.pop('is_error', False)
     exception_traceback = kwargs.pop('exception_traceback', None)
+    exception_traceback_skip = kwargs.pop('exception_traceback_skip', None)
     if verbose and not Options.verbose:
         return
     if debug and not Options.debug:
@@ -67,7 +69,7 @@ def log_message(text: Any, *args, **kwargs):
             if exc_lines:
                 log_message('Exception stack:', *exc_lines, tag='DEBUG', is_error=True)
         elif exception_traceback:
-            exc_stack = get_exception_stack()
+            exc_stack = get_exception_stack(skip=exception_traceback_skip)
             if exc_stack.items:
                 lines: List[Text] = []
                 if exc_stack.package_path:
@@ -92,7 +94,6 @@ def abort(text: Any, *args, **kwargs):
     kwargs['tag'] = 'FATAL'
     kwargs['is_error'] = True
     kwargs['exception_traceback'] = True
-    # kwargs['exception_traceback'] = True
     log_message(text, *args, **kwargs)
     # If DEBUG is enabled dump a call stack and strip off the non-meaningful tail.
     if Options.debug:

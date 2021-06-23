@@ -4,9 +4,11 @@ Registered tool.
 
 import os
 import sys
-from typing import List, Text, Optional, Dict, Any
+from typing import List, Text, Optional
 
-from jiig.registry import TaskReference, Tool, ToolOptions, JIIG_VENV_ROOT
+from jiig.tool import Tool, JIIG_VENV_ROOT, ToolOptions
+
+from .runtime_task import RuntimeTask
 
 
 class RuntimeTool:
@@ -17,35 +19,33 @@ class RuntimeTool:
 
     @property methods enforce read-only access to unmodified Tool data.
     """
-
-    def __init__(self, tool: Tool):
-        self._tool = tool
-        if self._tool.jiig_library_folder is not None:
-            self._jiig_library_folder = self._tool.jiig_library_folder
+    def __init__(self, registered_tool: Tool):
+        self._registered_tool = registered_tool
+        if self._registered_tool.jiig_library_folder is not None:
+            self._jiig_library_folder = self._registered_tool.jiig_library_folder
         else:
             self._jiig_library_folder = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        if self._tool.jiig_root_folder is not None:
-            self._jiig_root_folder = self._tool.jiig_root_folder
+        if self._registered_tool.jiig_root_folder is not None:
+            self._jiig_root_folder = self._registered_tool.jiig_root_folder
         else:
             self._jiig_root_folder = self._jiig_library_folder
         # Make `library_folders` a complete list of all needed paths.
         # Include tool and jiig library paths.
-        self._library_folders: List[Text] = self._tool.library_folders or []
+        self._library_folders: List[Text] = self._registered_tool.library_folders or []
         if not self._library_folders:
             self._library_folders.append(self.tool_root_folder)
         if self.jiig_library_folder not in self._library_folders:
             self._library_folders.append(self.jiig_library_folder)
-        if self._tool.project_name is not None:
-            self._project_name = self._tool.project_name
+        if self._registered_tool.project_name is not None:
+            self._project_name = self._registered_tool.project_name
         else:
-            self._project_name = self._tool.tool_name.capitalize()
-        if self._tool.venv_folder is not None:
-            self._venv_folder = self._tool.venv_folder
+            self._project_name = self._registered_tool.tool_name.capitalize()
+        if self._registered_tool.venv_folder is not None:
+            self._venv_folder = self._registered_tool.venv_folder
         else:
             self._venv_folder = os.path.join(os.path.expanduser(JIIG_VENV_ROOT),
-                                             self._tool.tool_name)
-        # Expansion symbols are cached on demand.
-        self._expansion_symbols: Optional[Dict[Text, Any]] = None
+                                             self._registered_tool.tool_name)
+        self._resolved_root_task: Optional[RuntimeTask] = None
 
     @property
     def name(self) -> Text:
@@ -54,7 +54,7 @@ class RuntimeTool:
 
         :return: tool name
         """
-        return self._tool.tool_name
+        return self._registered_tool.tool_name
 
     @property
     def tool_root_folder(self) -> Text:
@@ -63,16 +63,22 @@ class RuntimeTool:
 
         :return: tool root folder
         """
-        return self._tool.tool_root_folder
+        return self._registered_tool.tool_root_folder
 
     @property
-    def root_task_reference(self) -> TaskReference:
+    def root_task(self) -> RuntimeTask:
         """
         Root task reference.
 
         :return: root task reference, as class, module name, or module
         """
-        return self._tool.root_task
+        if self._resolved_root_task is None:
+            self._resolved_root_task = RuntimeTask.resolve(
+                self._registered_tool.root_task,
+                self._registered_tool.tool_name,
+                2,
+            )
+        return self._resolved_root_task
 
     @property
     def jiig_root_folder(self) -> Text:
@@ -99,7 +105,7 @@ class RuntimeTool:
 
         :return: aliases file path
         """
-        return self._tool.aliases_path
+        return self._registered_tool.aliases_path
 
     @property
     def author(self) -> Text:
@@ -108,7 +114,7 @@ class RuntimeTool:
 
         :return: author name
         """
-        return self._tool.author
+        return self._registered_tool.author
 
     @property
     def build_folder(self) -> Text:
@@ -117,7 +123,7 @@ class RuntimeTool:
 
         :return: build folder
         """
-        return self._tool.build_folder
+        return self._registered_tool.build_folder
 
     @property
     def copyright(self) -> Text:
@@ -126,7 +132,7 @@ class RuntimeTool:
 
         :return: copyright text
         """
-        return self._tool.copyright
+        return self._registered_tool.copyright
 
     @property
     def description(self) -> Text:
@@ -135,7 +141,7 @@ class RuntimeTool:
 
         :return: description text
         """
-        return self._tool.description
+        return self._registered_tool.description
 
     @property
     def doc_api_packages(self) -> List[Text]:
@@ -144,7 +150,7 @@ class RuntimeTool:
 
         :return: doc API package list
         """
-        return self._tool.doc_api_packages
+        return self._registered_tool.doc_api_packages
 
     @property
     def doc_api_packages_excluded(self) -> List[Text]:
@@ -153,7 +159,7 @@ class RuntimeTool:
 
         :return: excluded doc API package list
         """
-        return self._tool.doc_api_packages_excluded
+        return self._registered_tool.doc_api_packages_excluded
 
     @property
     def doc_folder(self) -> Text:
@@ -162,7 +168,7 @@ class RuntimeTool:
 
         :return: documentation output folder
         """
-        return self._tool.doc_folder
+        return self._registered_tool.doc_folder
 
     @property
     def library_folders(self) -> List[Text]:
@@ -180,7 +186,7 @@ class RuntimeTool:
 
         :return: tool options
         """
-        return self._tool.tool_options
+        return self._registered_tool.tool_options
 
     @property
     def parser_implementation(self) -> Text:
@@ -189,7 +195,7 @@ class RuntimeTool:
 
         :return: parser implementation name
         """
-        return self._tool.parser_implementation
+        return self._registered_tool.parser_implementation
 
     @property
     def pip_packages(self) -> List[Text]:
@@ -198,7 +204,7 @@ class RuntimeTool:
 
         :return: pip package list
         """
-        return self._tool.pip_packages
+        return self._registered_tool.pip_packages
 
     @property
     def project_name(self) -> Text:
@@ -216,7 +222,7 @@ class RuntimeTool:
 
         :return: label text
         """
-        return self._tool.sub_task_label
+        return self._registered_tool.sub_task_label
 
     @property
     def test_folder(self) -> Text:
@@ -225,7 +231,7 @@ class RuntimeTool:
 
         :return: test folder path
         """
-        return self._tool.test_folder
+        return self._registered_tool.test_folder
 
     @property
     def top_task_label(self) -> Text:
@@ -234,7 +240,7 @@ class RuntimeTool:
 
         :return: label text
         """
-        return self._tool.top_task_label
+        return self._registered_tool.top_task_label
 
     @property
     def venv_folder(self) -> Text:
@@ -279,4 +285,4 @@ class RuntimeTool:
 
         :return: version label
         """
-        return self._tool.version
+        return self._registered_tool.version

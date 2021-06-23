@@ -545,8 +545,9 @@ class ExceptionStack:
     package_path: Optional[Text]
 
 
-def get_exception_stack(keep_non_package_frames: bool = False,
-                        keep_non_file_frames: bool = False,
+def get_exception_stack(include_external_frames: bool = False,
+                        include_exec_frames: bool = False,
+                        skip: int = None,
                         ) -> ExceptionStack:
     """
     Get exception stack as list.
@@ -555,38 +556,42 @@ def get_exception_stack(keep_non_package_frames: bool = False,
     non-file frames, e.g. due to exec()'d code, and frames outside of the top
     level application frame.
 
-    :param keep_non_package_frames: don't hide frames that are outside of top (application) frame
-    :param keep_non_file_frames: don't hide non-source file frames if True
+    :param include_external_frames: include external non-application frames
+    :param include_exec_frames: include exec() (non-source file) frames if True
+    :param skip: optional number of frames to skip
     :return: stack item list
     """
     last_exc_tb = sys.exc_info()[2]
     if last_exc_tb is not None:
-        items = [ExceptionStackItem(tb.filename, tb.lineno, tb.line)
-                 for tb in traceback.extract_tb(last_exc_tb)]
+        stack_items = [ExceptionStackItem(tb.filename, tb.lineno, tb.line)
+                       for tb in traceback.extract_tb(last_exc_tb)]
+        if skip:
+            stack_items = stack_items[skip:]
     else:
-        items = []
-    package: Optional[Package] = None
+        stack_items = []
     # Trim first non-source file frame, e.g. to hide a string exec().?
-    if items and not keep_non_file_frames:
+    if stack_items and not include_exec_frames:
         has_non_file_frame = False
-        for item_idx, item in enumerate(items):
+        for item_idx, item in enumerate(stack_items):
             if os.path.exists(item.path):
                 if has_non_file_frame:
-                    items = items[item_idx:]
+                    stack_items = stack_items[item_idx:]
                     break
             else:
                 has_non_file_frame = True
-    # Trim non-package frames:
-    if items and not keep_non_package_frames:
-        for item_idx, item in enumerate(items):
+    # Trim external frames, i.e. ones that are not in the top level package?
+    package: Optional[Package] = None
+    if stack_items and not include_external_frames:
+        for item_idx, item in enumerate(stack_items):
             item_package = package_for_path(item.path)
             if package is None:
                 package = item_package
             else:
                 if item_package.name != package.name:
-                    items = items[:item_idx]
+                    stack_items = stack_items[:item_idx]
                     break
-    return ExceptionStack(items, package.folder if package is not None else None)
+    return ExceptionStack(stack_items,
+                          package.folder if package is not None else None)
 
 
 @dataclass
@@ -607,7 +612,7 @@ def package_for_path(path: Text) -> Package:
     folder = path if os.path.isdir(path) else os.path.dirname(path)
     names: List[Text] = []
     while os.path.exists(os.path.join(folder, '__init__.py')):
-        names.append(os.path.basename(folder))
+        names.insert(0, os.path.basename(folder))
         new_folder = os.path.dirname(folder)
         if new_folder == folder:
             break

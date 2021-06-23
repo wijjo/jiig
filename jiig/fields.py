@@ -4,9 +4,9 @@ Task field functions and classes.
 
 from typing import Text, Annotated, Union, Callable, Protocol, List
 
-from . import adapters
-
-from .registry.field import Field
+from .adapters import str_to_timestamp, str_to_interval, str_to_age, str_to_comma_tuple, \
+    path_is_folder, path_to_absolute, path_exists
+from .field import Field
 
 
 # === Field declaration functions.
@@ -92,9 +92,9 @@ def filesystem_folder(description: Text, /,
     :param hints: driver hints
     :return: field specification
     """
-    adapters_list = [adapters.path_is_folder]
+    adapters_list = [path_is_folder]
     if absolute_path:
-        adapters_list.append(adapters.path_to_absolute)
+        adapters_list.append(path_to_absolute)
     return Field(Text, description, hints, adapters=adapters_list)
 
 
@@ -115,9 +115,9 @@ def filesystem_object(description: Text, /,
     """
     adapters_list = []
     if absolute_path:
-        adapters_list.append(adapters.path_to_absolute)
+        adapters_list.append(path_to_absolute)
     if exists:
-        adapters_list.append(adapters.path_exists)
+        adapters_list.append(path_exists)
     return Field(Text, description, hints, adapters=adapters_list)
 
 
@@ -130,7 +130,7 @@ def age(description: Text, **hints) -> Field:
     :param hints: driver hints
     :return: field specification
     """
-    return Field(float, description, hints, adapters=[adapters.str_to_age])
+    return Field(float, description, hints, adapters=[str_to_age])
 
 
 @field_function
@@ -142,7 +142,7 @@ def timestamp(description: Text, **hints) -> Field:
     :param hints: driver hints
     :return: field specification
     """
-    return Field(float, description, hints, adapters=[adapters.str_to_timestamp])
+    return Field(float, description, hints, adapters=[str_to_timestamp])
 
 
 @field_function
@@ -154,7 +154,7 @@ def interval(description: Text, **hints) -> Field:
     :param hints: driver hints
     :return: field specification
     """
-    return Field(float, description, hints, adapters=[adapters.str_to_interval])
+    return Field(float, description, hints, adapters=[str_to_interval])
 
 
 @field_function
@@ -166,4 +166,4 @@ def comma_tuple(description: Text, **hints) -> Field:
     :param hints: driver hints
     :return: field specification
     """
-    return Field(List[Text], description, hints, adapters=[adapters.str_to_comma_tuple])
+    return Field(List[Text], description, hints, adapters=[str_to_comma_tuple])

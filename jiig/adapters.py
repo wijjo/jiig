@@ -6,10 +6,11 @@ import base64
 import binascii
 import os
 from time import mktime
-from typing import Text, Any, Optional, Tuple
+from typing import Text, Any, Optional, Tuple, Callable
 
-from .registry import ArgumentAdapter
-from .util.date_time import parse_date_time, parse_time_interval, apply_date_time_delta_string
+from . import util
+
+ArgumentAdapter = Callable[..., Any]
 
 
 def b64_decode(value: str) -> str:
@@ -54,7 +55,9 @@ def choices(*valid_values: Any) -> ArgumentAdapter:
     return _choices_inner
 
 
-def num_limit(minimum: Optional[float], maximum: Optional[float]) -> ArgumentAdapter:
+def num_limit(minimum: Optional[float],
+              maximum: Optional[float],
+              ) -> ArgumentAdapter:
     """
     Adapter factory for an input int/float number checked against limits.
 
@@ -147,13 +150,13 @@ def str_to_age(value: str) -> float:
     """
     Adapter for age, i.e. negative time delta.
 
-    See jiig.utility.date_time.parse_date_time_delta() for more information
+    See util.date_time.parse_date_time_delta() for more information
     about delta strings.
 
     :param value: time delta string
     :return: timestamp float
     """
-    return mktime(apply_date_time_delta_string(value, negative=True))
+    return mktime(util.date_time.apply_date_time_delta_string(value, negative=True))
 
 
 def str_to_bool(value: str) -> bool:
@@ -211,7 +214,7 @@ def str_to_interval(value: str) -> int:
     :param value: raw text value
     :return: returned interval integer
     """
-    return parse_time_interval(value)
+    return util.date_time.parse_time_interval(value)
 
 
 def str_to_timestamp(value: str) -> float:
@@ -221,7 +224,7 @@ def str_to_timestamp(value: str) -> float:
     :param value: date/time string
     :return: timestamp float, as returned by mktime()
     """
-    parsed_time_struct = parse_date_time(value)
+    parsed_time_struct = util.date_time.parse_date_time(value)
     if not parsed_time_struct:
         raise ValueError(f'bad date/time string "{value}"')
     return mktime(parsed_time_struct)

@@ -3,45 +3,43 @@ Runner provides data and an API to task call-back functions..
 """
 
 from contextlib import contextmanager
-from importlib import import_module
-from inspect import isclass, ismodule
-from typing import Text, Iterator, Union, Optional, Type
+from typing import Text, Iterator
 
-from jiig.driver import Driver, DriverTask
-from jiig.registry import register_runtime, RuntimeReference, RuntimeRegistry
+from jiig.registry import RegisteredContext
 from jiig.util.alias_catalog import AliasCatalog, open_alias_catalog
-from jiig.util.console import log_error
 
-from .runtime_context import RuntimeContext
-from .runtime_task import RuntimeTask
+from .runtime_options import Options
 from .runtime_tool import RuntimeTool
 
-RuntimeContextReference = Union[RuntimeContext, Text, object]
+
+class RuntimeHelpGenerator:
+    """Abstract base class implemented by a driver to generate on-demand help output."""
+    def generate_help(self, *names: Text, show_hidden: bool = False):
+        """
+        Provide help output.
+
+        :param names: name parts (task name stack)
+        :param show_hidden: show hidden task help if True
+        """
+        raise NotImplementedError
 
 
-class Runtime(RuntimeContext):
-    """Application runtime data and options."""
-
+class Runtime(RegisteredContext):
     """
     Application Runtime class.
 
+    This is the top level context presented to task call-back methods.
+
     Can also use as a base for registered custom runtime classes.
 
-    Self-registers to the runtime registry.
+    Self-registers sub-classes to the context registry.
 
     The class declaration accepts no keyword arguments.
     """
 
-    def __init_subclass__(cls, /, **kwargs):
-        """Self-register Runtime subclasses."""
-        super().__init_subclass__(**kwargs)
-        register_runtime(cls)
-
     def __init__(self,
                  tool: RuntimeTool,
-                 root_task: RuntimeTask,
-                 driver_root_task: DriverTask,
-                 driver: Driver,
+                 help_generator: RuntimeHelpGenerator,
                  data: object,
                  **kwargs,
                  ):
@@ -52,17 +50,14 @@ class Runtime(RuntimeContext):
         symbol expansion.
 
         :param tool: tool data
-        :param root_task: active root task
-        :param driver_root_task: active root task used by driver
-        :param driver: active Jiig interface driver
+        :param help_generator: on-demand help generator
         :param data: parsed command line argument data
         :param kwargs: initial symbols
         """
         self.tool = tool
-        self.root_task = root_task
-        self.driver_root_task = driver_root_task
-        self.driver = driver
+        self.help_generator = help_generator
         self.data = data
+        self.options = Options
         super().__init__(
             None,
             aliases_path=tool.aliases_path,
@@ -103,43 +98,4 @@ class Runtime(RuntimeContext):
         :param names: name parts (task name stack)
         :param show_hidden: show hidden task help if True
         """
-        self.driver.provide_help(self.driver_root_task, *names, show_hidden=show_hidden)
-
-    @classmethod
-    def resolve(cls,
-                runtime_ref: RuntimeReference,
-                ) -> Optional[Type['Runtime']]:
-        """
-        Resolve a runtime reference to a Runtime class (if possible).
-
-        :param runtime_ref: runtime reference
-        :return: Runtime class if resolved or None otherwise
-        """
-        # Reference is a module name? Convert the reference to a loaded module.
-        if isinstance(runtime_ref, str):
-            try:
-                runtime_ref = import_module(runtime_ref)
-            except Exception as exc:
-                log_error(f'Failed to load runtime module.',
-                          exc, module_name=runtime_ref, exception_traceback=True)
-                return None
-        # Reference is a module? Convert the reference to a Runtime class.
-        if ismodule(runtime_ref):
-            runtime_spec = RuntimeRegistry.by_module_id.get(id(runtime_ref))
-            if runtime_spec is None:
-                log_error(f'Failed to resolve unregistered runtime module'
-                          f' {runtime_ref.__name__} (id={id(runtime_ref)}).')
-                return None
-            runtime_ref = runtime_spec.runtime_class
-        # Reference is a class? Hopefully it's one that was registered.
-        if not isclass(runtime_ref):
-            log_error('Bad runtime reference.', runtime_ref)
-            return None
-        runtime_spec = RuntimeRegistry.by_class_id.get(id(runtime_ref))
-        if not runtime_spec:
-            log_error('Runtime reference not found for class.', runtime_ref)
-            return None
-        if not issubclass(runtime_spec.runtime_class, Runtime):
-            log_error(f'Registered runtime {runtime_ref} is not Runtime subclass.')
-            return None
-        return runtime_spec.runtime_class
+        self.help_generator.generate_help(*names, show_hidden=show_hidden)

@@ -12,11 +12,12 @@ from jiig.util.template_expansion import expand_folder
 class Task(jiig.Task):
     """Create task module(s)."""
 
-    force: jiig.boolean('Force overwriting of target files.', cli_flags=('-f', '--force'))
-    new_task_name: jiig.text('Task/module name(s).', repeat=(1, None))
-    output_folder: jiig.filesystem_folder('Output tasks folder for generated modules.',
-                                          absolute_path=True,
-                                          cli_flags=('-o', '--output-folder')) = '.'
+    force: jiig.f.boolean('Force overwriting of target files.', cli_flags=('-f', '--force'))
+    new_task_name: jiig.f.text('Task/module name(s).', repeat=(1, None))
+    output_folder: jiig.f.filesystem_folder('Output tasks folder for generated modules.',
+                                            absolute_path=True,
+                                            cli_flags=('-o', '--output-folder'),
+                                            ) = '.'
 
     def on_run(self, runtime: jiig.Runtime):
         if not os.path.exists(os.path.join(self.output_folder, '../__init__.py')):

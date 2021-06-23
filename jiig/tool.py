@@ -4,18 +4,19 @@ import os
 from dataclasses import dataclass, field
 from typing import Text, List, Dict, Any, cast
 
-from jiig.util.alias_catalog import DEFAULT_ALIASES_PATH
-from jiig.util.console import abort, log_warning
-from jiig.util.filesystem import search_folder_stack_for_file
-from jiig.util.python import symbols_to_dataclass, load_configuration_script
-
-from .runtime_specification import RuntimeReference
-from .task_specification import TaskReference
+from .driver import CLIDriver
+from .registry import CONTEXT_REGISTRY, DRIVER_REGISTRY, TASK_REGISTRY
+from .util.alias_catalog import DEFAULT_ALIASES_PATH
+from .util.console import abort, log_warning
+from .util.filesystem import search_folder_stack_for_file
+from .util.python import symbols_to_dataclass, load_configuration_script
 
 DEFAULT_AUTHOR = '(unknown author)'
 DEFAULT_BUILD_FOLDER = 'build'
 DEFAULT_COPYRIGHT = '(unknown copyright)'
 DEFAULT_DESCRIPTION = '(no description)'
+DEFAULT_DRIVER = CLIDriver
+DEFAULT_DRIVER_VARIANT = 'argparse'
 DEFAULT_DOC_FOLDER = 'doc'
 DEFAULT_TEST_FOLDER = 'tests'
 JIIG_VENV_ROOT = os.path.expanduser('~/.jiig-venv')
@@ -73,10 +74,16 @@ class Tool:
     tool_root_folder: Text
     """Tool base (root) folder."""
 
-    root_task: TaskReference
+    root_task: TASK_REGISTRY.Reference
     """Root of task config hierarchy."""
 
     # === Optional members. These either have default values or can be derived.
+
+    driver: DRIVER_REGISTRY.Reference = DEFAULT_DRIVER
+    """Driver class reference."""
+
+    driver_variant: Text = DEFAULT_DRIVER_VARIANT
+    """Driver variant name."""
 
     jiig_root_folder: Text = None
     """Jiig base (root) folder."""
@@ -141,7 +148,7 @@ class Tool:
     extra_symbols: Dict[Text, Any] = field(default_factory=dict)
     """Imported symbols that from_symbols() could not assign."""
 
-    runtime: RuntimeReference = None
+    runtime: CONTEXT_REGISTRY.Reference = None
     """Custom runtime context module or class reference (Runtime subclass)."""
 
     @classmethod
@@ -187,7 +194,7 @@ class Tool:
         :return: Tool object based on tool script data
         """
         configuration = load_configuration_script(script_path)
-        tool_name = os.path.basename(script_path)
+        tool_name = os.path.basename(script_path).replace('-', '_')
         # The script may be in a sub-folder, e.g. 'bin'. Look up the folder
         # stack for a folder that contains a library folder using the tool name.
         # If that isn't found fall back to the folder containing the script.

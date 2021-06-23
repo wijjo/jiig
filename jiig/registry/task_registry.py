@@ -1,30 +1,106 @@
-"""Task registry."""
+"""
+Task registry.
+"""
 
-import dataclasses
 import os
-import sys
-from dataclasses import dataclass
-from typing import Text, Dict, Type, get_type_hints, get_args, List
+from dataclasses import dataclass, is_dataclass
+from typing import Text, Dict, Type, get_type_hints, get_args, List, Union, TypeVar
 
+from jiig.field import Field
 from jiig.util.footnotes import NotesList, NotesDict
 
-from .field import Field
-from .task_specification import TaskSpecification, TaskReference
+from ._registry import Registration, Registry
+
+T_task = TypeVar('T_task')
+TaskReference = Union[Type['RegisteredTask'], Text, object]
 
 
-class TaskRegistry:
-    """Registered task specifications indexed by module and class ID."""
-    by_module_id: Dict[int, TaskSpecification] = {}
-    by_class_id: Dict[int, TaskSpecification] = {}
+class TaskRegistration(Registration[T_task]):
+    """Registered task."""
+
+    # TODO: Can Registration[T_task].Reference be used for `tasks` type hint?
+    def __init__(self,
+                 handler_class: Type[T_task],
+                 description: Text,
+                 notes: NotesList,
+                 footnotes: NotesDict,
+                 tasks: Dict[Text, Union[Type[T_task], Text, object]],
+                 fields: Dict[Text, Field],
+                 visibility: int,
+                 ):
+        """
+        Registered task constructor.
+
+        :param handler_class: task handler class
+        :param description: task description
+        :param notes: task help notes
+        :param footnotes: named footnotes displayed in task help if referenced by "[<name>]"
+        :param tasks: sub-task references by name
+        :param fields: argument/option field definition dictionary
+        :param visibility: visibility, e.g. in help, with 0=normal, 1=secondary, 2=hidden
+        """
+        super().__init__(handler_class)
+        self.description = description
+        self.notes = notes
+        self.footnotes = footnotes
+        self.tasks = tasks
+        self.fields = fields
+        self.visibility = visibility
 
 
-def register_task(cls: Type,
+class RegisteredTask:
+    """
+    Base Task handler (call-back class).
+
+    Use as a base for registered task classes. It provides type-checked method
+    overrides and automatic class registration and wrapping as a dataclass.
+
+    Self-registers to the task registry.
+
+    Also accepts an `skip_registration` boolean keyword to flag a base class
+    that should not itself be registered as a RegisteredTask sub-class.
+
+    The class declaration accepts the following keyword arguments:
+        - description: task description
+        - notes: notes list
+        - footnotes: footnotes dictionary
+        - tasks: sub-tasks dictionary
+        - visibility: 0=normal, 1=secondary, 2=hidden
+    """
+    def __init_subclass__(cls, /,
+                          description: Text = None,
+                          notes: NotesList = None,
+                          footnotes: NotesDict = None,
+                          tasks: Dict[Text, TaskReference] = None,
+                          visibility: int = None,
+                          **kwargs):
+        """Detect and register subclasses."""
+        skip_registration = kwargs.pop('skip_registration', False)
+        super().__init_subclass__(**kwargs)
+        if not skip_registration:
+            register_task(cls,
+                          description=description,
+                          notes=notes,
+                          footnotes=footnotes,
+                          tasks=tasks,
+                          visibility=visibility)
+
+
+class TaskRegistry(Registry[TaskRegistration, RegisteredTask]):
+    """Registered tasks indexed by module and class ID."""
+    pass
+
+
+TASK_REGISTRY = TaskRegistry('task')
+
+
+def register_task(cls: Type[T_task],
                   description: Text = None,
                   notes: NotesList = None,
                   footnotes: NotesDict = None,
-                  tasks: Dict[Text, TaskReference] = None,
+                  tasks: Dict[Text, TaskRegistry.Reference] = None,
                   visibility: int = None,
-                  ) -> Type:
+                  ) -> Type[T_task]:
     """
     Register task class.
 
@@ -71,7 +147,7 @@ def register_task(cls: Type,
     if tasks is None:
         tasks = {}
     # Wrap the class in a dataclass.
-    if dataclasses.is_dataclass(cls):
+    if is_dataclass(cls):
         dataclass_class = cls
     else:
         dataclass_class = dataclass(cls)
@@ -83,13 +159,12 @@ def register_task(cls: Type,
         if len(hint_parts) == 2 and isinstance(hint_parts[1], Field):
             fields[name] = hint_parts[1]
     # Build the final option map by converting flags to lists.
-    task_spec = TaskSpecification(handler_class=dataclass_class,
-                                  description=description,
-                                  notes=notes,
-                                  footnotes=footnotes,
-                                  tasks=tasks,
-                                  fields=fields,
-                                  visibility=visibility)
-    TaskRegistry.by_module_id[id(sys.modules[cls.__module__])] = task_spec
-    TaskRegistry.by_class_id[id(cls)] = task_spec
+    registered_task = TaskRegistration(handler_class=dataclass_class,
+                                       description=description,
+                                       notes=notes,
+                                       footnotes=footnotes,
+                                       tasks=tasks,
+                                       fields=fields,
+                                       visibility=visibility)
+    TASK_REGISTRY.register(registered_task)
     return dataclass_class

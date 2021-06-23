@@ -1,12 +1,5 @@
 """Registry package symbols."""
 
-from .field import Field, ArgumentAdapter
-from .hints import add_supported_hints, add_used_hints, get_bad_hints
-from .runtime_registry import RuntimeRegistry, register_runtime
-from .runtime_specification import RuntimeSpecification, RuntimeReference
-from .task_specification import TaskSpecification, TaskReference
-from .task_registry import TaskRegistry, register_task
-from .tool import Tool, ToolOptions, \
-    DEFAULT_AUTHOR, DEFAULT_BUILD_FOLDER, DEFAULT_COPYRIGHT, \
-    DEFAULT_DESCRIPTION, DEFAULT_DOC_FOLDER, DEFAULT_TEST_FOLDER, \
-    JIIG_VENV_ROOT, SUB_TASK_LABEL, TOP_TASK_LABEL, TOP_TASK_DEST_NAME
+from .context_registry import CONTEXT_REGISTRY, RegisteredContext, ContextRegistration
+from .driver_registry import DRIVER_REGISTRY, RegisteredDriver, DriverRegistration
+from .task_registry import TASK_REGISTRY, RegisteredTask, TaskRegistration

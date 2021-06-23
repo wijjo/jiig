@@ -3,20 +3,15 @@ Registered task.
 """
 
 import re
-from dataclasses import fields
-from importlib import import_module
-from inspect import isclass, ismodule
-from typing import Text, Optional, Dict, Type, List
+from dataclasses import dataclass, fields
+from typing import Text, Optional, Dict, Type, List, Any, Collection
 
-from jiig.registry import TaskReference
+from jiig.field import ArgumentAdapter
+from jiig.registry import TASK_REGISTRY, TaskRegistration
 from jiig.util.console import log_error
 from jiig.util.footnotes import NotesList, NotesDict
 from jiig.util.general import DefaultValue
 from jiig.util.repetition import Repetition
-
-from .runtime_field import RuntimeField
-from jiig.registry.task_registry import TaskRegistry
-from jiig.registry.task_specification import TaskSpecification
 
 TASK_IDENT_REGEX = re.compile(r'^'
                               r'([a-zA-Z][a-zA-Z0-9\-_]*)'
@@ -26,19 +21,31 @@ TASK_IDENT_REGEX = re.compile(r'^'
 
 class RuntimeTask:
     """
-    Resolved task data.
+    Runtime task data (resolved).
 
     Resolved tasks are produced dynamically based on static task specifications
     while navigating the task hierarchy.
     """
 
-    def __init__(self, spec: TaskSpecification, name: Text, visibility: int):
-        self._spec = spec
+    @dataclass
+    class Field:
+        """Post-registration field data."""
+        element_type: Any
+        field_type: Any
+        description: Text
+        default: Optional[DefaultValue]
+        adapters: List[ArgumentAdapter]
+        repeat: Optional[Repetition]
+        choices: Optional[Collection]
+        hints: Dict
+
+    def __init__(self, task_registration: TaskRegistration, name: Text, visibility: int):
+        self._task_registration = task_registration
         self._name = name
         self._visibility = visibility
         # Produced on-demand.
         self._sub_tasks: Optional[Dict[Text, RuntimeTask]] = None
-        self._fields: Optional[Dict[Text, RuntimeField]] = None
+        self._fields: Optional[Dict[Text, RuntimeTask.Field]] = None
         self._handler_class_name: Optional[Text] = None
 
     @property
@@ -57,7 +64,7 @@ class RuntimeTask:
 
         :return: task handler class
         """
-        return self._spec.handler_class
+        return self._task_registration.registered_class
 
     @property
     def handler_class_name(self) -> Text:
@@ -72,7 +79,7 @@ class RuntimeTask:
         return self._handler_class_name
 
     @property
-    def fields(self) -> Dict[Text, RuntimeField]:
+    def fields(self) -> Dict[Text, Field]:
         """
         Field map indexed by name.
 
@@ -88,7 +95,7 @@ class RuntimeTask:
             except TypeError as exc:
                 log_error(f'Task handler class {self.handler_class_name}'
                           f' may not be a dataclass.', exc)
-            for name, field_spec in self._spec.fields.items():
+            for name, field_spec in self._task_registration.fields.items():
                 default = default_values.get(name, None)
                 if default is None and 'default' in field_spec.hints:
                     default = DefaultValue(field_spec.hints['default'])
@@ -97,7 +104,7 @@ class RuntimeTask:
                 else:
                     repeat = None
                 choices: Optional[List] = field_spec.hints.get('choices', None)
-                self._fields[name] = RuntimeField(
+                self._fields[name] = RuntimeTask.Field(
                     element_type=field_spec.element_type,
                     field_type=field_spec.field_type,
                     description=field_spec.description,
@@ -125,7 +132,7 @@ class RuntimeTask:
 
         :return: task description
         """
-        return self._spec.description
+        return self._task_registration.description
 
     @property
     def notes(self) -> NotesList:
@@ -134,7 +141,7 @@ class RuntimeTask:
 
         :return: note list
         """
-        return self._spec.notes
+        return self._task_registration.notes
 
     @property
     def footnotes(self) -> NotesDict:
@@ -143,7 +150,7 @@ class RuntimeTask:
 
         :return: footnote dictionary
         """
-        return self._spec.footnotes or {}
+        return self._task_registration.footnotes or {}
 
     @property
     def sub_tasks(self) -> Dict[Text, 'RuntimeTask']:
@@ -154,7 +161,7 @@ class RuntimeTask:
         """
         if self._sub_tasks is None:
             self._sub_tasks: Dict[Text, RuntimeTask] = {}
-            for ident, task_ref in self._spec.tasks.items():
+            for ident, task_ref in self._task_registration.tasks.items():
                 ident_match = TASK_IDENT_REGEX.match(ident)
                 if ident_match is None:
                     log_error(f'Bad task identifier "{ident}".')
@@ -167,14 +174,14 @@ class RuntimeTask:
                     visibility = 2
                 else:
                     visibility = 0
-                runtime_task = self.resolve(task_ref, name, visibility)
-                if runtime_task is not None:
-                    self._sub_tasks[runtime_task.name] = runtime_task
+                resolved_task = self.resolve(task_ref, name, visibility)
+                if resolved_task is not None:
+                    self._sub_tasks[resolved_task.name] = resolved_task
         return self._sub_tasks
 
     @classmethod
     def resolve(cls,
-                task_ref: TaskReference,
+                task_ref: TASK_REGISTRY.Reference,
                 name: Text,
                 visibility: int,
                 ) -> Optional['RuntimeTask']:
@@ -186,28 +193,8 @@ class RuntimeTask:
         :param visibility: visibility, e.g. for help output
         :return: task reference if resolved or None otherwise
         """
-        # Reference is a class? Hopefully it's one that was registered.
-        if isclass(task_ref):
-            task_spec = TaskRegistry.by_class_id.get(id(task_ref))
-            if task_spec is None:
-                log_error(f'Task class {task_ref.__name__} is not registered.')
-                return None
-            return RuntimeTask(task_spec, name, visibility)
-        # Reference is a module name? Convert the reference to a loaded module.
-        if isinstance(task_ref, str):
-            try:
-                task_ref = import_module(task_ref)
-            except Exception as exc:
-                log_error(f'Failed to load task module.',
-                          exc, module_name=task_ref, exception_traceback=True)
-                return None
-        # Reference is a module? Hopefully it's one that was registered.
-        if ismodule(task_ref):
-            task_spec = TaskRegistry.by_module_id.get(id(task_ref))
-            if task_spec is None:
-                log_error(f'Failed to resolve unregistered task module'
-                          f' {task_ref.__name__} (id={id(task_ref)}).')
-                return None
-            return RuntimeTask(task_spec, name, visibility)
-        log_error(f'Bad task "{name}" reference.', task_ref)
-        return None
+        task_registration = TASK_REGISTRY.resolve(task_ref)
+        if task_registration is None:
+            log_error(f'Bad task "{name}" reference.', task_ref)
+            return None
+        return RuntimeTask(task_registration, name, visibility)
