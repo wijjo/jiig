@@ -87,7 +87,7 @@ class ActionContextFileAPI:
         :param paths: file paths to check
         """
         with self.context.context(paths=paths) as context:
-            missing = [path for path in context.symbols.paths if not os.path.exists(path)]
+            missing = [path for path in context.s.paths if not os.path.exists(path)]
             if missing:
                 context.abort(f'Required {plural("file", missing)} missing:', *missing)
 

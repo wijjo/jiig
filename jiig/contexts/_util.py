@@ -142,7 +142,7 @@ def open_context_output_file(context: Context,
                              keep_temporary: bool = False,
                              ) -> ContextOutputFile:
     with Context(context, path=path) as sub_context:
-        opened_file_data = open_output_file(sub_context.symbols.path,
+        opened_file_data = open_output_file(sub_context.s.path,
                                             binary=binary,
                                             keep_temporary=keep_temporary,
                                             create_parent_folder=True)

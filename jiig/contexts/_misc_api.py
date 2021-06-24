@@ -19,7 +19,7 @@ class ActionContextMiscAPI:
         :return: password
         """
         with self.context.context(prompt=prompt) as input_context:
-            return getpass(prompt=input_context.symbols.prompt)
+            return getpass(prompt=input_context.s.prompt)
 
     def expand_template_folder(self,
                                source_root: str,
@@ -53,14 +53,14 @@ class ActionContextMiscAPI:
                                   excludes=excludes) as context:
             expansion_symbols = {}
             if add_context_symbols:
-                expansion_symbols.update(self.context.symbols)
+                expansion_symbols.update(self.context.s)
             if symbols:
                 expansion_symbols.update(symbols)
             expand_folder(source_root,
                           target_root,
-                          sub_folder=context.symbols.sub_folder,
-                          includes=context.symbols.includes,
-                          excludes=context.symbols.excludes,
+                          sub_folder=context.s.sub_folder,
+                          includes=context.s.includes,
+                          excludes=context.s.excludes,
                           overwrite=overwrite,
                           symbols=expansion_symbols,
                           )

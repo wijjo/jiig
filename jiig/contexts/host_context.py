@@ -174,7 +174,7 @@ class HostContext(ActionContext):
                            ) as sub_context:
             # Create the remote user as an administrator with sudo permission.
             create_user_script = ProvisioningScript(
-                run_by_root=(sub_context.symbols.admin_user == 'root'))
+                run_by_root=(sub_context.s.admin_user == 'root'))
             create_user_script.create_user('{user}', 'sudo', messages=messages)
             sub_context.run.script(create_user_script, host='{host}', user='{admin_user}')
 

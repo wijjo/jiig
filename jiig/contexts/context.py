@@ -17,7 +17,7 @@ class Context:
     Nestable execution context with text expansion symbols.
 
     Public data members:
-    - symbols: Dictionary and attribute style access to expansion symbols.
+    - s: Dictionary and attribute style access to expansion symbols.
     """
 
     def __init__(self, parent: Optional['Context'], **kwargs):
@@ -28,14 +28,14 @@ class Context:
         :param kwargs: initial symbols
         """
         if parent is not None:
-            self.symbols = AttrDictNoDefaults()
-            self.copy_symbols(**parent.symbols)
+            self.s = AttrDictNoDefaults()
+            self.copy_symbols(**parent.s)
             self.update(**kwargs)
         else:
-            self.symbols = AttrDictNoDefaults(kwargs)
+            self.s = AttrDictNoDefaults(kwargs)
         # Give useful symbols for free, e.g. newline.
-        if 'nl' not in self.symbols:
-            self.symbols['nl'] = os.linesep
+        if 'nl' not in self.s:
+            self.s['nl'] = os.linesep
         self.on_initialize()
 
     def context(self, **kwargs) -> 'Context':
@@ -91,7 +91,7 @@ class Context:
         """
         try:
             for key, value in kwargs.items():
-                self.symbols[key] = self.format(value)
+                self.s[key] = self.format(value)
             return self
         except ValueError as exc:
             self.abort(str(exc))
@@ -105,7 +105,7 @@ class Context:
 
         :param kwargs: keyword symbols to copy
         """
-        self.symbols.update(kwargs)
+        self.s.update(kwargs)
         return self
 
     def format(self, text: Optional[Union[str, list, tuple]]) -> Optional[Union[str, List[str]]]:
@@ -118,9 +118,9 @@ class Context:
         if text is None:
             return None
         if isinstance(text, (list, tuple)):
-            return [str(item).format(**self.symbols) for item in text]
+            return [str(item).format(**self.s) for item in text]
         try:
-            return str(text).format(**self.symbols)
+            return str(text).format(**self.s)
         except KeyError as key_error:
             if Options.debug:
                 sys.stderr.write(
@@ -128,7 +128,7 @@ class Context:
                         '====== text for expansion ======',
                         text,
                         '====== symbols for expansion ======',
-                        pformat(self.symbols, indent=2),
+                        pformat(self.s, indent=2),
                         '======',
                         '',
                     ])
