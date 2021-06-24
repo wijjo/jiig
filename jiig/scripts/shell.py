@@ -23,8 +23,9 @@ class ShellScript(Script):
         :param messages: output messages (defaults provided)
         """
         if messages is None:
+            as_root = 'as root, ' if need_root else ''
             messages = {
-                'before': f'Creating folder (as needed): {folder}',
+                'before': f'Creating folder ({as_root}as needed): {folder}',
                 'skip': f'Folder "{folder}" already exists.',
             }
         self.action(
@@ -42,8 +43,9 @@ class ShellScript(Script):
         :param messages: output messages (defaults provided)
         """
         if messages is None:
+            as_root = 'as root, ' if need_root else ''
             messages = {
-                'before': f'Creating parent folder (as needed) for: {path}',
+                'before': f'Creating parent folder ({as_root}as needed) for: {path}',
                 'skip': f'Parent folder for "{path}" already exists.',
             }
         quoted_path = shell_quote_path(path)
@@ -63,8 +65,9 @@ class ShellScript(Script):
         """
         redirect = ' 2> /dev/null' if not Options.debug else ''
         if messages is None:
+            as_root = 'as root, ' if need_root else ''
             messages = {
-                'before': f'Deleting folder (as needed): {folder}',
+                'before': f'Deleting folder ({as_root}if it exists): {folder}',
                 'skip': f'Folder "{folder}" does not exist.',
             }
         quoted_folder = shell_quote_path(folder)
@@ -84,8 +87,9 @@ class ShellScript(Script):
         """
         quoted_file = shell_quote_path(file)
         if messages is None:
+            as_root = 'as root, ' if need_root else ''
             messages = {
-                'before': f'Deleting file (as needed): {file}',
+                'before': f'Deleting file ({as_root}as needed): {file}',
                 'skip': f'File {quoted_file} does not exist.',
             }
         verbose_option = 'v' if Options.debug or Options.verbose else ''
@@ -105,8 +109,9 @@ class ShellScript(Script):
         :param messages: output messages (defaults provided)
         """
         if messages is None:
+            as_root = 'as root, ' if need_root else ''
             messages = {
-                'before': f'Creating symbolic link (as needed): {source} -> {target}',
+                'before': f'Creating symbolic link ({as_root}as needed): {source} -> {target}',
                 'skip': f'Symbolic link target "{target}" already exists.',
             }
         self.action(

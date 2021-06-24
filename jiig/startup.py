@@ -16,7 +16,7 @@ import os
 import sys
 import dataclasses
 from inspect import ismethod
-from typing import List, Text, Dict
+from typing import List, Text
 
 # This module works with all the major sub-packages, and simple names like
 # "driver" and "runtime" are useful for local variables. So use full package
@@ -107,21 +107,6 @@ class _ArgumentDataPreparer:
                                                            skip_stack_levels=1))
 
 
-def _invoke_task_handler(task: RuntimeTask, data_dict: Dict,) -> RuntimeTask:
-    # Extract the data needed to populate task dataclass fields.
-    # noinspection PyDataclass
-    task_field_data = {field.name: data_dict[field.name]
-                       for field in dataclasses.fields(task.handler_class)
-                       if field.name in data_dict}
-    try:
-        return task.handler_class(**task_field_data)
-    except Exception as exc:
-        jiig.util.console.abort(f'Unable to construct task handler class:'
-                                f' {task.handler_class.__module__}'
-                                f'.{task.handler_class.__name__}',
-                                exc)
-
-
 def _execute(runtime: jiig.contexts.Runtime, task_stack: List[RuntimeTask], data: object):
     # Prepare argument data using raw data and task option/argument definitions.
     data_preparer = _ArgumentDataPreparer(data)
@@ -135,18 +120,36 @@ def _execute(runtime: jiig.contexts.Runtime, task_stack: List[RuntimeTask], data
         # Invoke task stack @run call-backs in top to bottom order.
         handlers: List[RuntimeTask] = []
         for task in task_stack:
-            # Instantiate the task handler class with required field data. Non-field
-            # data members and type mismatches may cause errors.
-            # noinspection PyBroadException
-            handler = _invoke_task_handler(task, data_preparer.prepared_data)
-            handlers.append(handler)
-            run_method = getattr(handler, 'on_run', None)
-            if ismethod(run_method):
-                run_method(runtime)
+            # Extract the data needed to populate task dataclass fields.
+            # noinspection PyDataclass
+            task_field_data = {field.name: data_preparer.prepared_data[field.name]
+                               for field in dataclasses.fields(task.handler_class)
+                               if field.name in data_preparer.prepared_data}
+            try:
+                # Instantiate the task handler class with required field data. Non-field
+                # data members and type mismatches may cause errors.
+                handler_instance = task.handler_class(**task_field_data)
+                handlers.append(handler_instance)
+                run_method = getattr(handler_instance, 'on_run', None)
+                if ismethod(run_method):
+                    try:
+                        run_method(runtime)
+                    except Exception as exc:
+                        jiig.util.console.abort(f'Exception invoking::'
+                                                f' {handler_instance.__class__.__module__}'
+                                                f'.{handler_instance.__class__.__name__}.on_run()',
+                                                exc,
+                                                exception_traceback_skip=1)
+            except Exception as exc:
+                jiig.util.console.abort(f'Exception constructing:'
+                                        f' {task.handler_class.__module__}'
+                                        f'.{task.handler_class.__name__}',
+                                        exc,
+                                        exception_traceback_skip=1)
         # Invoke task stack @done call-backs in reverse order.
         while handlers:
-            handler = handlers.pop()
-            done_method = getattr(handler, 'on_done', None)
+            handler_instance = handlers.pop()
+            done_method = getattr(handler_instance, 'on_done', None)
             if ismethod(done_method):
                 done_method(runtime)
     except KeyboardInterrupt:
@@ -324,8 +327,9 @@ def main(registered_tool: Tool,
         def generate_help(self, *names: Text, show_hidden: bool = False):
             driver.provide_help(driver_root_task, *names, show_hidden=show_hidden)
 
-    # Create and initialize Runtime.
-    runtime = runtime_class(tool=tool,
+    # Create and initialize root Runtime context.
+    runtime = runtime_class(None,
+                            tool=tool,
                             help_generator=HelpGenerator(),
                             data=driver_app_data.data)
 

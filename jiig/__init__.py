@@ -7,7 +7,7 @@ TODO: <more library documentation goes here>
 # Key types and functions exposed at the top level.
 from .driver import Driver, DriverTask
 from .field import Field
-from .contexts import Runtime, RuntimeHelpGenerator
+from .contexts import Context, ActionContext, Runtime, RuntimeHelpGenerator
 from .runtime_task import RuntimeTask
 from .runtime_tool import RuntimeTool
 from .startup import main

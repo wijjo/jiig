@@ -6,16 +6,16 @@ import os
 import subprocess
 from typing import Optional, Union, Sequence
 
-from jiig.contexts import Context
 from jiig.scripts import Script, ProvisioningScript
 from jiig.util.console import abort
 from jiig.util.general import trim_text_block, get_client_name
 from jiig.util.network import resolve_ip_address
 
-from jiig.contexts.runtime_context import RuntimeContext
+from .action import ActionContext
+from .context import Context
 
 
-class HostContext(RuntimeContext):
+class HostContext(ActionContext):
     """
     Nestable runtime context useful for host SSH connections.
 
@@ -103,10 +103,10 @@ class HostContext(RuntimeContext):
                 'success': 'SSH connection is already configured.',
                 'failure': 'SSH connection must be configured (multiple password prompts).',
             }
-        with RuntimeContext(self,
-                            host=host or '{host}',
-                            user=user or '{user}',
-                            ) as sub_context:
+        with ActionContext(self,
+                           host=host or '{host}',
+                           user=user or '{user}',
+                           ) as sub_context:
             proc = sub_context.run.script(
                 'ssh -o PasswordAuthentication=no {user}@{host} true 2> /dev/null',
                 ignore_dry_run=True,
@@ -132,11 +132,11 @@ class HostContext(RuntimeContext):
                 'before': 'Removing host and IP address from {client_known_hosts} as needed...',
                 'skip': 'Host was not found in {client_known_hosts}.',
             }
-        with RuntimeContext(self,
-                            host=host or '{host}',
-                            host_ip=host_ip or '{host_ip}',
-                            client_known_hosts='~/.ssh/known_hosts',
-                            ) as sub_context:
+        with ActionContext(self,
+                           host=host or '{host}',
+                           host_ip=host_ip or '{host_ip}',
+                           client_known_hosts='~/.ssh/known_hosts',
+                           ) as sub_context:
             script = ProvisioningScript()
             script.action(
                 '''
@@ -167,11 +167,11 @@ class HostContext(RuntimeContext):
                 'before': 'Creating user {user} as needed...',
                 'skip': 'User {user} already exists.',
             }
-        with RuntimeContext(self,
-                            host=host or '{host}',
-                            user=user or '{user}',
-                            admin_user=admin_user or 'root',
-                            ) as sub_context:
+        with ActionContext(self,
+                           host=host or '{host}',
+                           user=user or '{user}',
+                           admin_user=admin_user or 'root',
+                           ) as sub_context:
             # Create the remote user as an administrator with sudo permission.
             create_user_script = ProvisioningScript(
                 run_by_root=(sub_context.symbols.admin_user == 'root'))
@@ -192,12 +192,12 @@ class HostContext(RuntimeContext):
         :param label: optional label used for generated SSH key (default: {client})
         :param client_ssh_key: optional client SSH key override (default: {client_ssh_key})
         """
-        with RuntimeContext(self,
-                            host=host or '{host}',
-                            user=user or '{user}',
-                            label=label or '{client}',
-                            client_ssh_key=client_ssh_key or '{client_ssh_key}',
-                            ) as sub_context:
+        with ActionContext(self,
+                           host=host or '{host}',
+                           user=user or '{user}',
+                           label=label or '{client}',
+                           client_ssh_key=client_ssh_key or '{client_ssh_key}',
+                           ) as sub_context:
             client_ssh_key_script = ProvisioningScript(unchecked=True)
             client_ssh_key_script.setup_ssh_key(key_path='{client_ssh_key}',
                                                 label='{user}@{client}_{host}')
@@ -218,7 +218,7 @@ class HostContext(RuntimeContext):
         :param user: optional host user to test (default: {user})
         :param client_ssh_key: optional client SSH key override (default: {client_ssh_key})
         """
-        with RuntimeContext(
+        with ActionContext(
             self,
             host=host or '{host}',
             host_ip=host_ip or '{host_ip}',
@@ -263,7 +263,7 @@ class HostContext(RuntimeContext):
         :param home_folder: optional home folder override (default: {home_folder})
         :param host_ssh_source_key: optional host SSH key file override (default: {host_ssh_source_key})
         """
-        with RuntimeContext(
+        with ActionContext(
             self,
             host_string=host_string or '{host_string}',
             home_folder=home_folder or '{home_folder}',
@@ -301,7 +301,7 @@ class HostContext(RuntimeContext):
         :param ignore_dry_run: execute even if it is a dry run
         :return: subprocess.CompletedProcess result
         """
-        with RuntimeContext(self, host=host or '{host}', user=user or '{user}') as sub_context:
+        with ActionContext(self, host=host or '{host}', user=user or '{user}') as sub_context:
             return sub_context.run.script(script_text_or_object,
                                           host='{host}',
                                           user='{user}',
@@ -330,7 +330,7 @@ class HostContext(RuntimeContext):
         :param ignore_dry_run: execute even if it is a dry run
         :return: subprocess.CompletedProcess result
         """
-        with RuntimeContext(self, host=host or '{host}', user=user or '{user}') as sub_context:
+        with ActionContext(self, host=host or '{host}', user=user or '{user}') as sub_context:
             return sub_context.run.script_code(script_text_or_object,
                                                host='{host}',
                                                user='{user}',

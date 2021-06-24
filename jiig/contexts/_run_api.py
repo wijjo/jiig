@@ -103,16 +103,16 @@ class ActionContextRunAPI:
             self.context.error(f'Bad host_string value: {host_string}')
         return host, user
 
-    def run_script(self,
-                   script_text_or_object: Union[str, Sequence[str], Script],
-                   script_path: str = None,
-                   host: str = None,
-                   user: str = None,
-                   host_string: str = None,
-                   messages: dict = None,
-                   unchecked: bool = False,
-                   ignore_dry_run: bool = False,
-                   ) -> subprocess.CompletedProcess:
+    def script(self,
+               script_text_or_object: Union[str, Sequence[str], Script],
+               script_path: str = None,
+               host: str = None,
+               user: str = None,
+               host_string: str = None,
+               messages: dict = None,
+               unchecked: bool = False,
+               ignore_dry_run: bool = False,
+               ) -> subprocess.CompletedProcess:
         """
         Execute a local or remote Bash script file.
 
@@ -141,22 +141,20 @@ class ActionContextRunAPI:
             deploy_command = None
 
         # Outer context has immediately-resolvable symbols, e.g. expanded for file output.
-        with self.context.__class__(self.context,
-                                    target_host=host,
-                                    target_user=user,
-                                    target_host_string=format_host_string(host=host, user=user),
-                                    script_preamble=_get_script_preamble(),
-                                    script_body=_get_script_body(script_text_or_object),
-                                    output_label='[host={target_host}] ' if host else ''
-                                    ) as script_context:
+        with self.context.context(target_host=host,
+                                  target_user=user,
+                                  target_host_string=format_host_string(host=host, user=user),
+                                  script_preamble=_get_script_preamble(),
+                                  script_body=_get_script_body(script_text_or_object),
+                                  output_label='[host={target_host}] ' if host else ''
+                                  ) as script_context:
 
             with open_context_output_file(script_context,
                                           script_path or '/tmp/scripter_?.sh',
                                           ) as output_file:
 
                 # Inner context symbols needed the script file path to resolve.
-                with self.context.__class__(script_context,
-                                            script_file=output_file.path,
+                with script_context.context(script_file=output_file.path,
                                             command=command,
                                             deploy_command=deploy_command,
                                             ) as run_context:
@@ -193,15 +191,15 @@ class ActionContextRunAPI:
                     # Display final messages and handle failure.
                     return _script_finish(run_context, proc, messages, unchecked)
 
-    def run_script_code(self,
-                        script_text_or_object: Union[str, Sequence[str], Script],
-                        host: str = None,
-                        user: str = None,
-                        host_string: str = None,
-                        messages: dict = None,
-                        unchecked: bool = False,
-                        ignore_dry_run: bool = False,
-                        ) -> subprocess.CompletedProcess:
+    def script_code(self,
+                    script_text_or_object: Union[str, Sequence[str], Script],
+                    host: str = None,
+                    user: str = None,
+                    host_string: str = None,
+                    messages: dict = None,
+                    unchecked: bool = False,
+                    ignore_dry_run: bool = False,
+                    ) -> subprocess.CompletedProcess:
         """
         Execute a local or remote Bash script without saving to a file.
 
@@ -238,14 +236,13 @@ class ActionContextRunAPI:
             command = 'bash -c "{script_body}"'
             quoted = False
 
-        with self.context.__class__(self.context,
-                                    host=host,
-                                    user=user,
-                                    host_string=format_host_string(host=host, user=user),
-                                    script_body=_get_script_body(script_text_or_object, quoted=quoted),
-                                    command=command,
-                                    output_label='[host={host}] ' if host else ''
-                                    ) as sub_context:
+        with self.context.context(host=host,
+                                  user=user,
+                                  host_string=format_host_string(host=host, user=user),
+                                  script_body=_get_script_body(script_text_or_object, quoted=quoted),
+                                  command=command,
+                                  output_label='[host={host}] ' if host else ''
+                                  ) as sub_context:
 
             _script_start(sub_context, messages)
 

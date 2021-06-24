@@ -3,14 +3,15 @@ Runner provides data and an API to task call-back functions..
 """
 
 from contextlib import contextmanager
-from typing import Text, Iterator
+from typing import Text, Iterator, Optional
 
 from jiig.registry import RegisteredContext
 from jiig.runtime_tool import RuntimeTool
 from jiig.util.alias_catalog import AliasCatalog, open_alias_catalog
 
+from .action import ActionContext
+from .context import Context
 from .host_context import HostContext
-from .runtime_context import RuntimeContext
 
 
 class RuntimeHelpGenerator:
@@ -25,7 +26,7 @@ class RuntimeHelpGenerator:
         raise NotImplementedError
 
 
-class Runtime(RuntimeContext, RegisteredContext):
+class Runtime(ActionContext, RegisteredContext):
     """
     Application Runtime class.
 
@@ -39,6 +40,7 @@ class Runtime(RuntimeContext, RegisteredContext):
     """
 
     def __init__(self,
+                 parent: Optional[Context],
                  tool: RuntimeTool,
                  help_generator: RuntimeHelpGenerator,
                  data: object,
@@ -50,6 +52,7 @@ class Runtime(RuntimeContext, RegisteredContext):
         Passed to Task call-back methods to provide a runtime API and text
         symbol expansion.
 
+        :param parent: optional parent context
         :param tool: tool data
         :param help_generator: on-demand help generator
         :param data: parsed command line argument data
@@ -59,7 +62,7 @@ class Runtime(RuntimeContext, RegisteredContext):
         self.help_generator = help_generator
         self.data = data
         super().__init__(
-            None,
+            parent,
             aliases_path=tool.aliases_path,
             author=tool.author,
             build_folder=tool.build_folder,
@@ -100,15 +103,6 @@ class Runtime(RuntimeContext, RegisteredContext):
         """
         self.help_generator.generate_help(*names, show_hidden=show_hidden)
 
-    def context(self, **kwargs) -> RuntimeContext:
-        """
-        Create a runtime sub-context.
-
-        :param kwargs: sub-context symbols
-        :return: runtime sub-context
-        """
-        return RuntimeContext(self, **kwargs)
-
     def host_context(self,
                      host: str,
                      host_ip: str = None,
@@ -140,3 +134,16 @@ class Runtime(RuntimeContext, RegisteredContext):
                            client_ssh_key_name=client_ssh_key_name,
                            host_ssh_source_key_name=host_ssh_source_key_name,
                            client=client)
+
+    def context(self, **kwargs) -> 'Runtime':
+        """
+        Create a runtime sub-context.
+
+        :param kwargs: sub-context symbols
+        :return: runtime sub-context
+        """
+        return Runtime(self,
+                       self.tool,
+                       self.help_generator,
+                       self.data,
+                       **kwargs)

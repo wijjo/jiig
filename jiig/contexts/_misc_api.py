@@ -18,7 +18,7 @@ class ActionContextMiscAPI:
         :param prompt: optional prompt (default provided by getpass.getpass())
         :return: password
         """
-        with self.context.__class__(self.context, prompt=prompt) as input_context:
+        with self.context.context(prompt=prompt) as input_context:
             return getpass(prompt=input_context.symbols.prompt)
 
     def expand_template_folder(self,
@@ -46,12 +46,11 @@ class ActionContextMiscAPI:
         :param symbols: symbols used for template expansion
         :param add_context_symbols: add context symbols to template expansion symbols if True
         """
-        with self.context.__class__(self.context,
-                                    source_root=source_root,
-                                    target_root=target_root,
-                                    sub_folder=sub_folder,
-                                    includes=includes,
-                                    excludes=excludes) as context:
+        with self.context.context(source_root=source_root,
+                                  target_root=target_root,
+                                  sub_folder=sub_folder,
+                                  includes=includes,
+                                  excludes=excludes) as context:
             expansion_symbols = {}
             if add_context_symbols:
                 expansion_symbols.update(self.context.symbols)

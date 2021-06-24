@@ -38,6 +38,15 @@ class Context:
             self.symbols['nl'] = os.linesep
         self.on_initialize()
 
+    def context(self, **kwargs) -> 'Context':
+        """
+        Create a sub-context.
+
+        :param kwargs: sub-context symbols
+        :return: sub-context
+        """
+        return self.__class__(self, **kwargs)
+
     def on_initialize(self):
         """
         Sub-class initialization call-back.
