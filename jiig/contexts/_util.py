@@ -3,15 +3,14 @@ from typing import Union, Sequence, Optional, Iterable, IO
 
 from jiig.util.options import Options
 from jiig.util.filesystem import temporary_working_folder
+from jiig.util.general import AttrDictReadOnly
 from jiig.util.stream import OutputFile, open_output_file
 
 from .context import Context
-from .messages import Messages
 
 
 def run_context_command(outer_context: Context,
                         command: Union[str, Sequence],
-                        predicate: str = None,
                         capture: bool = False,
                         unchecked: bool = False,
                         ignore_dry_run: bool = False,
@@ -20,38 +19,27 @@ def run_context_command(outer_context: Context,
                         **subprocess_run_kwargs,
                         ) -> subprocess.CompletedProcess:
     """
-    Run a command with support for predicate, messages, and dry-run.
+    Run a command with support for status messages and dry-run.
 
     :param outer_context: context for running command
     :param command: command as string or argument list
-    :param predicate: optional predicate condition to apply
     :param capture: capture output if True
     :param unchecked: do not check for failure
     :param ignore_dry_run: execute even if it is a dry run
-    :param messages: messages to add to output
+    :param messages: optional status messages
     :param working_folder: temporary working folder for command execution
     :param subprocess_run_kwargs: additional subprocess.run() keyword arguments
     :return: subprocess run() result
     """
-    with outer_context.__class__(outer_context, command=command, predicate=predicate) as context:
-
-        action_messages = Messages.from_dict(messages)
+    action_messages = AttrDictReadOnly(messages or {})
+    with outer_context.context(command=command) as context:
 
         if action_messages.before:
             context.heading(1, action_messages.before)
 
         context.message('command: {command}')
-        if predicate:
-            context.message('predicate: {predicate}')
 
         if Options.dry_run and not ignore_dry_run:
-            return subprocess.CompletedProcess(command, 0)
-
-        if predicate is not None:
-            predicate_proc = run_context_sub_process(context, '{predicate}', shell=True)
-            if predicate_proc.returncode != 0:
-                if action_messages.skip:
-                    context.message(action_messages.skip)
             return subprocess.CompletedProcess(command, 0)
 
         if 'shell' not in subprocess_run_kwargs:

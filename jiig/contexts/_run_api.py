@@ -3,11 +3,11 @@ import subprocess
 from typing import Sequence, Union, Tuple, Optional, List
 
 from jiig.scripts import Script
+from jiig.util.general import AttrDictReadOnly
 from jiig.util.network import format_host_string
 from jiig.util.options import Options
 
 from .context import Context
-from .messages import Messages
 from ._util import run_context_command, run_context_sub_process, open_context_output_file
 
 
@@ -28,7 +28,6 @@ class ActionContextRunAPI:
 
     def command(self,
                 command: Union[str, Sequence],
-                predicate: str = None,
                 capture: bool = False,
                 unchecked: bool = False,
                 ignore_dry_run: bool = False,
@@ -37,10 +36,9 @@ class ActionContextRunAPI:
                 **subprocess_run_kwargs,
                 ) -> subprocess.CompletedProcess:
         """
-        Run a command with support for predicate, messages, and dry-run.
+        Run a command with support for messages, and dry-run.
 
         :param command: command as string or argument list
-        :param predicate: optional predicate condition to apply
         :param capture: capture output if True
         :param unchecked: do not check for failure
         :param ignore_dry_run: execute even if it is a dry run
@@ -51,7 +49,6 @@ class ActionContextRunAPI:
         """
         return run_context_command(self.context,
                                    command,
-                                   predicate=predicate,
                                    capture=capture,
                                    unchecked=unchecked,
                                    ignore_dry_run=ignore_dry_run,
@@ -124,11 +121,13 @@ class ActionContextRunAPI:
         :param host: optional target host for remote command
         :param user: optional target host user name for remote command
         :param host_string: alternate user@host form for host and user
-        :param messages: optional display messages
+        :param messages: optional status messages
         :param unchecked: do not check return code for success
         :param ignore_dry_run: execute even if it is a dry run
         :return: subprocess.CompletedProcess result
         """
+        action_messages = AttrDictReadOnly(messages or {})
+
         dry_run = Options.dry_run and not ignore_dry_run
 
         host, user = self._get_host_user(host, user, host_string)
@@ -159,7 +158,7 @@ class ActionContextRunAPI:
                                             deploy_command=deploy_command,
                                             ) as run_context:
 
-                    _script_start(run_context, messages)
+                    _script_start(run_context, action_messages)
 
                     if Options.debug or dry_run:
                         run_context.heading(1, 'Script {script_file} (begin)')
@@ -189,7 +188,7 @@ class ActionContextRunAPI:
                     run_context.heading(1, '{output_label}output (end)')
 
                     # Display final messages and handle failure.
-                    return _script_finish(run_context, proc, messages, unchecked)
+                    return _script_finish(run_context, proc, unchecked, action_messages)
 
     def script_code(self,
                     script_text_or_object: Union[str, Sequence[str], Script],
@@ -220,11 +219,13 @@ class ActionContextRunAPI:
         :param host: optional host for remote command
         :param user: optional user name for remote command
         :param host_string: alternate user@host form for host and user
-        :param messages: optional display messages
+        :param messages: optional status messages
         :param unchecked: do not check return code for success
         :param ignore_dry_run: execute even if it is a dry run
         :return: subprocess.CompletedProcess result
         """
+        action_messages = AttrDictReadOnly(messages or {})
+
         dry_run = Options.dry_run and not ignore_dry_run
 
         host, user = self._get_host_user(host, user, host_string)
@@ -244,7 +245,7 @@ class ActionContextRunAPI:
                                   output_label='[host={host}] ' if host else ''
                                   ) as sub_context:
 
-            _script_start(sub_context, messages)
+            _script_start(sub_context, action_messages)
 
             if Options.debug or dry_run:
                 sub_context.heading(1, 'Script code (begin)')
@@ -264,7 +265,7 @@ class ActionContextRunAPI:
             proc = run_context_sub_process(sub_context, '{command}', shell=True)
             sub_context.heading(1, '{output_label}output (end)')
 
-            return _script_finish(sub_context, proc, messages, unchecked)
+            return _script_finish(sub_context, proc, unchecked, action_messages)
 
 
 def _get_script_preamble():
@@ -283,18 +284,16 @@ def _get_script_body(script_text_or_object: Union[str, Sequence[str], Script],
     return text.replace("'", "\\'") if quoted else text
 
 
-def _script_start(context: Context, messages: Optional[dict]):
-    action_messages = Messages.from_dict(messages)
+def _script_start(context: Context, action_messages: AttrDictReadOnly):
     if action_messages.before:
         context.message(action_messages.before)
 
 
 def _script_finish(context: Context,
                    proc: subprocess.CompletedProcess,
-                   messages: Optional[dict],
                    unchecked: bool,
+                   action_messages: AttrDictReadOnly,
                    ) -> subprocess.CompletedProcess:
-    action_messages = Messages.from_dict(messages)
     if proc.returncode == 0:
         if action_messages.success:
             context.message(action_messages.success)
@@ -303,4 +302,6 @@ def _script_finish(context: Context,
             context.message(action_messages.failure)
         if not unchecked:
             context.abort('Script execution failed.')
+    if action_messages.after:
+        context.message(action_messages.after)
     return proc

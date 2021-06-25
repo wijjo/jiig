@@ -28,11 +28,14 @@ class ShellScript(Script):
                 'before': f'Creating folder ({as_root}as needed): {folder}',
                 'skip': f'Folder "{folder}" already exists.',
             }
-        self.action(
-            self._wrap_command(f'mkdir -p {folder}', need_root=need_root),
+        with self.block(
             predicate=f'[[ ! -d {folder} ]]',
             messages=messages,
-        )
+        ):
+            self.action(
+                self._wrap_command(f'mkdir -p {folder}', need_root=need_root),
+                messages=messages,
+            )
 
     def create_parent_folder(self, path: str, need_root: bool = False, messages: dict = None):
         """
@@ -49,11 +52,14 @@ class ShellScript(Script):
                 'skip': f'Parent folder for "{path}" already exists.',
             }
         quoted_path = shell_quote_path(path)
-        self.action(
-            self._wrap_command(f'mkdir -p $(dirname {quoted_path})', need_root=need_root),
+        with self.block(
             predicate=f'[[ ! -d $(dirname {quoted_path}) ]]',
             messages=messages,
-        )
+        ):
+            self.action(
+                self._wrap_command(f'mkdir -p $(dirname {quoted_path})', need_root=need_root),
+                messages=messages,
+            )
 
     def delete_folder(self, folder: str, need_root: bool = False, messages: dict = None):
         """
@@ -71,11 +77,14 @@ class ShellScript(Script):
                 'skip': f'Folder "{folder}" does not exist.',
             }
         quoted_folder = shell_quote_path(folder)
-        self.action(
-            self._wrap_command(f'rm -rf {quoted_folder}{redirect}', need_root=need_root),
+        with self.block(
             predicate=f'[[ -d {quoted_folder} ]]',
             messages=messages,
-        )
+        ):
+            self.action(
+                self._wrap_command(f'rm -rf {quoted_folder}{redirect}', need_root=need_root),
+                messages=messages,
+            )
 
     def delete_file(self, file: str, need_root: bool = False, messages: dict = None):
         """
@@ -93,11 +102,14 @@ class ShellScript(Script):
                 'skip': f'File {quoted_file} does not exist.',
             }
         verbose_option = 'v' if Options.debug or Options.verbose else ''
-        self.action(
-            self._wrap_command(f'rm -f{verbose_option} {quoted_file}', need_root=need_root),
+        with self.block(
             predicate=f'[[ -e {quoted_file} ]]',
             messages=messages,
-        )
+        ):
+            self.action(
+                self._wrap_command(f'rm -f{verbose_option} {quoted_file}', need_root=need_root),
+                messages=messages,
+            )
 
     def symlink(self, source: str, target: str, need_root: bool = False, messages: dict = None):
         """
@@ -114,11 +126,14 @@ class ShellScript(Script):
                 'before': f'Creating symbolic link ({as_root}as needed): {source} -> {target}',
                 'skip': f'Symbolic link target "{target}" already exists.',
             }
-        self.action(
-            self._wrap_command(f'ln -s {source} {target}', need_root=need_root),
+        with self.block(
             predicate=f'[[ ! -e {target} ]]',
             messages=messages,
-        )
+        ):
+            self.action(
+                self._wrap_command(f'ln -s {source} {target}', need_root=need_root),
+                messages=messages,
+            )
 
     def synchronize_files(self,
                           source_path_or_paths: Union[str, Sequence[str]],

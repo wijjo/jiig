@@ -4,10 +4,9 @@ import shutil
 from typing import Iterator, IO
 
 from jiig.util import stream
-from jiig.util.general import trim_text_blocks, plural
+from jiig.util.general import trim_text_blocks, plural, AttrDictReadOnly
 
 from .context import Context
-from .messages import Messages
 from ._util import run_context_command, ContextOutputFile, open_context_output_file
 
 
@@ -110,10 +109,10 @@ class ActionContextFileAPI:
         :param backup: backup the file if True
         :param permissions: optional permissions to apply
         :param exists_pattern: optional regular expression check if missing
-        :param messages: messages to inject into output
+        :param messages: optional status messages
         :param keep_indent: preserve indentation if True
         """
-        action_messages = Messages.from_dict(messages)
+        action_messages = AttrDictReadOnly(messages or {})
         expanded_path = self.context.format(path)
         if action_messages.before:
             self.context.heading(1, action_messages.before)

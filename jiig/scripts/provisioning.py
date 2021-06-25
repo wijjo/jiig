@@ -28,16 +28,16 @@ class ProvisioningScript(ShellScript):
                 'before': f'Creating user (as needed): {user}',
                 'skip': f'User "{user}" already exists.',
             }
-        self.action(
-            [
-                self._wrap_command(f'adduser {user}', need_root=True)
-            ] + [
-                self._wrap_command(f'usermod -aG %s {user}' % group, need_root=True)
-                for group in groups
-            ],
-            predicate=f'! grep -q ^{user}: /etc/passwd',
-            messages=messages,
-        )
+        with self.block(predicate=f'! grep -q ^{user}: /etc/passwd', messages=messages):
+            self.action(
+                [
+                    self._wrap_command(f'adduser {user}', need_root=True)
+                ] + [
+                    self._wrap_command(f'usermod -aG %s {user}' % group, need_root=True)
+                    for group in groups
+                ],
+                messages=messages,
+            )
 
     def setup_ssh_key(self, key_path: str = None, label: str = None, messages: dict = None):
         """
@@ -60,11 +60,14 @@ class ProvisioningScript(ShellScript):
                 'before': f'Generating keys (as needed): {key_path}',
                 'skip': f'Key file {key_path} exists.',
             }
-        self.action(
-            f'ssh-keygen{option_string}',
+        with self.block(
             predicate=f'[[ ! -f {key_path} ]]',
             messages=messages,
-        )
+        ):
+            self.action(
+                f'ssh-keygen{option_string}',
+                messages=messages,
+            )
 
     def install_ssh_key(self, host: str, user: str, key_path: str, messages: dict = None):
         """
@@ -91,18 +94,20 @@ class ProvisioningScript(ShellScript):
         :param key_path: base SSH key file path
         """
         key_path = key_path or '~/.ssh/id_rsa'
-        self.action(
-            f'''
-            cat {key_path}.pub
-            echo "Add the above key to GitHub (https://github.com/settings/keys)."
-            read -p "Press Enter to continue:"
-            ''',
+        with self.block(
             predicate='! {{ ssh -T git@github.com || [ $? -eq 1 ]; }}',
             messages={
                 'before': 'Checking that Git connection works...',
                 'skip': 'Git connection was successful.',
             },
-        )
+        ):
+            self.action(
+                f'''
+                cat {key_path}.pub
+                echo "Add the above key to GitHub (https://github.com/settings/keys)."
+                read -p "Press Enter to continue:"
+                ''',
+            )
 
     def git_clone(self, repo_url: str, repo_folder: str, flat: bool = False):
         """
@@ -115,14 +120,14 @@ class ProvisioningScript(ShellScript):
         option_string = ' --recurse-submodules' if not flat else ''
         self.create_parent_folder(repo_folder)
         quoted_repo_folder = shell_quote_path(repo_folder)
-        self.action(
-            f'git clone{option_string} {repo_url} {quoted_repo_folder}',
+        with self.block(
             predicate=f'[[ ! -d {quoted_repo_folder} ]]',
             messages={
                 'before': f'Cloning Git repository folder (as needed): {repo_folder}',
                 'skip': f'Local repository folder {repo_folder} exists.',
             },
-        )
+        ):
+            self.action(f'git clone{option_string} {repo_url} {quoted_repo_folder}')
 
     def setup_git(self,
                   host_ssh_key: str = None,
@@ -176,11 +181,14 @@ class ProvisioningScript(ShellScript):
                           f' (if {executable} is missing): {packages_string}',
                 'skip': f'Package {primary_package} is already installed.',
             }
-        self.action(
-            self._wrap_command(f'apt install -y {packages_string}', need_root=True),
+        with self.block(
             predicate=f'! command -v {executable} > /dev/null',
             messages=messages,
-        )
+        ):
+            self.action(
+                self._wrap_command(f'apt install -y {packages_string}', need_root=True),
+                messages=messages,
+            )
 
     def change_shell(self, user: str, shell: str, messages: dict = None):
         """
@@ -195,11 +203,14 @@ class ProvisioningScript(ShellScript):
                 'before': f'Changing shell for user "{user}" (as needed): {shell}',
                 'skip': f'Shell is already {shell}.'
             }
-        self.action(
-            self._wrap_command(f'chsh -s {shell} {user}', need_root=True),
+        with self.block(
             predicate=f'[[ $SHELL != {shell} ]]',
             messages=messages,
-        )
+        ):
+            self.action(
+                self._wrap_command(f'chsh -s {shell} {user}', need_root=True),
+                messages=messages,
+            )
 
     def setup_bash(self, user: str, rc_source: str, default_shell: bool = False):
         """
@@ -210,14 +221,14 @@ class ProvisioningScript(ShellScript):
         :param default_shell: make Bash the user shell if True
         """
         bashrc_command = f'test -f {rc_source} && source {rc_source}'
-        self.action(
-            f"echo -e '\\n{bashrc_command}' >> ~/.bashrc",
+        with self.block(
             predicate=f'! grep -q {rc_source} ~/.bashrc',
             messages={
                 'before': 'Hooking up ~/.bashrc as needed...',
                 'skip': '~/.bashrc is already hooked up.',
             },
-        )
+        ):
+            self.action(f"echo -e '\\n{bashrc_command}' >> ~/.bashrc")
         if default_shell:
             self.change_shell(user, '/bin/bash')
 
@@ -263,24 +274,26 @@ class ProvisioningScript(ShellScript):
         if default_shell:
             self.change_shell(user, '/usr/bin/zsh')
         if oh_my_zsh:
-            self.action(
-                '''
-                pushd /tmp > /dev/null
-                wget https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
-                popd > /dev/null
-                echo "Running oh-my-zsh installer..."
-                sh /tmp/install.sh --unattended > /tmp/oh-my-zsh-install.log
-                if [[ -f ~/.zshrc.pre-oh-my-zsh ]]; then
-                    rm -f ~/.zshrc
-                    mv ~/.zshrc.pre-oh-my-zsh ~/.zshrc
-                fi
-                ''',
+            with self.block(
                 predicate='[[ ! -e ~/.oh-my-zsh ]]',
                 messages={
                     'before': 'Installing oh-my-zsh as needed...',
                     'skip': 'oh-my-zsh is already installed.',
                 },
-            )
+            ):
+                self.action(
+                    '''
+                    pushd /tmp > /dev/null
+                    wget https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
+                    popd > /dev/null
+                    echo "Running oh-my-zsh installer..."
+                    sh /tmp/install.sh --unattended > /tmp/oh-my-zsh-install.log
+                    if [[ -f ~/.zshrc.pre-oh-my-zsh ]]; then
+                        rm -f ~/.zshrc
+                        mv ~/.zshrc.pre-oh-my-zsh ~/.zshrc
+                    fi
+                    ''',
+                )
 
     def setup_neovim(self, rc_source: str, install_plugins: bool = False):
         """
@@ -297,17 +310,19 @@ class ProvisioningScript(ShellScript):
         self.create_folder('~/.local/share/nvim')
         self.symlink(rc_source, rc_target)
         if install_plugins:
-            self.action(
-                f'''
-                git clone {vundle_url} {vundle_path}
-                nvim +PluginInstall +qall
-                ''',
+            with self.block(
                 predicate=f'[[ ! -d {vundle_path} ]]',
                 messages={
                     'before': 'Installing NeoVim plugins as needed...',
                     'skip': 'NeoVim plugin folder already exists.',
                 },
-            )
+            ):
+                self.action(
+                    f'''
+                    git clone {vundle_url} {vundle_path}
+                    nvim +PluginInstall +qall
+                    ''',
+                )
 
     def setup_readline(self,
                        bell_style: str = None,
@@ -338,11 +353,11 @@ class ProvisioningScript(ShellScript):
                 f'set horizontal-scroll-mode {horizontal_scroll_mode}',
             ],
         )
-        self.action(
-            f'echo "{body}" > ~/.inputrc',
+        with self.block(
             predicate='[[ ! -e ~/.inputrc ]]',
             messages={
                 'before': 'Generating ~/.inputrc...',
                 'skip': '~/.inputrc already exists.'
             },
-        )
+        ):
+            self.action(f'echo "{body}" > ~/.inputrc')

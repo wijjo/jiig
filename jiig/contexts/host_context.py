@@ -138,14 +138,15 @@ class HostContext(ActionContext):
                            client_known_hosts='~/.ssh/known_hosts',
                            ) as sub_context:
             script = ProvisioningScript()
-            script.action(
-                '''
-                cp -f {client_known_hosts} {client_known_hosts}.backup
-                egrep -v "^({host}|{host_ip})" {client_known_hosts}.backup > {client_known_hosts}
-                ''',
-                predicate='egrep -q "^({host}|{host_ip})" {client_known_hosts}',
-                messages=messages,
-            )
+            with script.block(predicate='egrep -q "^({host}|{host_ip})" {client_known_hosts}',
+                              messages=messages):
+                script.action(
+                    '''
+                    cp -f {client_known_hosts} {client_known_hosts}.backup
+                    egrep -v "^({host}|{host_ip})" {client_known_hosts}.backup > {client_known_hosts}
+                    ''',
+                    messages=messages,
+                )
             sub_context.run.script(script)
 
     def create_user(self,
@@ -235,18 +236,20 @@ class HostContext(ActionContext):
                 ''').replace(os.linesep, '\\n'),
         ) as sub_context:
             script = ProvisioningScript(unchecked=True)
-            script.action(
-                '''
-                test -f {client_ssh_config} && echo "" >> {client_ssh_config}
-                echo -e "{client_ssh_config_stanza}" >> {client_ssh_config}
-                chmod 600 {client_ssh_config}
-                ''',
+            with script.block(
                 predicate=r'! egrep -q "^Host\s+{host}" {client_ssh_config}',
                 messages={
                     'before': 'Adding SSH configuration stanza (as needed)...',
                     'skip': 'SSH configuration "{client_ssh_config}" already has "{host}" stanza.'
                 },
-            )
+            ):
+                script.action(
+                    '''
+                    test -f {client_ssh_config} && echo "" >> {client_ssh_config}
+                    echo -e "{client_ssh_config_stanza}" >> {client_ssh_config}
+                    chmod 600 {client_ssh_config}
+                    ''',
+                )
             sub_context.run.script(script)
 
     def setup_host_ssh_key(self,
