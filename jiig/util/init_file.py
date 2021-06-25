@@ -5,7 +5,7 @@ Loading and merging parameters from one or more Python init files.
 import os
 from typing import Text, Any, Dict, Optional, Union, List, Tuple
 
-from .console import abort
+from .log import abort
 from .filesystem import temporary_working_folder
 
 

@@ -8,7 +8,7 @@ from pprint import pformat
 from typing import List, Union, Optional, Any
 
 from jiig.options import Options
-from jiig.util.console import log_heading, log_warning, log_error, log_message, abort
+from jiig.util.log import log_heading, log_warning, log_error, log_message, abort
 from jiig.util.general import trim_text_blocks, AttrDictNoDefaults
 
 

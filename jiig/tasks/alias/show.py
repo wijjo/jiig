@@ -3,7 +3,7 @@ Show alias(es) task.
 """
 
 import jiig
-from jiig.util.console import log_error, log_message
+from jiig.util.log import log_error, log_message
 
 
 class Task(jiig.Task):

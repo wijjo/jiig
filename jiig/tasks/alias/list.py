@@ -6,7 +6,7 @@ from typing import Text, Iterable, Iterator
 
 import jiig
 from jiig.util.alias_catalog import Alias
-from jiig.util.console import log_message
+from jiig.util.log import log_message
 from jiig.util.general import format_table
 
 

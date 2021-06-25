@@ -36,14 +36,14 @@ def _check_virtual_environment(runner_args: List[Text],
                                tool: RuntimeTool):
     # Check if virtual environment needs to be activated.
     if not tool.venv_needed:
-        jiig.util.console.log_message('Virtual environment is unnecessary.', debug=True)
+        jiig.util.log.log_message('Virtual environment is unnecessary.', debug=True)
         return
     if tool.venv_active:
-        jiig.util.console.log_message('Virtual environment is active.', debug=True)
+        jiig.util.log.log_message('Virtual environment is active.', debug=True)
         return
 
     # Restart in venv.
-    jiig.util.console.log_message('Activating virtual environment...', debug=True)
+    jiig.util.log.log_message('Activating virtual environment...', debug=True)
     jiig.util.python.build_virtual_environment(tool.venv_folder,
                                                packages=tool.pip_packages,
                                                rebuild=False,
@@ -114,8 +114,8 @@ def _execute(runtime: jiig.contexts.Runtime, task_stack: List[RuntimeTask], data
         data_preparer.prepare_argument_data(task)
     if len(data_preparer.errors) > 0:
         plural_failure = jiig.util.general.plural("failure", data_preparer.errors)
-        jiig.util.console.abort(f'{len(data_preparer.errors)} argument {plural_failure}:',
-                                *data_preparer.errors)
+        jiig.util.log.abort(f'{len(data_preparer.errors)} argument {plural_failure}:',
+                            *data_preparer.errors)
     try:
         # Invoke task stack @run call-backs in top to bottom order.
         handlers: List[RuntimeTask] = []
@@ -135,17 +135,17 @@ def _execute(runtime: jiig.contexts.Runtime, task_stack: List[RuntimeTask], data
                     try:
                         run_method(runtime)
                     except Exception as exc:
-                        jiig.util.console.abort(f'Exception invoking::'
-                                                f' {handler_instance.__class__.__module__}'
-                                                f'.{handler_instance.__class__.__name__}.on_run()',
-                                                exc,
-                                                exception_traceback_skip=1)
+                        jiig.util.log.abort(f'Exception invoking::'
+                                            f' {handler_instance.__class__.__module__}'
+                                            f'.{handler_instance.__class__.__name__}.on_run()',
+                                            exc,
+                                            exception_traceback_skip=1)
             except Exception as exc:
-                jiig.util.console.abort(f'Exception constructing:'
-                                        f' {task.handler_class.__module__}'
-                                        f'.{task.handler_class.__name__}',
-                                        exc,
-                                        exception_traceback_skip=1)
+                jiig.util.log.abort(f'Exception constructing:'
+                                    f' {task.handler_class.__module__}'
+                                    f'.{task.handler_class.__name__}',
+                                    exc,
+                                    exception_traceback_skip=1)
         # Invoke task stack @done call-backs in reverse order.
         while handlers:
             handler_instance = handlers.pop()
@@ -155,13 +155,13 @@ def _execute(runtime: jiig.contexts.Runtime, task_stack: List[RuntimeTask], data
     except KeyboardInterrupt:
         sys.stdout.write(os.linesep)
     except ArgumentNameError as exc:
-        jiig.util.console.abort(str(exc))
+        jiig.util.log.abort(str(exc))
     except Exception as exc:
         active_names = [sub_task.name for sub_task in task_stack]
-        jiig.util.console.abort(f'Task command failed:',
-                                ' '.join(active_names),
-                                exc,
-                                exception_traceback_skip=1)
+        jiig.util.log.abort(f'Task command failed:',
+                            ' '.join(active_names),
+                            exc,
+                            exception_traceback_skip=1)
 
 
 def _populate_driver_task(driver_task: jiig.driver.DriverTask, task: RuntimeTask):
@@ -253,10 +253,13 @@ def main(registered_tool: Tool,
                                                   registered_tool.description,
                                                   options=driver_options)
 
+    # Establish driver-supplied log writer to implement log output.
+    jiig.util.log.set_log_writer(driver.get_log_writer())
+
     # Initialize the driver. Only display message once.
     driver_initialization_data = driver.initialize_driver(raw_arguments)
     if not tool.venv_active:
-        jiig.util.console.log_message('Jiig driver initialized.', debug=True)
+        jiig.util.log.log_message('Jiig driver initialized.', debug=True)
 
     # Push initialized options from the driver into libraries.
     jiig.options.Options.debug = 'debug' in driver.enabled_global_options
@@ -289,7 +292,7 @@ def main(registered_tool: Tool,
 
     # Resolve the root task.
     if not tool.root_task.sub_tasks:
-        jiig.util.console.abort('There are no registered tasks.')
+        jiig.util.log.abort('There are no registered tasks.')
 
     # Add automatic built-in secondary or hidden sub-tasks, if not disabled.
     _add_builtin_tasks(tool)
@@ -307,7 +310,7 @@ def main(registered_tool: Tool,
 
     driver_app_data = driver.initialize_application(driver_initialization_data,
                                                     driver_root_task)
-    jiig.util.console.log_message('Application initialized.', debug=True)
+    jiig.util.log.log_message('Application initialized.', debug=True)
 
     # Check hint usage.
     add_supported_hints('repeat', 'choices', 'default')
@@ -316,7 +319,7 @@ def main(registered_tool: Tool,
     bad_hints = get_bad_hints()
     if bad_hints:
         plural_hint = jiig.util.general.plural("hint", bad_hints)
-        jiig.util.console.log_error(f'Bad field {plural_hint}:', *bad_hints)
+        jiig.util.log.log_error(f'Bad field {plural_hint}:', *bad_hints)
 
     # Convert driver task stack to RegisteredTask stack.
     task_stack: List[RuntimeTask] = [tool.root_task]
@@ -333,7 +336,7 @@ def main(registered_tool: Tool,
                             help_generator=HelpGenerator(),
                             data=driver_app_data.data)
 
-    jiig.util.console.log_message('Executing application...', debug=True)
+    jiig.util.log.log_message('Executing application...', debug=True)
     _execute(runtime, task_stack, driver_app_data.data)
 
 

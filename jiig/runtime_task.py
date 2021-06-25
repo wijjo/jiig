@@ -8,7 +8,7 @@ from typing import Text, Optional, Dict, Type, List, Any, Collection
 
 from jiig.field import ArgumentAdapter
 from jiig.registry import TASK_REGISTRY, TaskRegistration
-from jiig.util.console import log_error
+from jiig.util.log import log_error
 from jiig.util.footnotes import NotesList, NotesDict
 from jiig.util.general import DefaultValue
 from jiig.util.repetition import Repetition

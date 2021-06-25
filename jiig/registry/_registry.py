@@ -5,7 +5,7 @@ from importlib import import_module
 from inspect import ismodule, isclass
 from typing import Dict, Type, TypeVar, Union, Text, Optional, Generic
 
-from jiig.util.console import abort, log_error
+from jiig.util.log import abort, log_error
 
 T_registration = TypeVar('T_registration')
 T_registered = TypeVar('T_registered')

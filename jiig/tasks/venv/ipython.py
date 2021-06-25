@@ -5,7 +5,7 @@ Virtual environment IPython execution task.
 import os
 
 import jiig
-from jiig.util.console import abort, log_message
+from jiig.util.log import abort, log_message
 from jiig.util.process import run
 
 

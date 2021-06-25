@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import Optional, Tuple, Union
 
-from .console import log_error
+from .log import log_error
 
 # Raw repetition specification type.
 RepeatSpec = Union[int, Tuple[Optional[int], Optional[int]]]

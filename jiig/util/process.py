@@ -8,7 +8,7 @@ import subprocess
 from typing import Text, List, Dict, Optional
 
 from .options import Options
-from .console import abort, log_message
+from .log import abort, log_message
 
 # Operators to leave unchanged when quoting shell arguments.
 SHELL_OPERATORS = ['<', '>', '|', '&&', '||', ';']

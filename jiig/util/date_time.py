@@ -5,7 +5,7 @@ import time
 from dataclasses import dataclass
 from typing import Optional, Text, Dict
 
-from .console import log_error, log_warning
+from .log import log_error, log_warning
 
 DATE_DELTA_LETTERS = 'ymwd'
 TIME_DELTA_LETTERS = 'HMS'

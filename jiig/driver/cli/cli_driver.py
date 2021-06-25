@@ -6,7 +6,7 @@ from inspect import isclass
 from typing import Text, Sequence, List, Optional, Type
 
 from jiig.util.alias_catalog import is_alias_name, open_alias_catalog
-from jiig.util.console import abort
+from jiig.util.log import abort, ConsoleLogWriter
 from jiig.util.general import make_list, plural
 from jiig.util.process import shell_command_string
 from jiig.util.python import import_module_path
@@ -180,6 +180,14 @@ class CLIDriver(Driver):
         text = provider.format_help(*names, show_hidden=show_hidden)
         if text:
             print(text)
+
+    def get_log_writer(self) -> ConsoleLogWriter:
+        """
+        Required override to provide a log writer.
+
+        :return: log writer
+        """
+        return ConsoleLogWriter()
 
 
 def _add_task_fields(command: CLICommand,

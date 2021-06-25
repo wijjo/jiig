@@ -8,7 +8,7 @@ Jiig utility library.
 # must be excluded due to its dependency on PySimpleGUI.
 from . import \
     alias_catalog, \
-    console, \
+    log, \
     date_time, \
     filesystem, \
     footnotes, \

@@ -3,7 +3,7 @@ Virtual environment build sub-task.
 """
 
 import jiig
-from jiig.util.console import log_heading
+from jiig.util.log import log_heading
 from jiig.util.python import build_virtual_environment
 
 

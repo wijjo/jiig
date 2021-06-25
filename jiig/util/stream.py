@@ -15,7 +15,7 @@ from types import TracebackType
 from typing import Text, IO, Iterator, Any, Dict, Optional, Callable, AnyStr, Iterable, Type
 from urllib.request import urlopen, Request
 
-from .console import abort, log_error
+from .log import abort, log_error
 from .filesystem import get_folder_stack, create_folder
 from .options import Options
 

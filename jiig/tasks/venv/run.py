@@ -5,7 +5,7 @@ Virtual environment general command execution task.
 import os
 
 import jiig
-from jiig.util.console import abort
+from jiig.util.log import abort
 
 
 class Task(jiig.Task):

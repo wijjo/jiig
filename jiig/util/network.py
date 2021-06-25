@@ -6,7 +6,7 @@ from typing import Text, Optional
 from urllib.error import URLError
 from urllib.request import urlopen
 
-from .console import abort
+from .log import abort
 from .options import Options
 from .process import run
 

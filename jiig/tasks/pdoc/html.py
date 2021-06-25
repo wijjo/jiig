@@ -5,7 +5,7 @@ Pdoc3 HTML documentation generation task.
 import os
 
 import jiig
-from jiig.util.console import abort, log_message
+from jiig.util.log import abort, log_message
 from jiig.util.filesystem import create_folder, short_path
 
 from ._util import PdocBuilder

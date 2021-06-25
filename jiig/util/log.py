@@ -13,19 +13,57 @@ MESSAGES_ISSUED_ONCE: Set[Text] = set()
 LINES_WRITTEN = 0
 
 
-def _write_line(text: str, is_error: bool = False, extra_space: bool = False):
-    stream = sys.stderr if is_error else sys.stdout
-    global LINES_WRITTEN
-    if extra_space:
-        if LINES_WRITTEN > 0:
-            stream.write(os.linesep)
-    else:
-        LINES_WRITTEN += 1
-    stream.write(text)
-    stream.write(os.linesep)
-    if extra_space:
+class LogWriter:
+    """Abstract base class for log writers."""
+
+    def write_line(self, text: str, is_error: bool = False, extra_space: bool = False):
+        """
+        Write a log line.
+
+        :param text: line text
+        :param is_error: True if the line represents an error
+        :param extra_space: True to add extra space before and after the line
+        """
+        raise NotImplementedError
+
+
+class ConsoleLogWriter(LogWriter):
+    """Log writer for stdout/stderr."""
+
+    def write_line(self, text: str, is_error: bool = False, extra_space: bool = False):
+        """
+        Write a log line.
+
+        :param text: line text
+        :param is_error: True if the line represents an error
+        :param extra_space: True to add extra space before and after the line
+        """
+        stream = sys.stderr if is_error else sys.stdout
+        global LINES_WRITTEN
+        if extra_space:
+            if LINES_WRITTEN > 0:
+                stream.write(os.linesep)
+        else:
+            LINES_WRITTEN += 1
+        stream.write(text)
         stream.write(os.linesep)
-        LINES_WRITTEN = 0
+        if extra_space:
+            stream.write(os.linesep)
+            LINES_WRITTEN = 0
+
+
+# Default to console log writer.
+_LOG_WRITER = ConsoleLogWriter()
+
+
+def set_log_writer(log_writer: LogWriter):
+    """
+    Establish a new log writer.
+
+    :param log_writer: new log writer
+    """
+    global _LOG_WRITER
+    _LOG_WRITER = log_writer
 
 
 def log_message(text: Any, *args, **kwargs):
@@ -56,7 +94,7 @@ def log_message(text: Any, *args, **kwargs):
             return
         MESSAGES_ISSUED_ONCE.add(issue_once_tag)
     for line in format_message_lines(text, *args, **kwargs):
-        _write_line(line, is_error=is_error)
+        _LOG_WRITER.write_line(line, is_error=is_error)
     has_exception = False
     for value in list(args) + list(kwargs.values()):
         if isinstance(value, Exception):
@@ -125,7 +163,7 @@ def log_heading(level: int, heading: Text):
         line = ' '.join([decoration, heading, decoration])
     else:
         line = decoration
-    _write_line(line, extra_space=True)
+    _LOG_WRITER.write_line(line, extra_space=True)
 
 
 def log_block_begin(level: int, heading: Text):

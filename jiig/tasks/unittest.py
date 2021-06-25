@@ -7,7 +7,7 @@ import unittest
 from glob import glob
 
 import jiig
-from jiig.util.console import abort, log_error
+from jiig.util.log import abort, log_error
 from jiig.util.filesystem import check_folder_exists
 from jiig.util.python import import_module_path
 

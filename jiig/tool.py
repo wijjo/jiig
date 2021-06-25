@@ -7,7 +7,7 @@ from typing import Text, List, Dict, Any, cast
 from .driver import CLIDriver
 from .registry import CONTEXT_REGISTRY, DRIVER_REGISTRY, TASK_REGISTRY
 from .util.alias_catalog import DEFAULT_ALIASES_PATH
-from .util.console import abort, log_warning
+from .util.log import abort, log_warning
 from .util.filesystem import search_folder_stack_for_file
 from .util.python import symbols_to_dataclass, load_configuration_script
 

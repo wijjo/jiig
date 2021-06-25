@@ -12,7 +12,7 @@ from types import ModuleType
 from typing import Text, List, Tuple, Optional, IO, Dict, Type, Any, TypeVar
 
 from .options import Options
-from .console import abort, log_error, log_message, log_warning
+from .log import abort, log_error, log_message, log_warning
 from .filesystem import delete_folder, short_path
 from .general import format_message_block, plural
 from .process import run

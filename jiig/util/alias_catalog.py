@@ -13,7 +13,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Text, List, Optional, Iterator, Any, Iterable, Dict
 
-from .console import abort, log_error, log_message, log_warning
+from .log import abort, log_error, log_message, log_warning
 from .process import shell_command_string
 from .stream import read_json_source
 

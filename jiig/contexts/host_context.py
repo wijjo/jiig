@@ -7,7 +7,7 @@ import subprocess
 from typing import Optional, Union, Sequence
 
 from jiig.scripts import Script, ProvisioningScript
-from jiig.util.console import abort
+from jiig.util.log import abort
 from jiig.util.general import trim_text_block, get_client_name
 from jiig.util.network import resolve_ip_address
 

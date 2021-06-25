@@ -4,7 +4,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Text, Sequence, List, Optional
 
-from jiig.util.console import abort
+from jiig.util.log import abort
 from jiig.util.footnotes import NotesDict, NotesList
 from jiig.util.general import DefaultValue
 from jiig.util.repetition import Repetition

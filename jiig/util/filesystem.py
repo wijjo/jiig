@@ -10,7 +10,7 @@ from typing import Text, List, Optional, Iterator, Any
 from thirdparty.gitignore_parser import gitignore_parser
 
 from .options import Options
-from .console import abort, log_message
+from .log import abort, log_message
 from .general import make_list
 from .process import run
 

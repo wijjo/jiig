@@ -3,6 +3,7 @@
 from typing import Text, Sequence, List
 
 from jiig.registry import RegisteredDriver
+from jiig.util.log import LogWriter
 
 from .driver_task import DriverTask
 from .driver_types import DriverApplicationData, DriverInitializationData
@@ -106,5 +107,13 @@ class Driver(RegisteredDriver):
         :param root_task: root task
         :param names: name parts (task name stack)
         :param show_hidden: show hidden task help if True
+        """
+        raise NotImplementedError
+
+    def get_log_writer(self) -> LogWriter:
+        """
+        Required override to provide a log writer.
+
+        :return: log writer
         """
         raise NotImplementedError

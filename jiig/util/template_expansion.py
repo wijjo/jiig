@@ -51,7 +51,7 @@ from string import Template
 from typing import Text, Dict, Tuple, List, Optional, Sequence, cast
 
 from .options import Options
-from .console import abort, log_topic, TopicLogger, log_block_begin, log_block_end, \
+from .log import abort, log_topic, TopicLogger, log_block_begin, log_block_end, \
     log_error, log_warning, log_message
 from .filesystem import check_file_exists, short_path, create_folder, copy_file, make_relative_path
 from .general import format_message_block, format_exception
