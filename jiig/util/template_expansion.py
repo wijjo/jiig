@@ -50,7 +50,7 @@ from fnmatch import fnmatch
 from string import Template
 from typing import Text, Dict, Tuple, List, Optional, Sequence, cast
 
-from .options import Options
+from . import OPTIONS
 from .log import abort, log_topic, TopicLogger, log_block_begin, log_block_end, \
     log_error, log_warning, log_message
 from .filesystem import check_file_exists, short_path, create_folder, copy_file, make_relative_path
@@ -181,7 +181,7 @@ def _set_permissions(target_path: Text, executable: bool = False):
     if executable:
         chmod_command = f'chmod +x {target_path}'
         log_message('Set executable permission.', target=short_path(target_path))
-        if not Options.dry_run:
+        if not OPTIONS.dry_run:
             try:
                 os.system(chmod_command)
             except (IOError, OSError) as exc_write_error:
@@ -203,7 +203,7 @@ def _simple_copy(source_path: Text,
 def _expand_python_template(source_path: Text, target_path: Text, symbols: Dict):
     with open_text_source(file=source_path) as input_stream:
         create_folder(os.path.dirname(target_path))
-        if not Options.dry_run:
+        if not OPTIONS.dry_run:
             with open(target_path, 'w', encoding='utf-8') as output_stream:
                 output_text = _expand_python_template_text(input_stream.read(), symbols)
                 output_stream.write(output_text)
@@ -214,7 +214,7 @@ def _expand_regular_expressions(source_path: Text,
                                 substitutions: List[Tuple[re.Pattern, Text]]):
     with open_text_source(file=source_path) as input_stream:
         create_folder(os.path.dirname(target_path))
-        if not Options.dry_run:
+        if not OPTIONS.dry_run:
             with open(target_path, 'w', encoding='utf-8') as output_stream:
                 output_text = input_stream.read()
                 for pattern, replacement in substitutions:
@@ -346,7 +346,7 @@ class _TemplateExpander:
                 log_message(f'Skip existing file "{expansion_spec.output_path}".')
                 return
 
-        if not Options.dry_run:
+        if not OPTIONS.dry_run:
             check_file_exists(source_path)
 
         create_folder(os.path.dirname(target_path))

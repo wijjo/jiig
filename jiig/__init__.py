@@ -4,6 +4,8 @@ Jiig library.
 TODO: <more library documentation goes here>
 """
 
+from ._options import OPTIONS
+
 # Key types and functions exposed at the top level.
 from .driver import Driver, DriverTask
 from .field import Field
@@ -15,7 +17,7 @@ from .task import Task
 from .tool import Tool
 
 # Top level public modules and their shortened aliases.
-from . import adapters, fields, options
+from . import adapters, fields
 from . import adapters as a
 from . import fields as f
 

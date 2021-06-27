@@ -4,8 +4,8 @@ Scripter provisioning script.
 
 from typing import List, Sequence, Union
 
+from jiig import OPTIONS
 from jiig.util.general import make_list
-from jiig.util.options import Options
 from jiig.util.process import shell_quote_path
 
 from .script import Script
@@ -69,7 +69,7 @@ class ShellScript(Script):
         :param need_root: requires root to delete it successfully
         :param messages: output messages (defaults provided)
         """
-        redirect = ' 2> /dev/null' if not Options.debug else ''
+        redirect = ' 2> /dev/null' if not OPTIONS.debug else ''
         if messages is None:
             as_root = 'as root, ' if need_root else ''
             messages = {
@@ -101,7 +101,7 @@ class ShellScript(Script):
                 'before': f'Deleting file ({as_root}as needed): {file}',
                 'skip': f'File {quoted_file} does not exist.',
             }
-        verbose_option = 'v' if Options.debug or Options.verbose else ''
+        verbose_option = 'v' if OPTIONS.debug or OPTIONS.verbose else ''
         with self.block(
             predicate=f'[[ -e {quoted_file} ]]',
             messages=messages,
@@ -153,9 +153,9 @@ class ShellScript(Script):
         :param quiet: suppress non-error messages
         """
         options: List[str] = ['--archive']
-        if Options.dry_run:
+        if OPTIONS.dry_run:
             options.append('--dry-run')
-        if Options.debug or Options.verbose:
+        if OPTIONS.debug or OPTIONS.verbose:
             options.append('--verbose')
         elif quiet:
             options.append('--quiet')

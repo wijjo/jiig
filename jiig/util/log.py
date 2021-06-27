@@ -6,7 +6,7 @@ import traceback
 from contextlib import contextmanager
 from typing import Any, Text, Set, Iterator, List, Sequence, Dict, Tuple, Optional
 
-from .options import Options
+from . import OPTIONS
 from .general import format_message_lines, get_exception_stack
 
 MESSAGES_ISSUED_ONCE: Set[Text] = set()
@@ -78,22 +78,29 @@ def log_message(text: Any, *args, **kwargs):
        issue_once_tag            unique tag to prevent issuing the message more than once
        exception_traceback       dump traceback stack if an exception is being reported
        exception_traceback_skip  number of stack frames to skip
+       exec_file_name            file name to replace <string> in exception output for exec'd file
+       exclude_exec_frames       exclude exec() (non-source file) frames
     """
+    tag = kwargs.pop('tag', None)
     verbose = kwargs.pop('verbose', None)
     debug = kwargs.pop('debug', None)
     issue_once_tag = kwargs.pop('issue_once_tag', None)
     is_error = kwargs.pop('is_error', False)
     exception_traceback = kwargs.pop('exception_traceback', None)
     exception_traceback_skip = kwargs.pop('exception_traceback_skip', None)
-    if verbose and not Options.verbose:
+    exclude_exec_frames = kwargs.pop('exclude_exec_frames', None)
+    exec_file_name = kwargs.pop('exec_file_name', None)
+    if verbose and not OPTIONS.verbose:
         return
-    if debug and not Options.debug:
+    if debug and not OPTIONS.debug:
         return
     if issue_once_tag:
         if issue_once_tag in MESSAGES_ISSUED_ONCE:
             return
         MESSAGES_ISSUED_ONCE.add(issue_once_tag)
-    for line in format_message_lines(text, *args, **kwargs):
+    for line in format_message_lines(text, *args, **kwargs,
+                                     tag=tag,
+                                     exec_file_name=exec_file_name):
         _LOG_WRITER.write_line(line, is_error=is_error)
     has_exception = False
     for value in list(args) + list(kwargs.values()):
@@ -102,28 +109,32 @@ def log_message(text: Any, *args, **kwargs):
             break
     # Dump a traceback stack if DEBUG and an exception is being reported.
     if has_exception:
-        if Options.debug:
+        if OPTIONS.debug:
             exc_lines = traceback.format_exc().split(os.linesep)
             if exc_lines:
                 log_message('Exception stack:', *exc_lines, tag='DEBUG', is_error=True)
         elif exception_traceback:
-            exc_stack = get_exception_stack(skip=exception_traceback_skip)
+            exc_stack = get_exception_stack(skip=exception_traceback_skip,
+                                            exclude_exec_frames=exclude_exec_frames,
+                                            exec_file_name=exec_file_name)
             if exc_stack.items:
                 lines: List[Text] = []
                 if exc_stack.package_path:
-                    heading_note = f'limited to frame: {exc_stack.package_path}'
+                    note = f'(limited to frame: {exc_stack.package_path})'
                     for item in exc_stack.items:
-                        sub_path = item.location[len(exc_stack.package_path) + 1:]
+                        sub_path = item.location_string[len(exc_stack.package_path) + 1:]
                         lines.append(f'{sub_path}: {item.text}')
                 else:
-                    heading_note = None
+                    note = ''
                     for item in exc_stack.items:
-                        lines.append(f'{item.path}: {item.text}')
+                        lines.append(f'{item.location_string}: {item.text}')
                 if lines:
-                    if not Options.debug:
-                        lines.append('(enable the debug option for a complete exception stack)')
-                    note = f' ({heading_note})' if heading_note else ''
-                    log_message(f'Exception stack{note}:', *lines, tag='ERROR', is_error=True)
+                    log_message(f'Exception stack{note}:', *lines, tag=tag, is_error=True)
+        if not OPTIONS.debug:
+            if OPTIONS.is_initialized:
+                log_message('(enable debug option for more information)', tag=tag)
+            else:
+                log_message(f'(set JIIG_DEBUG=1 for more information)', tag=tag)
 
 
 def abort(text: Any, *args, **kwargs):
@@ -134,7 +145,7 @@ def abort(text: Any, *args, **kwargs):
     kwargs['exception_traceback'] = True
     log_message(text, *args, **kwargs)
     # If DEBUG is enabled dump a call stack and strip off the non-meaningful tail.
-    if Options.debug:
+    if OPTIONS.debug:
         traceback_lines = traceback.format_stack()[:-(skip + 1)]
         for traceback_block in traceback_lines:
             for traceback_line in traceback_block.split(os.linesep):

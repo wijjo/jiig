@@ -7,7 +7,7 @@ import shlex
 import subprocess
 from typing import Text, List, Dict, Optional
 
-from .options import Options
+from . import OPTIONS
 from .log import abort, log_message
 
 # Operators to leave unchanged when quoting shell arguments.
@@ -108,7 +108,7 @@ def run(cmd_args: List[Text],
         message_data['verbose'] = True
     log_message('Run command.', cmd_string, **message_data)
     # A dry run can stop here, before taking real action.
-    if Options.dry_run and not run_always:
+    if OPTIONS.dry_run and not run_always:
         return None
     # Generate the command run environment.
     run_env = dict(os.environ)

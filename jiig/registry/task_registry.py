@@ -14,6 +14,8 @@ from ._registry import Registration, Registry
 T_task = TypeVar('T_task')
 TaskReference = Union[Type['RegisteredTask'], Text, object]
 
+DEFAULT_TASK_DESCRIPTION = '(no description, e.g. in task doc string)'
+
 
 class TaskRegistration(Registration[T_task]):
     """Registered task."""
@@ -124,7 +126,7 @@ def register_task(cls: Type[T_task],
         if doc_string_lines:
             description = doc_string_lines[0]
         else:
-            description = '(no task description)'
+            description = DEFAULT_TASK_DESCRIPTION
     # Make sure there's a notes list, even if empty.
     if notes is None:
         notes: NotesList = []

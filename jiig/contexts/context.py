@@ -7,7 +7,7 @@ import sys
 from pprint import pformat
 from typing import List, Union, Optional, Any
 
-from jiig.options import Options
+from jiig import OPTIONS
 from jiig.util.log import log_heading, log_warning, log_error, log_message, abort
 from jiig.util.general import trim_text_blocks, AttrDictNoDefaults
 
@@ -122,7 +122,7 @@ class Context:
         try:
             return str(text).format(**self.s)
         except KeyError as key_error:
-            if Options.debug:
+            if OPTIONS.debug:
                 sys.stderr.write(
                     os.linesep.join([
                         '====== text for expansion ======',
@@ -204,7 +204,7 @@ class Context:
         :param kwargs: keyword arguments to display with names below message
         """
         lines = [self.format(message)]
-        if not Options.debug:
+        if not OPTIONS.debug:
             lines.append('(use debug option for more details)')
         abort(*lines, *args, **kwargs)
 

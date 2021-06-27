@@ -17,7 +17,7 @@ from urllib.request import urlopen, Request
 
 from .log import abort, log_error
 from .filesystem import get_folder_stack, create_folder
-from .options import Options
+from . import OPTIONS
 
 # Used in open_output_file() paths to indicate a temporary file, and also to
 # separate prefix from suffix.
@@ -478,7 +478,7 @@ def open_output_file(path: str,
         dir_path = os.path.dirname(path)
         if dir_path:
             kwargs['dir'] = dir_path
-        kwargs['delete'] = not (keep_temporary or Options.debug)
+        kwargs['delete'] = not (keep_temporary or OPTIONS.debug)
         temp_file = NamedTemporaryFile(**kwargs)
         # Temporary file.
         return OutputFile(temp_file, temp_file.name)

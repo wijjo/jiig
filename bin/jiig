@@ -1,27 +1,87 @@
-#!/usr/bin/env jiig-run
+#!/usr/bin/env python3
 """
 Main Jiig program.
+
+Has 2 modes of operation:
+1) Jiig script runner.
+2) Jiig management tool.
+
+Mode 1 happens when this is used for the shebang line of a tool script.
+
+Otherwise mode 2 is in effect.
 """
 
-TOOL_NAME = 'jiig'
+import os
+import sys
+from typing import List
 
-PROJECT_NAME = 'Jiig'
 
-DESCRIPTION = 'Jiig tool.'
+def jiig_main(jiig_root_folder: str, runner_args: List[str], cli_args: List[str]):
+    import jiig
+    jiig.main(
+        jiig.Tool(
+            tool_name='jiig',
+            tool_root_folder=jiig_root_folder,
+            root_task='jiig.tasks',
+            project_name='Jiig',
+            description='Jiig tool.',
+            version='0.5',
+            author='Steve Cooper',
+            copyright='2021, Steve Cooper',
+            pip_packages=['pdoc3', 'PySimpleGUI'],
+            doc_api_packages=['jiig'],
+            doc_api_packages_excluded=[
+                'jiig.driver.cli.impl',
+                'jiig.tasks',
+            ],
+        ),
+        runner_args=runner_args,
+        cli_args=cli_args,
+    )
 
-VERSION = '0.5'
 
-AUTHOR = 'Steve Cooper'
+def tool_main(runner_args: List[str], cli_args: List[str]):
+    import jiig
+    jiig.main(jiig.Tool.from_script(runner_args[1]),
+              runner_args=runner_args,
+              cli_args=cli_args)
 
-COPYRIGHT = '2021, Steve Cooper'
 
-PIP_PACKAGES = ['pdoc3', 'PySimpleGUI']
+def main():
+    """
+    Jiig script main.
 
-DOC_API_PACKAGES = ['jiig']
+    Assumes it's running from a tool script shebang line if -r precedes all
+    arguments or if the first argument is an executable file in the PATH.
 
-DOC_API_PACKAGES_EXCLUDED = [
-    'jiig.driver.cli.impl',
-    'jiig.tasks',
-]
+    Otherwise assume the user wants to use the Jiig command line tool.
 
-ROOT_TASK = 'jiig.tasks'
+    Note that this heuristic logic may not handle all edge cases, but the -r
+    option is always available for explicit use in the shebang line.
+    """
+    # Make sure it can load Jiig modules.
+    jiig_root_folder = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    if jiig_root_folder not in sys.path:
+        sys.path.insert(0, jiig_root_folder)
+    args = sys.argv
+    if len(args) > 1 and args[1] == '-r':
+        is_tool = True
+        args = args[1:]
+    else:
+        is_tool = False
+    # Apply heuristic check for tool shebang line when the first argument is a file path.
+    if not is_tool and len(args) > 1 and os.path.isfile(args[1]):
+        # Local or absolute paths were probably provided to execute the tool script.
+        if args[1].startswith('.') or os.path.isabs(args[1]):
+            is_tool = True
+        # Otherwise it should be in the path.
+        else:
+            is_tool = os.path.dirname(args[1]) in os.environ['PATH'].split(os.pathsep)
+    if is_tool:
+        tool_main(args[:2], args[2:])
+    else:
+        jiig_main(jiig_root_folder, args[:1], args[1:])
+
+
+if __name__ == '__main__':
+    main()

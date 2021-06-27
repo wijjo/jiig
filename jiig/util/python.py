@@ -11,7 +11,7 @@ from inspect import isclass, isfunction
 from types import ModuleType
 from typing import Text, List, Tuple, Optional, IO, Dict, Type, Any, TypeVar
 
-from .options import Options
+from . import OPTIONS
 from .log import abort, log_error, log_message, log_warning
 from .filesystem import delete_folder, short_path
 from .general import format_message_block, plural
@@ -120,11 +120,11 @@ def import_modules_from_folder(folder: Text,
                 if retry:
                     to_retry.append((module_name, module_path))
                 exceptions.append((module_name, module_path, exc))
-                if Options.debug:
+                if OPTIONS.debug:
                     raise
             except Exception as exc:
                 exceptions.append((module_name, module_path, exc))
-                if Options.debug:
+                if OPTIONS.debug:
                     raise
         to_import = []
         if to_retry:
@@ -373,15 +373,7 @@ def load_configuration_script(script_path: Text, **default_symbols) -> Dict:
             exec(script_file.read(), symbols)
             return symbols
     except Exception as script_exc:
-        sys.stderr.write(f'''\
-    FATAL: Failed to load script.
-    FATAL:    {script_path}
-    FATAL:    {script_exc}
-    ''')
-        traceback_lines = traceback.format_exc().split(os.linesep)[3:]
-        traceback_lines[0] = traceback_lines[0].replace('<string>', script_path
-                                                        ).replace(', in <module>', '')
-        for line in traceback_lines:
-            sys.stderr.write(line)
-            sys.stderr.write(os.linesep)
-        sys.exit(255)
+        abort(f'Failed to load script: {script_path}',
+              script_exc,
+              exec_file_name=script_path,
+              exception_traceback_skip=1)

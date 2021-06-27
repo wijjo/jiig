@@ -2,10 +2,10 @@ import os
 import subprocess
 from typing import Sequence, Union, Tuple, Optional, List
 
+from jiig import OPTIONS
 from jiig.scripts import Script
 from jiig.util.general import AttrDictReadOnly
 from jiig.util.network import format_host_string
-from jiig.util.options import Options
 
 from .context import Context
 from ._util import run_context_command, run_context_sub_process, open_context_output_file
@@ -128,7 +128,7 @@ class ActionContextRunAPI:
         """
         action_messages = AttrDictReadOnly(messages or {})
 
-        dry_run = Options.dry_run and not ignore_dry_run
+        dry_run = OPTIONS.dry_run and not ignore_dry_run
 
         host, user = self._get_host_user(host, user, host_string)
 
@@ -160,7 +160,7 @@ class ActionContextRunAPI:
 
                     _script_start(run_context, action_messages)
 
-                    if Options.debug or dry_run:
+                    if OPTIONS.debug or dry_run:
                         run_context.heading(1, 'Script {script_file} (begin)')
                         run_context.message('{script_preamble}{nl}{nl}{script_body}')
                         run_context.heading(1, 'Script {script_file} (end)')
@@ -169,7 +169,7 @@ class ActionContextRunAPI:
                     output_file.write_expanded('{script_preamble}{nl}{nl}{script_body}')
                     output_file.flush()
                     run_context.message('Script saved: {script_file}')
-                    if Options.pause:
+                    if OPTIONS.pause:
                         input('Press Enter to continue:')
 
                     if dry_run:
@@ -226,7 +226,7 @@ class ActionContextRunAPI:
         """
         action_messages = AttrDictReadOnly(messages or {})
 
-        dry_run = Options.dry_run and not ignore_dry_run
+        dry_run = OPTIONS.dry_run and not ignore_dry_run
 
         host, user = self._get_host_user(host, user, host_string)
 
@@ -247,7 +247,7 @@ class ActionContextRunAPI:
 
             _script_start(sub_context, action_messages)
 
-            if Options.debug or dry_run:
+            if OPTIONS.debug or dry_run:
                 sub_context.heading(1, 'Script code (begin)')
                 sub_context.message('{script_body}')
                 sub_context.heading(1, 'Script code (end)')
@@ -255,7 +255,7 @@ class ActionContextRunAPI:
             if dry_run:
                 return subprocess.CompletedProcess(command, 0)
 
-            if Options.pause:
+            if OPTIONS.pause:
                 input('Press Enter to continue:')
 
             sub_context.message('command: {command}')
@@ -269,7 +269,7 @@ class ActionContextRunAPI:
 
 
 def _get_script_preamble():
-    return SCRIPT_PREAMBLE % ('x' if Options.debug else '')
+    return SCRIPT_PREAMBLE % ('x' if OPTIONS.debug else '')
 
 
 def _get_script_body(script_text_or_object: Union[str, Sequence[str], Script],

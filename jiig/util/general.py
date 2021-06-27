@@ -17,7 +17,7 @@ from textwrap import wrap
 from typing import Iterable, Any, Text, Iterator, List, \
     Optional, Tuple, Sequence, Callable, Union, Dict
 
-from .options import Options
+from . import OPTIONS
 
 
 class MetaAttrDict(type):
@@ -281,7 +281,7 @@ def format_table(*rows: Iterable[Any],
     last_width: Optional[int] = None
     if max_width is not None:
         left_columns_width = sum(widths[:-1])
-        left_separators_width = len(Options.column_separator) * (len(widths) - 1)
+        left_separators_width = len(OPTIONS.column_separator) * (len(widths) - 1)
         last_width = max_width - left_separators_width - left_columns_width
         if last_width < 20:
             last_width = None
@@ -290,10 +290,10 @@ def format_table(*rows: Iterable[Any],
 
         format_strings = ['{:%d}' % w for w in widths[:-1]]
         format_strings.append('{}')
-        format_string = Options.column_separator.join(format_strings)
+        format_string = OPTIONS.column_separator.join(format_strings)
         if headers is not None:
             yield format_string.format(*_get_strings(headers, padded=True))
-            yield Options.column_separator.join(['-' * width for width in widths])
+            yield OPTIONS.column_separator.join(['-' * width for width in widths])
 
         for row in rows:
             if last_width is None:
@@ -328,10 +328,11 @@ def format_exception(exc: Exception,
     parts = []
     if label:
         parts.append(label)
-    stack = traceback.extract_tb(sys.exc_info()[2])
-    if show_exception_location and len(stack) > skip_stack_levels:
-        file, line, _function, _source = stack[skip_stack_levels]
-        parts.append(f'{os.path.basename(file)}.{line}')
+    if show_exception_location:
+        stack = traceback.extract_tb(sys.exc_info()[2])
+        if len(stack) > skip_stack_levels:
+            file, line, _function, _source = stack[skip_stack_levels]
+            parts.append(f'{os.path.basename(file)}.{line}')
     parts.append(exc.__class__.__name__)
     parts.append(str(exc))
     return ': '.join(parts)
@@ -341,8 +342,10 @@ def format_message_lines(text: Any, *args, **kwargs) -> Iterator[Text]:
     """
     Generate message line(s) and indented lines for relevant keyword data.
 
-    "tag" is a special string keyword argument that prefixes all lines with an
-    uppercase tag string.
+    Keywords:
+    - tag: special prefix string for all lines with an uppercase tag string
+    - sub_tag: string to appear in square brackets next to the tag
+    - exec_file_name: file name to replace '<string>' exception location name
 
     :param text: primary text
     :param args: positional arguments to format as data lines
@@ -351,11 +354,15 @@ def format_message_lines(text: Any, *args, **kwargs) -> Iterator[Text]:
     """
     tag = kwargs.pop('tag', None)
     sub_tag = kwargs.pop('sub_tag', None)
+    exec_file_name = kwargs.pop('exec_file_name', None)
 
     def _generate_exception_lines(exc: Exception) -> Iterator[Text]:
         exc_lines = format_exception(exc).split(os.linesep)
         if exc_lines:
-            yield f'exception: {exc_lines[0]}'
+            exc_text = f'exception: {exc_lines[0]}'
+            if exec_file_name:
+                exc_text = exc_text.replace('<string>', exec_file_name)
+            yield exc_text
             for exc_line in exc_lines[1:]:
                 yield exc_line
 
@@ -369,19 +376,19 @@ def format_message_lines(text: Any, *args, **kwargs) -> Iterator[Text]:
         for value in args:
             if isinstance(value, Exception):
                 for exc_value in _generate_exception_lines(value):
-                    yield f'{Options.message_indent}{exc_value}'
+                    yield f'{OPTIONS.message_indent}{exc_value}'
             else:
-                yield f'{Options.message_indent}{value}'
+                yield f'{OPTIONS.message_indent}{value}'
         for key, value in kwargs.items():
             if isinstance(value, (list, tuple)):
                 for idx, sub_value in enumerate(value):
                     if isinstance(sub_value, Exception):
                         sub_value = format_exception(sub_value)
-                    yield f'{Options.message_indent}{key}[{idx + 1}]: {sub_value}'
+                    yield f'{OPTIONS.message_indent}{key}[{idx + 1}]: {sub_value}'
             else:
                 if isinstance(value, Exception):
                     value = {format_exception(value)}
-                yield f'{Options.message_indent}{key}: {value}'
+                yield f'{OPTIONS.message_indent}{key}: {value}'
 
     if not tag:
         for line in _generate_raw_lines():
@@ -533,10 +540,12 @@ class ExceptionStackItem:
     path: Text
     line: int
     text: Text
+    scope: Text
 
     @property
-    def location(self) -> Text:
-        return '.'.join([self.path, str(self.line)])
+    def location_string(self) -> Text:
+        scope = '' if self.scope == '<module>' else f'[{self.scope}]'
+        return f'{self.path}.{self.line}{scope}'
 
 
 @dataclass
@@ -545,8 +554,9 @@ class ExceptionStack:
     package_path: Optional[Text]
 
 
-def get_exception_stack(include_external_frames: bool = False,
-                        include_exec_frames: bool = False,
+def get_exception_stack(exclude_external_frames: bool = False,
+                        exclude_exec_frames: bool = False,
+                        exec_file_name: str = None,
                         skip: int = None,
                         ) -> ExceptionStack:
     """
@@ -556,32 +566,37 @@ def get_exception_stack(include_external_frames: bool = False,
     non-file frames, e.g. due to exec()'d code, and frames outside of the top
     level application frame.
 
-    :param include_external_frames: include external non-application frames
-    :param include_exec_frames: include exec() (non-source file) frames if True
+    :param exclude_external_frames: exclude external non-application frames if True
+    :param exclude_exec_frames: exclude exec() (non-source file) frames if True
+    :param exec_file_name: file to replace <string> in exception output for exec'd file
     :param skip: optional number of frames to skip
     :return: stack item list
     """
     last_exc_tb = sys.exc_info()[2]
+    # Get trimmed list of raw traceback items.
     if last_exc_tb is not None:
-        stack_items = [ExceptionStackItem(tb.filename, tb.lineno, tb.line)
-                       for tb in traceback.extract_tb(last_exc_tb)]
+        tb_items = traceback.extract_tb(last_exc_tb)
         if skip:
-            stack_items = stack_items[skip:]
+            tb_items = tb_items[skip:]
     else:
-        stack_items = []
-    # Trim first non-source file frame, e.g. to hide a string exec().?
-    if stack_items and not include_exec_frames:
-        has_non_file_frame = False
-        for item_idx, item in enumerate(stack_items):
-            if os.path.exists(item.path):
-                if has_non_file_frame:
-                    stack_items = stack_items[item_idx:]
-                    break
+        tb_items = []
+    # Trim or tweak first non-source file frame, e.g. to hide a string exec().?
+    stack_items = []
+    initial_frame = exclude_exec_frames or bool(exec_file_name)
+    for item_idx, tb_item in enumerate(tb_items):
+        path = tb_item.filename
+        if initial_frame:
+            if os.path.exists(tb_item.filename):
+                initial_frame = False
             else:
-                has_non_file_frame = True
+                if exec_file_name:
+                    path = exec_file_name
+                else:
+                    continue
+        stack_items.append(ExceptionStackItem(path, tb_item.lineno, tb_item.line, tb_item.name))
     # Trim external frames, i.e. ones that are not in the top level package?
     package: Optional[Package] = None
-    if stack_items and not include_external_frames:
+    if stack_items and exclude_external_frames:
         for item_idx, item in enumerate(stack_items):
             item_package = package_for_path(item.path)
             if package is None:

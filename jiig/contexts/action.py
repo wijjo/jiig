@@ -4,7 +4,7 @@ Context for text expansion and external command execution environment.
 import os
 from typing import Optional
 
-from jiig.options import Options
+from jiig import OPTIONS
 
 from .context import Context
 from ._file_api import ActionContextFileAPI
@@ -30,7 +30,7 @@ class ActionContext(Context):
         self.file = ActionContextFileAPI(self)
         self.misc = ActionContextMiscAPI(self)
         # Convenient access to Jiig runtime options.
-        self.options = Options
+        self.options = OPTIONS
 
     def __enter__(self) -> 'ActionContext':
         """

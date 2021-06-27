@@ -1,7 +1,7 @@
 import subprocess
 from typing import Union, Sequence, Optional, Iterable, IO
 
-from jiig.util.options import Options
+from jiig import OPTIONS
 from jiig.util.filesystem import temporary_working_folder
 from jiig.util.general import AttrDictReadOnly
 from jiig.util.stream import OutputFile, open_output_file
@@ -39,7 +39,7 @@ def run_context_command(outer_context: Context,
 
         context.message('command: {command}')
 
-        if Options.dry_run and not ignore_dry_run:
+        if OPTIONS.dry_run and not ignore_dry_run:
             return subprocess.CompletedProcess(command, 0)
 
         if 'shell' not in subprocess_run_kwargs:

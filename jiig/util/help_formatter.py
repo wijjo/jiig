@@ -154,7 +154,8 @@ class HelpFormatter:
         self.command_names = command_names
         self.description = description or '(no description)'
         self.sub_commands_label = sub_commands_label
-        self.commands: List[HelpCommandData] = []
+        self.primary_commands: List[HelpCommandData] = []
+        self.secondary_commands: List[HelpCommandData] = []
         self.options: List[HelpOption] = []
         self.arguments: List[HelpArgument] = []
         self.notes: NotesList = []
@@ -178,13 +179,16 @@ class HelpFormatter:
         :param has_sub_commands: the command has sub-commands if True
         :param receives_trailing_arguments: receives unparsed trailing arguments if True
         """
-        self.commands.append(
-            HelpCommandData(name,
-                            help_text,
-                            is_secondary=is_secondary,
-                            is_hidden=is_hidden,
-                            has_sub_commands=has_sub_commands,
-                            receives_trailing_arguments=receives_trailing_arguments))
+        data = HelpCommandData(name,
+                               help_text,
+                               is_secondary=is_secondary,
+                               is_hidden=is_hidden,
+                               has_sub_commands=has_sub_commands,
+                               receives_trailing_arguments=receives_trailing_arguments)
+        if is_secondary:
+            self.secondary_commands.append(data)
+        else:
+            self.primary_commands.append(data)
 
     def add_option(self,
                    flags: Any,
@@ -282,7 +286,7 @@ class HelpFormatter:
             else:
                 argument_usage = f'{argument.name} ...'
             parts.append(argument_usage)
-        if self.commands:
+        if self.primary_commands or self.secondary_commands:
             parts.extend([self.sub_commands_label, '...'])
         yield ' '.join(parts)
 
@@ -297,32 +301,26 @@ class HelpFormatter:
 
     def _format_table_commands(self,
                                two_column_formatter: _HelpLabeledListFormatter,
-                               show_hidden: bool = False,
                                ) -> Iterator[Text]:
         def _add_command(command_data: HelpCommandData):
-            if show_hidden or not command_data.is_hidden:
-                if command_data.has_sub_commands:
-                    name = f'{command_data.name} ...'
-                elif command_data.receives_trailing_arguments:
-                    name = f'{command_data.name} ...'
-                else:
-                    name = command_data.name
-                two_column_formatter.add_pair(
-                    name, self._format_help_text(command_data.help_text))
-        if self.commands:
-            two_column_formatter.start_block(heading=self.sub_commands_label)
-            primary_commands = filter(
-                lambda st: not st.is_secondary,
-                self.commands)
-            for command in primary_commands:
+            if command_data.has_sub_commands:
+                name = f'{command_data.name} ...'
+            elif command_data.receives_trailing_arguments:
+                name = f'{command_data.name} ...'
+            else:
+                name = command_data.name
+            two_column_formatter.add_pair(
+                name, self._format_help_text(command_data.help_text))
+        commands_heading = self.sub_commands_label
+        if self.primary_commands:
+            two_column_formatter.start_block(heading=commands_heading)
+            commands_heading = None
+            for command in self.primary_commands:
                 _add_command(command)
-            secondary_commands = filter(
-                lambda st: st.is_secondary,
-                self.commands)
-            if secondary_commands:
-                two_column_formatter.start_block()
-                for command in secondary_commands:
-                    _add_command(command)
+        if self.secondary_commands:
+            two_column_formatter.start_block(heading=commands_heading)
+            for command in self.secondary_commands:
+                _add_command(command)
         yield two_column_formatter.format_block()
 
     def _format_table_positionals(self,
@@ -387,7 +385,6 @@ class HelpFormatter:
         return ''.join([label, group])
 
     def format_help(self,
-                    show_hidden: bool = False,
                     receives_trailing_arguments: bool = False,
                     ) -> Text:
         # Sort options by (lowercase, original case) tuples so that
@@ -409,7 +406,7 @@ class HelpFormatter:
         two_column_formatter = _HelpLabeledListFormatter(
             HELP_LEFT_COLUMN_MAX_WIDTH, line_max_width)
         output_formatter.add_blocks(
-            *self._format_table_commands(two_column_formatter, show_hidden=show_hidden))
+            *self._format_table_commands(two_column_formatter))
         output_formatter.add_blocks(
             *self._format_table_positionals(two_column_formatter, arguments))
         output_formatter.add_blocks(

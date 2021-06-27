@@ -144,7 +144,7 @@ class CLIHelpProvider(HelpProvider):
                                          description=global_option.description,
                                          is_boolean=True)
 
-        # Add positional arguments, if any (tasks only).
+        # Add positional arguments.
         for positional_field in fields:
             if positional_field.hints.get(CLI_HINT_FLAGS) is None:
                 if positional_field.repeat is None:
@@ -168,17 +168,17 @@ class CLIHelpProvider(HelpProvider):
             for sub_task_field in active_sub_task.fields:
                 if not sub_task_receives_trailing and sub_task_field.hints.get(CLI_HINT_TRAILING):
                     sub_task_receives_trailing = True
-            formatter.add_command(
-                active_sub_task.name,
-                active_sub_task.description,
-                is_secondary=active_sub_task.visibility == 1,
-                is_hidden=active_sub_task.visibility == 2,
-                has_sub_commands=bool(active_sub_task.sub_tasks),
-                receives_trailing_arguments=sub_task_receives_trailing,
-            )
+            if show_hidden or active_sub_task.visibility != 2:
+                formatter.add_command(
+                    active_sub_task.name,
+                    active_sub_task.description,
+                    is_secondary=active_sub_task.visibility == 1,
+                    is_hidden=active_sub_task.visibility == 2,
+                    has_sub_commands=bool(active_sub_task.sub_tasks),
+                    receives_trailing_arguments=sub_task_receives_trailing,
+                )
 
-        return formatter.format_help(show_hidden=show_hidden,
-                                     receives_trailing_arguments=task_receives_trailing)
+        return formatter.format_help(receives_trailing_arguments=task_receives_trailing)
 
     def _resolve_task_stack(self, names: Sequence[Text]) -> Optional[List[DriverTask]]:
         try:

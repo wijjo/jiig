@@ -261,17 +261,10 @@ def main(registered_tool: Tool,
     if not tool.venv_active:
         jiig.util.log.log_message('Jiig driver initialized.', debug=True)
 
-    # Push initialized options from the driver into libraries.
-    jiig.options.Options.debug = 'debug' in driver.enabled_global_options
-    jiig.options.Options.dry_run = 'dry_run' in driver.enabled_global_options
-    jiig.options.Options.verbose = 'verbose' in driver.enabled_global_options
-    jiig.options.Options.pause = 'pause' in driver.enabled_global_options
-    jiig.options.Options.keep_files = 'keep_files' in driver.enabled_global_options
-    jiig.util.options.Options.debug = jiig.options.Options.debug
-    jiig.util.options.Options.dry_run = jiig.options.Options.dry_run
-    jiig.util.options.Options.verbose = jiig.options.Options.verbose
-    jiig.util.options.Options.pause = jiig.options.Options.pause
-    jiig.util.options.Options.keep_files = jiig.options.Options.keep_files
+    # Initialize option settings.
+    jiig.OPTIONS.from_strings(driver.enabled_global_options)
+    # Util has its own option settings to keep it fully independent of Jiig.
+    jiig.util.OPTIONS.from_strings(driver.enabled_global_options)
 
     # Check if a virtual environment is required, but not active. If so, it
     # restarts inside the virtual environment (and does not return from call).
@@ -342,6 +335,7 @@ def main(registered_tool: Tool,
 
 def tool_script_main():
     """Called by program run by "shebang" line of tool script."""
-    main(Tool.from_script(sys.argv[1]),
+    registered_tool = Tool.from_script(sys.argv[1])
+    main(registered_tool,
          runner_args=sys.argv[:2],
          cli_args=sys.argv[2:])

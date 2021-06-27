@@ -6,8 +6,8 @@ from typing import Text, Optional
 from urllib.error import URLError
 from urllib.request import urlopen
 
+from . import OPTIONS
 from .log import abort
-from .options import Options
 from .process import run
 
 
@@ -32,7 +32,7 @@ def curl(url: Text):
 
 
 def resolve_ip_address(host: str) -> Optional[str]:
-    if Options.dry_run:
+    if OPTIONS.dry_run:
         return '1.1.1.1'
     ip_extract_re = re.compile(rf'^PING {host} \((\d+\.\d+\.\d+\.\d+)\):')
     for line in run(['ping', '-c', '1', host], capture=True).stdout.split(os.linesep):

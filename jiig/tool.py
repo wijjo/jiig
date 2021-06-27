@@ -4,6 +4,8 @@ import os
 from dataclasses import dataclass, field
 from typing import Text, List, Dict, Any, cast
 
+import jiig
+
 from .driver import CLIDriver
 from .registry import CONTEXT_REGISTRY, DRIVER_REGISTRY, TASK_REGISTRY
 from .util.alias_catalog import DEFAULT_ALIASES_PATH
@@ -14,7 +16,7 @@ from .util.python import symbols_to_dataclass, load_configuration_script
 DEFAULT_AUTHOR = '(unknown author)'
 DEFAULT_BUILD_FOLDER = 'build'
 DEFAULT_COPYRIGHT = '(unknown copyright)'
-DEFAULT_DESCRIPTION = '(no description)'
+DEFAULT_TOOL_DESCRIPTION = '(no description, e.g. in tool script or class doc string)'
 DEFAULT_DRIVER = CLIDriver
 DEFAULT_DRIVER_VARIANT = 'argparse'
 DEFAULT_DOC_FOLDER = 'doc'
@@ -103,7 +105,7 @@ class Tool:
     copyright: Text = DEFAULT_COPYRIGHT
     """Tool copyright."""
 
-    description: Text = DEFAULT_DESCRIPTION
+    description: Text = DEFAULT_TOOL_DESCRIPTION
     """Tool description."""
 
     doc_api_packages: List[Text] = field(default_factory=list)
@@ -190,10 +192,13 @@ class Tool:
         """
         Convert tool script to object.
 
+        Injects `jiig` import into execution symbols, so that a script can
+        function without an explicit `import jiig` statement.
+
         :param script_path: script path
         :return: Tool object based on tool script data
         """
-        configuration = load_configuration_script(script_path)
+        configuration = load_configuration_script(script_path, jiig=jiig)
         tool_name = os.path.basename(script_path).replace('-', '_')
         # The script may be in a sub-folder, e.g. 'bin'. Look up the folder
         # stack for a folder that contains a library folder using the tool name.
@@ -203,9 +208,11 @@ class Tool:
         library_root_folder = search_folder_stack_for_file(tool_folder, library_file_name)
         if library_root_folder:
             tool_folder = library_root_folder
+        description = configuration.get('__doc__', DEFAULT_TOOL_DESCRIPTION)
         return cls.from_symbols(configuration,
                                 tool_name=tool_name,
-                                tool_root_folder=tool_folder)
+                                tool_root_folder=tool_folder,
+                                description=description)
 
     @classmethod
     def from_module(cls,

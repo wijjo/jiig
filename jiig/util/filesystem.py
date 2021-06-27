@@ -9,7 +9,7 @@ from typing import Text, List, Optional, Iterator, Any
 
 from thirdparty.gitignore_parser import gitignore_parser
 
-from .options import Options
+from . import OPTIONS
 from .log import abort, log_message
 from .general import make_list
 from .process import run
@@ -132,7 +132,7 @@ def copy_folder(src_path: Text,
                 quiet: bool = False):
     src_folder_path = short_path(src_path, is_folder=True)
     dst_folder_path = short_path(dst_path, is_folder=True)
-    if not Options.dry_run:
+    if not OPTIONS.dry_run:
         check_folder_exists(src_folder_path)
     if not merge:
         delete_folder(dst_path, quiet=quiet)
@@ -186,15 +186,15 @@ def _copy_or_move_file(src_path: Text,
                        quiet: bool = False):
     src_path_short = short_path(src_path, is_folder=False)
     dst_path_short = short_path(dst_path, is_folder=False)
-    if not Options.dry_run:
+    if not OPTIONS.dry_run:
         check_file_exists(src_path_short)
     if overwrite:
         # If overwriting is allowed a file (only) can be clobbered.
-        if os.path.exists(dst_path) and not Options.dry_run:
+        if os.path.exists(dst_path) and not OPTIONS.dry_run:
             check_file_exists(dst_path)
     else:
         # If overwriting is prohibited don't clobber anything.
-        if not Options.dry_run:
+        if not OPTIONS.dry_run:
             check_file_not_exists(dst_path_short)
     parent_folder = os.path.dirname(dst_path)
     if not os.path.exists(parent_folder):
@@ -212,12 +212,12 @@ def move_folder(src_path: Text,
     """Move a folder to a fully-specified folder path, not a parent folder."""
     src_path_short = short_path(src_path, is_folder=True)
     dst_path_short = short_path(dst_path, is_folder=True)
-    if not Options.dry_run:
+    if not OPTIONS.dry_run:
         check_folder_exists(src_path_short)
     if overwrite:
         delete_folder(dst_path, quiet=quiet)
     else:
-        if not Options.dry_run:
+        if not OPTIONS.dry_run:
             check_folder_not_exists(dst_path_short)
     parent_folder = os.path.dirname(dst_path)
     if not os.path.exists(parent_folder):
@@ -234,7 +234,7 @@ def sync_folders(src_folder: Text,
     # Add the trailing slash for rsync. This works for remote paths too.
     src_folder = folder_path(src_folder)
     dst_folder = folder_path(dst_folder)
-    if not Options.dry_run:
+    if not OPTIONS.dry_run:
         check_folder_exists(src_folder)
     if not quiet:
         log_message('Folder sync.',
@@ -242,7 +242,7 @@ def sync_folders(src_folder: Text,
                     target=dst_folder,
                     exclude=exclude or [])
     cmd_args = ['rsync']
-    if Options.dry_run:
+    if OPTIONS.dry_run:
         cmd_args.append('--dry-run')
     cmd_args.extend(['-a', '--stats', '-h'])
     if check_contents:
