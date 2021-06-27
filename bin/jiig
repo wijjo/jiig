@@ -72,7 +72,7 @@ def main():
     # Apply heuristic check for tool shebang line when the first argument is a file path.
     if not is_tool and len(args) > 1 and os.path.isfile(args[1]):
         # Local or absolute paths were probably provided to execute the tool script.
-        if args[1].startswith('.') or os.path.isabs(args[1]):
+        if args[1].find(os.path.sep) != -1:
             is_tool = True
         # Otherwise it should be in the path.
         else:
