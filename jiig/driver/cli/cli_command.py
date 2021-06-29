@@ -11,28 +11,31 @@ from .cli_types import CLIPositional, CLIOption
 class CLICommand:
     """Object/API for building a parser command."""
 
-    def __init__(self, name: Text, description: Text):
+    def __init__(self, name: Text, description: Text, visibility: int):
         """
         Command constructor.
 
         :param name: command name
         :param description: command description
+        :param visibility: 0=normal, 1=secondary, 2=hidden
         """
         self.name = name
         self.description = description
+        self.visibility = visibility
         self.positionals: List[CLIPositional] = []
         self.options: List[CLIOption] = []
         self.sub_commands: List[CLICommand] = []
 
-    def add_sub_command(self, name: Text, description: Text) -> 'CLICommand':
+    def add_sub_command(self, name: Text, description: Text, visibility: int) -> 'CLICommand':
         """
         Add a sub-command.
 
         :param name: command name
         :param description: command description
+        :param visibility: 0=normal, 1=secondary, 2=hidden
         :return: command object
         """
-        sub_command = CLICommand(name, description)
+        sub_command = CLICommand(name, description, visibility)
         self.sub_commands.append(sub_command)
         return sub_command
 

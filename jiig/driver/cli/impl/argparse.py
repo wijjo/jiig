@@ -245,8 +245,9 @@ class Implementation(CLIImplementation):
         self._prepare_fields(root_command, root_command.name, parser)
         self.parsers[self.top_task_dest_name] = parser
 
+        app_commands = list(filter(lambda c: c.visibility == 0, root_command.sub_commands))
         top_group = parser.add_subparsers(dest=self.top_task_dest_name,
-                                          required=True)
+                                          required=bool(app_commands))
         for command in root_command.sub_commands:
             sub_parser = top_group.add_parser(command.name,
                                               help=command.description,
@@ -272,7 +273,8 @@ class Implementation(CLIImplementation):
             raise RuntimeError(f'Missing {self.top_task_dest_name}* member'
                                f' in argparse namespace: {args}')
         names = [name.lower() for name in command_dest.split(DEST_NAME_SEPARATOR)[1:]]
-        names.append(getattr(args, command_dest))
+        if app_commands:
+            names.append(getattr(args, command_dest))
         return CLIResults(args, names, trailing_args)
 
     @classmethod

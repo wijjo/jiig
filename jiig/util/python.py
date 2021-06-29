@@ -239,6 +239,7 @@ def symbols_to_dataclass(symbols: Dict,
                          dc_type: Type[T_dataclass],
                          from_uppercase: bool = False,
                          required: List[Text] = None,
+                         optional: List[Text] = None,
                          protected: List[Text] = None,
                          overflow: Text = None,
                          defaults: Dict = None,
@@ -254,6 +255,7 @@ def symbols_to_dataclass(symbols: Dict,
     :param dc_type: output dataclass type, scanned for field names, etc.
     :param from_uppercase: convert from upper to lower case if True
     :param required: list of required dataclass field names
+    :param optional: list of optional dataclass field names
     :param protected: list of unwanted dataclass field names
     :param overflow: optional dataclass field name to receive unexpected symbols
     :param defaults: optional defaults that may be used for missing attributes
@@ -286,10 +288,16 @@ def symbols_to_dataclass(symbols: Dict,
             input_symbols[attr_name.lower()] = attr_value
 
     # Use defaults for missing items.
-    if defaults is not None:
+    if defaults:
         for default_attr_name, default_attr_value in defaults.items():
             if default_attr_name not in input_symbols:
                 input_symbols[default_attr_name] = default_attr_value
+
+    # Assign None to missing optional items.
+    if optional:
+        for optional_attr_name in optional:
+            if optional_attr_name not in input_symbols:
+                input_symbols[optional_attr_name] = None
 
     if required:
         # Check for missing required symbols.

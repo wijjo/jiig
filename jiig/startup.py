@@ -283,11 +283,8 @@ def main(registered_tool: Tool,
     else:
         runtime_class = jiig.contexts.Runtime
 
-    # Resolve the root task.
-    if not tool.root_task.sub_tasks:
-        jiig.util.log.abort('There are no registered tasks.')
-
     # Add automatic built-in secondary or hidden sub-tasks, if not disabled.
+    have_tasks = bool(tool.root_task.sub_tasks)
     _add_builtin_tasks(tool)
 
     # Convert the runtime task hierarchy to a driver task hierarchy.
@@ -296,8 +293,8 @@ def main(registered_tool: Tool,
         registered_tool.tool_name, '', [], [], [], {}, 0)
     _populate_driver_task(driver_root_task, tool.root_task)
 
-    # Just display help if there are no arguments to process.
-    if not driver_initialization_data.final_arguments:
+    # Just display help if there sub-tasks and no arguments to process.
+    if have_tasks and not driver_initialization_data.final_arguments:
         driver.provide_help(driver_root_task)
         sys.exit(0)
 

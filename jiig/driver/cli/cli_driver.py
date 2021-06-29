@@ -112,10 +112,14 @@ class CLIDriver(Driver):
         :return: driver application data
         """
 
-        root_command = CLICommand(root_task.name, root_task.description)
+        root_command = CLICommand(root_task.name,
+                                  root_task.description,
+                                  root_task.visibility)
         _add_task_fields(root_command, root_task)
         for sub_task in root_task.sub_tasks:
-            command = root_command.add_sub_command(sub_task.name, sub_task.description)
+            command = root_command.add_sub_command(sub_task.name,
+                                                   sub_task.description,
+                                                   sub_task.visibility)
             _add_task_fields_and_subcommands(command, sub_task)
 
         options = CLIOptions(capture_trailing=True,
@@ -134,28 +138,31 @@ class CLIDriver(Driver):
             if global_option.name not in self.options.supported_global_options:
                 setattr(parse_results.data, global_option.dest, False)
 
-        # Resolve the task stack.
-        try:
-            task_stack = root_task.resolve_task_stack(parse_results.names)
-            if task_stack is None:
-                abort(f'Failed to resolve command.', ' '.join(parse_results.names))
-            for field in task_stack[-1].fields:
-                receives_trailing_arguments = bool(field.hints.get(CLI_HINT_TRAILING))
-                if receives_trailing_arguments:
-                    # Inject trailing arguments attribute into data object.
-                    setattr(parse_results.data, field.name, parse_results.trailing_arguments)
-                    break
-            else:
-                if parse_results.trailing_arguments:
-                    argument_word = plural("argument", parse_results.trailing_arguments)
-                    abort(f'Unexpected {argument_word} to command:',
-                          shell_command_string(self.name, *initialization_data.final_arguments))
-            return CLIApplicationData(task_stack,
-                                      parse_results.data,
-                                      parse_results.names,
-                                      parse_results.trailing_arguments)
-        except ValueError as exc:
-            abort(str(exc))
+        # Resolve the task stack. Handle an application with no commands.
+        task_stack: List[DriverTask] = []
+        if parse_results.names:
+            try:
+                task_stack = root_task.resolve_task_stack(parse_results.names)
+                if task_stack is None:
+                    abort(f'Failed to resolve command.', ' '.join(parse_results.names))
+                for field in task_stack[-1].fields:
+                    receives_trailing_arguments = bool(field.hints.get(CLI_HINT_TRAILING))
+                    if receives_trailing_arguments:
+                        # Inject trailing arguments attribute into data object.
+                        setattr(parse_results.data, field.name, parse_results.trailing_arguments)
+                        break
+                else:
+                    if parse_results.trailing_arguments:
+                        argument_word = plural("argument", parse_results.trailing_arguments)
+                        abort(f'Unexpected {argument_word} to command:',
+                              shell_command_string(self.name, *initialization_data.final_arguments))
+            except ValueError as exc:
+                abort(str(exc))
+
+        return CLIApplicationData(task_stack,
+                                  parse_results.data,
+                                  parse_results.names,
+                                  parse_results.trailing_arguments)
 
     def on_provide_help(self,
                         root_task: DriverTask,
@@ -220,7 +227,8 @@ def _add_task_fields_and_subcommands(command: CLICommand,
     _add_task_fields(command, task)
     for sub_sub_task in task.sub_tasks:
         sub_command = command.add_sub_command(sub_sub_task.name,
-                                              sub_sub_task.description)
+                                              sub_sub_task.description,
+                                              sub_sub_task.visibility)
         _add_task_fields_and_subcommands(sub_command, sub_sub_task)
 
 

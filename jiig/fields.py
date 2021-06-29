@@ -4,8 +4,8 @@ Task field functions and classes.
 
 from typing import Text, Annotated, Union, Callable, Protocol, List
 
-from .adapters import str_to_timestamp, str_to_interval, str_to_age, str_to_comma_tuple, \
-    path_is_folder, path_to_absolute, path_exists
+from .adapters import to_timestamp, to_interval, to_age, to_comma_tuple, \
+    to_int, to_float, to_bool, path_is_folder, path_to_absolute, path_exists
 from .field import Field
 
 
@@ -40,7 +40,7 @@ def integer(description: Text, **hints) -> Field:
     :param hints: driver hints
     :return: field specification
     """
-    return Field(int, description, hints)
+    return Field(int, description, hints, adapters=[to_int])
 
 
 @field_function
@@ -52,7 +52,7 @@ def number(description: Text, **hints) -> Field:
     :param hints: driver hints
     :return: field specification
     """
-    return Field(Union[float, int], description, hints)
+    return Field(Union[float, int], description, hints, adapters=[to_float])
 
 
 @field_function
@@ -76,7 +76,7 @@ def boolean(description: Text, **hints) -> Field:
     :param hints: driver hints
     :return: field specification
     """
-    return Field(bool, description, hints)
+    return Field(bool, description, hints, adapters=[to_bool])
 
 
 @field_function
@@ -130,7 +130,7 @@ def age(description: Text, **hints) -> Field:
     :param hints: driver hints
     :return: field specification
     """
-    return Field(float, description, hints, adapters=[str_to_age])
+    return Field(float, description, hints, adapters=[to_age])
 
 
 @field_function
@@ -142,7 +142,7 @@ def timestamp(description: Text, **hints) -> Field:
     :param hints: driver hints
     :return: field specification
     """
-    return Field(float, description, hints, adapters=[str_to_timestamp])
+    return Field(float, description, hints, adapters=[to_timestamp])
 
 
 @field_function
@@ -154,7 +154,7 @@ def interval(description: Text, **hints) -> Field:
     :param hints: driver hints
     :return: field specification
     """
-    return Field(float, description, hints, adapters=[str_to_interval])
+    return Field(float, description, hints, adapters=[to_interval])
 
 
 @field_function
@@ -166,4 +166,4 @@ def comma_tuple(description: Text, **hints) -> Field:
     :param hints: driver hints
     :return: field specification
     """
-    return Field(List[Text], description, hints, adapters=[str_to_comma_tuple])
+    return Field(List[Text], description, hints, adapters=[to_comma_tuple])

@@ -6,7 +6,7 @@ import base64
 import binascii
 import os
 from time import mktime
-from typing import Text, Any, Optional, Tuple, Callable
+from typing import Text, Any, Optional, Tuple, Callable, Union
 
 from . import util
 
@@ -146,7 +146,7 @@ def path_to_absolute(value: str) -> str:
     return os.path.abspath(value)
 
 
-def str_to_age(value: str) -> float:
+def to_age(value: str) -> float:
     """
     Adapter for age, i.e. negative time delta.
 
@@ -159,13 +159,15 @@ def str_to_age(value: str) -> float:
     return mktime(util.date_time.apply_date_time_delta_string(value, negative=True))
 
 
-def str_to_bool(value: str) -> bool:
+def to_bool(value: Union[str, bool]) -> bool:
     """
     Convert yes/no/true/false string to bool.
 
     :param value: input boolean string
     :return: output boolean value
     """
+    if isinstance(value, bool):
+        return value
     if not isinstance(value, str):
         raise TypeError(f'not a string')
     lowercase_value = value.lower()
@@ -176,7 +178,7 @@ def str_to_bool(value: str) -> bool:
     raise ValueError(f'bad boolean string "{value}"')
 
 
-def str_to_comma_tuple(value: str) -> Tuple[Text]:
+def to_comma_tuple(value: str) -> Tuple[Text]:
     """
     Adapter for comma-separated string to tuple conversion.
 
@@ -186,7 +188,7 @@ def str_to_comma_tuple(value: str) -> Tuple[Text]:
     return tuple(tag.strip() for tag in value.split(','))
 
 
-def str_to_int(value: str, base: int = 10) -> int:
+def to_int(value: str, base: int = 10) -> int:
     """
     Convert string to integer.
 
@@ -197,7 +199,7 @@ def str_to_int(value: str, base: int = 10) -> int:
     return int(value, base=base)
 
 
-def str_to_float(value: str) -> float:
+def to_float(value: str) -> float:
     """
     Convert string to float.
 
@@ -207,7 +209,7 @@ def str_to_float(value: str) -> float:
     return float(value)
 
 
-def str_to_interval(value: str) -> int:
+def to_interval(value: str) -> int:
     """
     Adapter for string to time interval conversion.
 
@@ -217,7 +219,7 @@ def str_to_interval(value: str) -> int:
     return util.date_time.parse_time_interval(value)
 
 
-def str_to_timestamp(value: str) -> float:
+def to_timestamp(value: str) -> float:
     """
     Adapter for string to timestamp float conversion.
 

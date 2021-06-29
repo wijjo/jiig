@@ -7,7 +7,7 @@ from typing import Text, List, Dict, Any, cast
 import jiig
 
 from .driver import CLIDriver
-from .registry import CONTEXT_REGISTRY, DRIVER_REGISTRY, TASK_REGISTRY
+from .registry import CONTEXT_REGISTRY, DRIVER_REGISTRY, TASK_REGISTRY, guess_root_task
 from .util.alias_catalog import DEFAULT_ALIASES_PATH
 from .util.log import abort, log_warning
 from .util.filesystem import search_folder_stack_for_file
@@ -177,12 +177,17 @@ class Tool:
             dataclass_obj = symbols_to_dataclass(
                 symbols,
                 cls,
-                required=['tool_name', 'tool_root_folder', 'root_task'],
+                required=['tool_name', 'tool_root_folder'],
+                optional=['root_task'],
                 protected=['init_hook_functions', 'exit_hook_functions'],
                 overflow='extra_symbols',
                 from_uppercase=True,
                 defaults=defaults,
             )
+            if dataclass_obj.root_task is None:
+                dataclass_obj.root_task = guess_root_task(dataclass_obj.tool_name)
+                if dataclass_obj.root_task is None:
+                    abort('Root task could not be guessed.')
             return cast(cls, dataclass_obj)
         except (TypeError, ValueError) as symbol_exc:
             abort(str(symbol_exc))

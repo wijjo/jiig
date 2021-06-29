@@ -4,9 +4,11 @@ Task registry.
 
 import os
 from dataclasses import dataclass, is_dataclass
-from typing import Text, Dict, Type, get_type_hints, get_args, List, Union, TypeVar
+from inspect import isclass
+from typing import Text, Dict, Type, get_type_hints, get_args, List, Union, TypeVar, Optional
 
 from jiig.field import Field
+from jiig.util.log import log_warning, log_error
 from jiig.util.footnotes import NotesList, NotesDict
 
 from ._registry import Registration, Registry
@@ -15,6 +17,13 @@ T_task = TypeVar('T_task')
 TaskReference = Union[Type['RegisteredTask'], Text, object]
 
 DEFAULT_TASK_DESCRIPTION = '(no description, e.g. in task doc string)'
+
+
+def _full_task_name(task_class: Type[T_task]) -> str:
+    module_name = task_class.__module__
+    if module_name == 'builtins':
+        module_name = '<tool>'
+    return f'{module_name}.{task_class.__name__}'
 
 
 class TaskRegistration(Registration[T_task]):
@@ -48,6 +57,15 @@ class TaskRegistration(Registration[T_task]):
         self.tasks = tasks
         self.fields = fields
         self.visibility = visibility
+
+    @property
+    def full_name(self) -> str:
+        """
+        Full class name, including package.
+
+        :return: full class name
+        """
+        return _full_task_name(self.registered_class)
 
 
 class RegisteredTask:
@@ -145,8 +163,11 @@ def register_task(cls: Type[T_task],
     # Make sure there's a footnotes dict, even if empty.
     if footnotes is None:
         footnotes: NotesDict = {}
-    # Make sure there's a tasks dict, even if empty.
+    # Make sure there's a good tasks dict, even if empty.
     if tasks is None:
+        tasks = {}
+    elif not isinstance(tasks, dict):
+        log_error(f'Task class tasks member is not a dict: {_full_task_name(cls.__name__)}')
         tasks = {}
     # Wrap the class in a dataclass.
     if is_dataclass(cls):
@@ -161,12 +182,70 @@ def register_task(cls: Type[T_task],
         if len(hint_parts) == 2 and isinstance(hint_parts[1], Field):
             fields[name] = hint_parts[1]
     # Build the final option map by converting flags to lists.
-    registered_task = TaskRegistration(handler_class=dataclass_class,
-                                       description=description,
-                                       notes=notes,
-                                       footnotes=footnotes,
-                                       tasks=tasks,
-                                       fields=fields,
-                                       visibility=visibility)
-    TASK_REGISTRY.register(registered_task)
+    task_registration = TaskRegistration(handler_class=dataclass_class,
+                                         description=description,
+                                         notes=notes,
+                                         footnotes=footnotes,
+                                         tasks=tasks,
+                                         fields=fields,
+                                         visibility=visibility)
+    TASK_REGISTRY.register(task_registration)
     return dataclass_class
+
+
+def guess_root_task(*packages: str) -> Optional[TaskReference]:
+    """
+    Attempt to guess the root task by finding one with no references.
+
+    The main point is to support the quick start use case, and is not
+    intended for long-lived projects. It has the following caveats.
+
+    CAVEAT 1: It produces a heuristic guess (not perfect).
+    CAVEAT 2: It is quite inefficient for large numbers of tasks.
+
+    Caveats aside, it prefers to fail, rather than return a bad root task.
+
+    :param packages: top level package names
+    :return: root task registration if found, None if not
+    """
+    candidates_by_class_id: Dict[int, TaskRegistration] = {}
+    for class_id, registration in TASK_REGISTRY.by_class_id.items():
+        if not registration.registered_class.__module__.startswith('jiig.'):
+            candidates_by_class_id[class_id] = registration
+    # Crude check for need to warn about possible performance issues.
+    if len(candidates_by_class_id) > 20:
+        log_warning('Larger projects should declare an explicit root task.')
+    # Build and pare down a list of candidate registered tasks.
+    for registration in TASK_REGISTRY.by_class_id.values():
+        remove_class_ids: List[int] = []
+        for reference in registration.tasks.values():
+            # Class reference? Remove exact match from unreferenced.
+            if isclass(reference) and issubclass(reference, RegisteredTask):
+                for candidate_class_id, candidate in candidates_by_class_id.items():
+                    if candidate.registered_class == reference:
+                        remove_class_ids.append(candidate_class_id)
+            # Module string or instance? Remove matching names from unreferenced.
+            else:
+                module_names: List[str] = []
+                if isinstance(reference, str):
+                    module_names.append(reference)
+                    for package in packages:
+                        module_names.append('.'.join([package, reference]))
+                else:
+                    module_names.append(reference.__name__)
+                for candidate_class_id, candidate in candidates_by_class_id.items():
+                    for module_name in module_names:
+                        if candidate.registered_class.__module__ == module_name:
+                            remove_class_ids.append(candidate_class_id)
+                            break
+        # Remove matches.
+        for remove_class_id in remove_class_ids:
+            del candidates_by_class_id[remove_class_id]
+    if len(candidates_by_class_id) == 0:
+        log_error('Root task not found.')
+        return None
+    if len(candidates_by_class_id) != 1:
+        names = sorted([candidate.full_name for candidate in candidates_by_class_id.values()])
+        log_error(f'More than one root task candidate.', *names)
+        return None
+    return list(candidates_by_class_id.values())[0].registered_class
