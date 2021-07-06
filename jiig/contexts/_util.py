@@ -1,10 +1,10 @@
 import subprocess
 from typing import Union, Sequence, Optional, Iterable, IO
 
-from jiig import OPTIONS
-from jiig.util.filesystem import temporary_working_folder
-from jiig.util.general import AttrDictReadOnly
-from jiig.util.stream import OutputFile, open_output_file
+from ..util import OPTIONS
+from ..util.filesystem import temporary_working_folder
+from ..util.general import AttrDictReadOnly
+from ..util.stream import OutputFile, open_output_file
 
 from .context import Context
 

@@ -17,7 +17,7 @@ from urllib.request import urlopen, Request
 
 from .log import abort, log_error
 from .filesystem import get_folder_stack, create_folder
-from . import OPTIONS
+from .options import OPTIONS
 
 # Used in open_output_file() paths to indicate a temporary file, and also to
 # separate prefix from suffix.

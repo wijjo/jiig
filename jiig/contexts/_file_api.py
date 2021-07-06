@@ -1,10 +1,12 @@
+"""ActionContext file manipulation API."""
+
 import os
 import re
 import shutil
 from typing import Iterator, IO
 
-from jiig.util import stream
-from jiig.util.general import trim_text_blocks, plural, AttrDictReadOnly
+from ..util.stream import open_input_file
+from ..util.general import trim_text_blocks, plural, AttrDictReadOnly
 
 from .context import Context
 from ._util import run_context_command, ContextOutputFile, open_context_output_file
@@ -26,7 +28,7 @@ class ActionContextFileAPI:
         :param binary: open the file in binary mode (defaults to utf-8 text)
         :return: open file object, usable in a `with` statement for automatic closing
         """
-        return stream.open_input_file(self.context.format(path), binary=binary)
+        return open_input_file(self.context.format(path), binary=binary)
 
     def open_output(self,
                     path: str,

@@ -3,79 +3,111 @@ Footnote-related utility functions and classes.
 
 Footnotes are defined in dictionaries mapping labels to text blocks.
 
-Footnote references are trailing square-bracketed labels.
+Footnote references are written as "[^label]", which is the same as a common
+Markdown extension for footnotes.
 
-E.g. "Blah blah blah [a][b]"
+Parsed footnote declarations are paragraphs preceded by `[^label]: ` preambles.
 
-Labels may be any sequence of letters or numbers.
+Labels are sequences of valid symbol characters, like Python identifiers.
+
+Example:
+
+```
+The rains in Spain [^spain] fall mainly on the plain [^plain].
+
+[^spain]: Spain is a Western European country bordering the Atlantic ocean and
+the Mediterranean Sea.
+
+[^plain]: A plain is an area of flat terrain.
 """
 
 import os
 import re
-from typing import Text, List, Optional, Iterator, Sequence, Dict, Union
+from typing import Text, List, Optional, Dict, Union
 
 NotesSpec = Union[Text, List[Text]]
 NotesList = List[Text]
 NotesDict = Dict[Text, Text]
 
-# noinspection RegExpRedundantEscape
-TRAILING_FOOTNOTE_REFERENCES_REGEX = re.compile(r'((?:\[\w*\]\s*)+)$')
+FOOTNOTE_MARKER_REGEX = re.compile(r'\[\^(\w+)\]')
+FOOTNOTE_DECLARATION_REGEX = re.compile(rf'^\s*\[\^(\w+)\]:\s*(.*)$', re.MULTILINE)
 
 
 class FootnoteBuilder:
     """Scrapes footnote labels from text blocks."""
 
-    def __init__(self, *footnotes: NotesDict):
+    def __init__(self):
         self.labels: List[Text] = []
-        self.context_labels: Dict[Text, List[Text]] = {}
+        self.original_body_paragraphs: NotesList = []
+        self.modified_body_paragraphs: NotesList = []
         self.footnotes: NotesDict = {}
-        self.add_footnotes(*footnotes)
 
     def add_footnotes(self, *footnotes: Optional[NotesDict]):
+        """
+        Add footnotes that are available if referenced by markers.
+
+        :param footnotes: labeled footnote dictionary as keyword arguments
+        """
         for footnote_dictionary in footnotes:
             if footnote_dictionary:
                 self.footnotes.update(footnote_dictionary)
 
-    def scan_text(self,
-                  text_block: Optional[Text],
-                  context_labels: Sequence[Text] = None
-                  ) -> Optional[Text]:
+    def parse(self, text: Text):
         """
-        Scan text for "[label]" footnote markers.
+        Parse text block(s) for footnote declarations.
 
-        Keep track of the required footnotes.
+        Capture non-footnote paragraphs in body_paragraphs.
 
-        Replace "[label]" markers with numbered "[#]" markers.
-
-        :param text_block: text block to scan and possibly modify
-        :param context_labels: additional context labels for footnote(s)
-        :return: possibly-modified text block
+        :param text: text to parse
         """
-        if text_block is None:
-            return None
-        markers_match = TRAILING_FOOTNOTE_REFERENCES_REGEX.search(text_block)
-        if markers_match is None:
-            return text_block
-        parts = [text_block[:markers_match.start(1)].rstrip()]
-        found_labels = markers_match.group(1).replace('[', '').replace(']', '').split()
-        for label in found_labels:
-            for existing_label_num, existing_label in enumerate(self.labels, start=1):
-                if label == existing_label:
-                    parts.append(f'[{existing_label_num}]')
-                    break
+        lines: List[Text] = text.strip().split(os.linesep)
+        paragraphs: NotesList = []
+        is_new_paragraph = True
+        for line in lines:
+            line = line.strip()
+            if line:
+                if is_new_paragraph:
+                    paragraphs.append(line)
+                    is_new_paragraph = False
+                else:
+                    paragraphs[-1] = os.linesep.join([paragraphs[-1], line])
             else:
-                self.labels.append(label)
-                if context_labels:
-                    self.context_labels.setdefault(label, []).extend(context_labels)
-                parts.append(f'[{len(self.labels)}]')
-        return ' '.join(parts)
+                is_new_paragraph = True
+        for paragraph in paragraphs:
+            tag_match = FOOTNOTE_DECLARATION_REGEX.match(paragraph)
+            if tag_match:
+                self.footnotes[tag_match.group(1)] = tag_match.group(2)
+            else:
+                self.original_body_paragraphs.append(paragraph)
+                start_idx = 0
+                parts: List[Text] = []
+                for matched in FOOTNOTE_MARKER_REGEX.finditer(paragraph):
+                    if matched.start() > start_idx:
+                        parts.append(paragraph[start_idx:matched.start()])
+                        label_num = self._register_label(matched.group(1))
+                        parts.append(f'[^{label_num}]')
+                    start_idx = matched.end()
+                if start_idx < len(paragraph):
+                    parts.append(paragraph[start_idx:])
+                self.modified_body_paragraphs.append(''.join(parts))
 
-    def format_footnotes(self) -> Iterator[Text]:
+    def format_footnotes(self) -> NotesList:
+        """
+        Format footnotes reference text.
+
+        :return: formatted text with footnote definitions
+        """
+        paragraphs: NotesList = []
         for label_num, label in enumerate(self.labels, start=1):
             if label not in self.footnotes:
-                yield f'(missing "{label}" footnote)'
+                paragraphs.append(f'[^{label_num}]: "{label}" footnote not found.')
             else:
-                yield os.linesep.join([
-                    ','.join([f'[{label_num}]'] + (self.context_labels.get(label) or [])),
-                    self.footnotes[label].strip()
-                ])
+                paragraphs.append(f'[^{label_num}]: {self.footnotes[label].strip()}')
+        return paragraphs
+
+    def _register_label(self, label: Text) -> int:
+        for label_num, existing_label in enumerate(self.labels, start=1):
+            if label == existing_label:
+                return label_num
+        self.labels.append(label)
+        return len(self.labels)

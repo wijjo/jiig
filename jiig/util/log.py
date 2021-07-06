@@ -6,8 +6,8 @@ import traceback
 from contextlib import contextmanager
 from typing import Any, Text, Set, Iterator, List, Sequence, Dict, Tuple, Optional
 
-from . import OPTIONS
 from .general import format_message_lines, get_exception_stack
+from .options import OPTIONS
 
 MESSAGES_ISSUED_ONCE: Set[Text] = set()
 LINES_WRITTEN = 0

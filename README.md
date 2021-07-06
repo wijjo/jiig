@@ -59,8 +59,7 @@ support UI alternatives like the following.
 * CLI libraries other than argparse, possibly including a new stand-alone Jiig
   CLI library.
 
-It
-promotes an approach where user interface definition is primarily data-driven
+It promotes an approach where user interface definition is primarily data-driven
 and maintains a clean separation from core "business" logic.
 
 `Tzar` (https://github.com/wijjo/tzar), also created by the Jiig author, is an

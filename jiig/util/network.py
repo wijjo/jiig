@@ -6,8 +6,8 @@ from typing import Text, Optional
 from urllib.error import URLError
 from urllib.request import urlopen
 
-from . import OPTIONS
 from .log import abort
+from .options import OPTIONS
 from .process import run
 
 

@@ -1,18 +1,21 @@
 """Tool specification."""
 
 import os
+import sys
 from dataclasses import dataclass, field
-from typing import Text, List, Dict, Any, cast
+from typing import Text, List, Dict, Any, cast, Optional
 
-import jiig
+from ..driver import CLIDriver
+from ..util.alias_catalog import DEFAULT_ALIASES_PATH
+from ..util.log import abort, log_warning
+from ..util.filesystem import search_folder_stack_for_file
+from ..util.python import symbols_to_dataclass, load_configuration_script
 
-from .driver import CLIDriver
-from .registry import CONTEXT_REGISTRY, DRIVER_REGISTRY, TASK_REGISTRY, guess_root_task
-from .util.alias_catalog import DEFAULT_ALIASES_PATH
-from .util.log import abort, log_warning
-from .util.filesystem import search_folder_stack_for_file
-from .util.python import symbols_to_dataclass, load_configuration_script
+from .context_registry import ContextReference
+from .driver_registry import DriverReference
+from .task_registry import TaskReference, AssignedTask, TASK_REGISTRY
 
+# Constants.
 DEFAULT_AUTHOR = '(unknown author)'
 DEFAULT_BUILD_FOLDER = 'build'
 DEFAULT_COPYRIGHT = '(unknown copyright)'
@@ -76,12 +79,12 @@ class Tool:
     tool_root_folder: Text
     """Tool base (root) folder."""
 
-    root_task: TASK_REGISTRY.Reference
-    """Root of task config hierarchy."""
+    root_task: TaskReference
+    """Task reference to root of hierarchy."""
 
     # === Optional members. These either have default values or can be derived.
 
-    driver: DRIVER_REGISTRY.Reference = DEFAULT_DRIVER
+    driver: DriverReference = DEFAULT_DRIVER
     """Driver class reference."""
 
     driver_variant: Text = DEFAULT_DRIVER_VARIANT
@@ -150,8 +153,27 @@ class Tool:
     extra_symbols: Dict[Text, Any] = field(default_factory=dict)
     """Imported symbols that from_symbols() could not assign."""
 
-    runtime: CONTEXT_REGISTRY.Reference = None
+    runtime: ContextReference = None
     """Custom runtime context module or class reference (Runtime subclass)."""
+
+    _assigned_root_task: Optional[AssignedTask] = None
+    """Populated on demand by resolving the root task reference."""
+
+    def __post_init__(self):
+        if self.jiig_library_folder is None:
+            self.jiig_library_folder = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        if self.jiig_root_folder is None:
+            self.jiig_root_folder = self.jiig_library_folder
+        # Make `library_folders` a complete list of all needed paths.
+        # Include tool and jiig library paths.
+        if not self.library_folders:
+            self.library_folders.append(self.tool_root_folder)
+        if self.jiig_library_folder not in self.library_folders:
+            self.library_folders.append(self.jiig_library_folder)
+        if self.project_name is None:
+            self.project_name = self.tool_name.capitalize()
+        if self.venv_folder is None:
+            self.venv_folder = os.path.join(os.path.expanduser(JIIG_VENV_ROOT), self.tool_name)
 
     @classmethod
     def from_symbols(cls, symbols: Dict, **defaults) -> 'Tool':
@@ -185,7 +207,8 @@ class Tool:
                 defaults=defaults,
             )
             if dataclass_obj.root_task is None:
-                dataclass_obj.root_task = guess_root_task(dataclass_obj.tool_name)
+                dataclass_obj.root_task = \
+                    TASK_REGISTRY.guess_root_task_implementation(dataclass_obj.tool_name)
                 if dataclass_obj.root_task is None:
                     abort('Root task could not be guessed.')
             return cast(cls, dataclass_obj)
@@ -203,6 +226,7 @@ class Tool:
         :param script_path: script path
         :return: Tool object based on tool script data
         """
+        import jiig
         configuration = load_configuration_script(script_path, jiig=jiig)
         tool_name = os.path.basename(script_path).replace('-', '_')
         # The script may be in a sub-folder, e.g. 'bin'. Look up the folder
@@ -234,3 +258,42 @@ class Tool:
         :raise TypeError: if conversion fails due to bad output type
         """
         return cls.from_symbols(tool_module.__dict__, defaults=defaults)
+
+    @property
+    def assigned_root_task(self) -> AssignedTask:
+        """
+        Assigned registered root task (populated on demand).
+
+        :return: root task assigned to tool
+        """
+        if self._assigned_root_task is None:
+            self._assigned_root_task = TASK_REGISTRY.resolve_assigned_task(
+                self.root_task, '(root)', 2, required=True)
+        return self._assigned_root_task
+
+    @property
+    def venv_interpreter(self) -> Text:
+        """
+        Virtual environment Python interpreter path.
+
+        :return: python path
+        """
+        return os.path.join(self.venv_folder, 'bin', 'python')
+
+    @property
+    def venv_active(self) -> True:
+        """
+        Check if virtual environment is active.
+
+        :return: True if virtual environment is active
+        """
+        return sys.executable == self.venv_interpreter
+
+    @property
+    def venv_needed(self) -> True:
+        """
+        Check if virtual environment is needed.
+
+        :return: True if virtual environment is needed
+        """
+        return self.pip_packages or self.tool_options.venv_required

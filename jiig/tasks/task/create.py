@@ -5,7 +5,6 @@ Task creation task.
 import os
 
 import jiig
-from jiig.util.log import abort, log_message
 from jiig.util.template_expansion import expand_folder
 
 
@@ -21,10 +20,10 @@ class Task(jiig.Task):
 
     def on_run(self, runtime: jiig.Runtime):
         if not os.path.exists(os.path.join(self.output_folder, '../__init__.py')):
-            abort(f'Target folder is not a Python package.', self.output_folder)
+            runtime.abort(f'Target folder is not a Python package.', self.output_folder)
         source_folder = os.path.join(runtime.tool.jiig_root_folder, 'templates/task')
         for task_name in self.new_task_name:
-            log_message(f'Generating task "{task_name}".')
+            runtime.message(f'Generating task "{task_name}".')
             expand_folder(
                 source_folder,
                 self.output_folder,
@@ -36,4 +35,4 @@ class Task(jiig.Task):
                     'template_argument_positional': f'{task_name}_arg',
                 }
             )
-            log_message('NOTE: Make sure to link to the new task from the tool root task.')
+            runtime.message('NOTE: Make sure to link to the new task from the tool root task.')

@@ -2,8 +2,8 @@
 
 from typing import Text, List, Sequence
 
-from jiig.util.general import DefaultValue
-from jiig.util.repetition import Repetition
+from ...util.general import DefaultValue
+from ...util.repetition import Repetition
 
 from .cli_types import CLIPositional, CLIOption
 

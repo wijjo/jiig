@@ -4,9 +4,9 @@ Scripter provisioning script.
 
 from typing import List, Sequence, Union
 
-from jiig import OPTIONS
-from jiig.util.general import make_list
-from jiig.util.process import shell_quote_path
+from ..util import OPTIONS
+from ..util.general import make_list
+from ..util.process import shell_quote_path
 
 from .script import Script
 

@@ -1,10 +1,11 @@
 """
 Context for text expansion and external command execution environment.
 """
+
 import os
 from typing import Optional
 
-from jiig import OPTIONS
+from ..util import OPTIONS
 
 from .context import Context
 from ._file_api import ActionContextFileAPI

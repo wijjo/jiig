@@ -3,7 +3,6 @@ Virtual environment build sub-task.
 """
 
 import jiig
-from jiig.util.log import log_heading
 from jiig.util.python import build_virtual_environment
 
 
@@ -14,7 +13,7 @@ class Task(jiig.Task):
                                  cli_flags=('-r', '--rebuild'))
 
     def on_run(self, runtime: jiig.Runtime):
-        log_heading(1, 'Build virtual environment')
+        runtime.heading(1, 'Build virtual environment')
         build_virtual_environment(runtime.tool.venv_folder,
                                   packages=runtime.tool.pip_packages,
                                   rebuild=self.rebuild_venv,

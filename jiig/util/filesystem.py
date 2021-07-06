@@ -9,9 +9,9 @@ from typing import Text, List, Optional, Iterator, Any
 
 from thirdparty.gitignore_parser import gitignore_parser
 
-from . import OPTIONS
 from .log import abort, log_message
 from .general import make_list
+from .options import OPTIONS
 from .process import run
 
 REMOTE_PATH_REGEX = re.compile(r'^([\w\d.@-]+):([\w\d_-~/]+)$')

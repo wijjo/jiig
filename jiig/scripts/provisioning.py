@@ -5,9 +5,9 @@ Scripter provisioning script.
 import os
 from typing import List
 
-from jiig.util.general import plural
-from jiig.util.git import repo_name_from_url
-from jiig.util.process import shell_quote_path
+from ..util.general import plural
+from ..util.git import repo_name_from_url
+from ..util.process import shell_quote_path
 
 from .shell import ShellScript
 

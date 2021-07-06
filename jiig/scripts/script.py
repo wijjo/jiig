@@ -6,7 +6,7 @@ import os
 from contextlib import contextmanager
 from typing import List, ContextManager, Union, Sequence
 
-from jiig.util.general import make_list, trim_text_blocks, AttrDictReadOnly
+from ..util.general import make_list, trim_text_blocks, AttrDictReadOnly
 
 
 class Script:

@@ -1,7 +1,9 @@
+"""ActionContext misc. API."""
+
 from getpass import getpass
 from typing import Sequence, Optional
 
-from jiig.util.template_expansion import expand_folder
+from ..util.template_expansion import expand_folder
 
 from .context import Context
 

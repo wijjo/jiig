@@ -2,8 +2,8 @@
 
 from typing import Text, Any, Dict, Sequence
 
-from jiig.util.general import DefaultValue
-from jiig.util.repetition import Repetition
+from ..util.general import DefaultValue
+from ..util.repetition import Repetition
 
 
 class DriverField:

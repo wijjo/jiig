@@ -2,8 +2,6 @@
 Jiig utility library.
 """
 
-from ._options import OPTIONS
-
 # Provide package access to all modules that have no unwanted external
 # dependencies. This allows clients to use fully-specified package names, e.g.
 # jiig.util.general in code. The `gui` sub-package is an example of one that
@@ -25,3 +23,6 @@ from . import \
     scanners, \
     stream, \
     template_expansion
+
+
+from .options import OPTIONS

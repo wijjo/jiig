@@ -1,13 +1,13 @@
 """Task handler."""
 
-from .contexts import ActionContext
-from .registry import RegisteredTask
+from .runtime import Runtime
+from .task_registry import SelfRegisteringTaskBase
 
 
 # The `skip_registration` class keyword argument makes sure this abstract
 # intermediate class isn't registered. The concrete sub-class needs to be the
 # only one that is registered and wrapped in a dataclass.
-class Task(RegisteredTask, skip_registration=True):
+class Task(SelfRegisteringTaskBase, skip_registration=True):
     """
     Self-registering base task handler (call-back class).
 
@@ -24,7 +24,7 @@ class Task(RegisteredTask, skip_registration=True):
         - visibility: 0=normal, 1=secondary, 2=hidden
     """
 
-    def on_run(self, runtime: ActionContext):
+    def on_run(self, runtime: Runtime):
         """
         Override-able method that gets called to run task logic.
 
@@ -32,7 +32,7 @@ class Task(RegisteredTask, skip_registration=True):
         """
         pass
 
-    def on_done(self, runtime: ActionContext):
+    def on_done(self, runtime: Runtime):
         """
         Override-able method called after running tasks in reverse order.
 

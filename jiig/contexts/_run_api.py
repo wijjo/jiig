@@ -1,11 +1,13 @@
+"""ActionContext program execution API."""
+
 import os
 import subprocess
 from typing import Sequence, Union, Tuple, Optional, List
 
-from jiig import OPTIONS
-from jiig.scripts import Script
-from jiig.util.general import AttrDictReadOnly
-from jiig.util.network import format_host_string
+from ..scripts import Script
+from ..util import OPTIONS
+from ..util.general import AttrDictReadOnly
+from ..util.network import format_host_string
 
 from .context import Context
 from ._util import run_context_command, run_context_sub_process, open_context_output_file

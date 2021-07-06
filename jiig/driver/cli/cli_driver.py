@@ -5,11 +5,11 @@ from dataclasses import dataclass
 from inspect import isclass
 from typing import Text, Sequence, List, Optional, Type
 
-from jiig.util.alias_catalog import is_alias_name, open_alias_catalog
-from jiig.util.log import abort, ConsoleLogWriter
-from jiig.util.general import make_list, plural
-from jiig.util.process import shell_command_string
-from jiig.util.python import import_module_path
+from ...util.alias_catalog import is_alias_name, open_alias_catalog
+from ...util.log import abort, ConsoleLogWriter
+from ...util.general import make_list, plural
+from ...util.process import shell_command_string
+from ...util.python import import_module_path
 
 from ..driver import Driver, IMPLEMENTATION_CLASS_NAME
 from ..driver_options import DriverOptions

@@ -19,7 +19,7 @@ class Task(
     """Manage the tool virtual environment."""
 
     def on_run(self, runtime: jiig.Runtime):
-        if not runtime.tool.pip_packages and not runtime.tool.options.venv_required:
+        if not runtime.tool.pip_packages and not runtime.tool.tool_options.venv_required:
             jiig.util.log.abort(f'A virtual environment is not required.')
         if not runtime.tool.venv_folder:
             jiig.util.log.abort(f'Virtual environment folder (venv_folder) is not set.')

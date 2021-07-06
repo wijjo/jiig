@@ -7,9 +7,9 @@ import sys
 from pprint import pformat
 from typing import List, Union, Optional, Any
 
-from jiig import OPTIONS
-from jiig.util.log import log_heading, log_warning, log_error, log_message, abort
-from jiig.util.general import trim_text_blocks, AttrDictNoDefaults
+from ..util import OPTIONS
+from ..util.log import log_heading, log_warning, log_error, log_message, abort
+from ..util.general import trim_text_blocks, AttrDictNoDefaults
 
 
 class Context:

@@ -3,9 +3,9 @@
 from dataclasses import dataclass
 from typing import Text, List, Any, Dict, Optional, Sequence
 
-from jiig.util.footnotes import NotesList, NotesDict
-from jiig.util.general import DefaultValue
-from jiig.util.repetition import Repetition
+from ..util.footnotes import NotesList, NotesDict
+from ..util.general import DefaultValue
+from ..util.repetition import Repetition
 
 from .driver_field import DriverField
 

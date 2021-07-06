@@ -6,7 +6,6 @@ from typing import Text, Iterable, Iterator
 
 import jiig
 from jiig.util.alias_catalog import Alias
-from jiig.util.log import log_message
 from jiig.util.general import format_table
 
 
@@ -20,11 +19,11 @@ class Task(jiig.Task):
         displayed_line_count = 0
         with runtime.open_alias_catalog() as catalog:
             for line in _format_aliases(catalog.iterate_aliases(), long_names=self.expand_names):
-                log_message(line)
+                runtime.message(line)
                 displayed_line_count += 1
         # _format_aliases() returns no lines, not even a heading, if no aliases exist.
         if displayed_line_count == 0:
-            log_message('No aliases exist.')
+            runtime.message('No aliases exist.')
 
 
 def _format_aliases(aliases: Iterable[Alias],

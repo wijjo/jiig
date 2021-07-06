@@ -11,13 +11,13 @@ either throw an exception or provide an informative return value.
 import os
 import sys
 import traceback
-from dataclasses import dataclass, MISSING
+from dataclasses import dataclass
 from subprocess import run
 from textwrap import wrap
 from typing import Iterable, Any, Text, Iterator, List, \
     Optional, Tuple, Sequence, Callable, Union, Dict
 
-from . import OPTIONS
+from .options import OPTIONS
 
 
 class MetaAttrDict(type):
@@ -105,22 +105,6 @@ class AttrDictNoDefaultsReadOnly(dict, metaclass=MetaAttrDict, no_defaults=True,
 @dataclass
 class DefaultValue:
     value: Any
-
-    # noinspection PyUnresolvedReferences
-    @classmethod
-    def from_dataclass_field(cls, field: Optional[object]) -> Optional['DefaultValue']:
-        """
-        Convert dataclass field default to DefaultValue.
-
-        :param field: dataclass field
-        :return: DefaultValue if there is a value, None otherwise
-        """
-        if field is not None:
-            if field.default is not MISSING:
-                return DefaultValue(field.default)
-            if field.default_factory is not MISSING:
-                return DefaultValue(field.default_factory())
-        return None
 
 
 def make_list(value: Any, strings: bool = False, allow_none: bool = False) -> Optional[List]:

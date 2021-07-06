@@ -4,17 +4,14 @@ Jiig library.
 TODO: <more library documentation goes here>
 """
 
-from ._options import OPTIONS
-
 # Key types and functions exposed at the top level.
+from .decorators import task
 from .driver import Driver, DriverTask
-from .field import Field
-from .contexts import Context, ActionContext, Runtime, RuntimeHelpGenerator
-from .runtime_task import RuntimeTask
-from .runtime_tool import RuntimeTool
+from .contexts import Context, ActionContext
+from .registry import AssignedTask, Field, ArgumentAdapter, \
+    Runtime, RuntimeHelpGenerator, Task, Tool, ToolOptions, JIIG_VENV_ROOT
 from .startup import main
-from .task import Task
-from .tool import Tool
+from .util.options import OPTIONS
 
 # Top level public modules and their shortened aliases.
 from . import adapters, fields

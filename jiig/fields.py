@@ -6,7 +6,7 @@ from typing import Text, Annotated, Union, Callable, Protocol, List
 
 from .adapters import to_timestamp, to_interval, to_age, to_comma_tuple, \
     to_int, to_float, to_bool, path_is_folder, path_to_absolute, path_exists
-from .field import Field
+from .registry import Field
 
 
 # === Field declaration functions.

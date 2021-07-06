@@ -9,10 +9,10 @@ import sys
 from contextlib import contextmanager
 from typing import List, Text, Sequence, Tuple, Dict
 
-from jiig.util.log import Logger
-from jiig.util.general import make_list, DefaultValue
-from jiig.util.repetition import Repetition
-from jiig.util.python import format_call_string
+from ....util.log import Logger
+from ....util.general import make_list, DefaultValue
+from ....util.repetition import Repetition
+from ....util.python import format_call_string
 
 from ..cli_types import CLIError, CLIPreliminaryResults, CLIResults, CLIOptions
 from ..cli_command import CLICommand

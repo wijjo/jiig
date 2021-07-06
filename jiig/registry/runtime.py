@@ -5,13 +5,13 @@ Runner provides data and an API to task call-back functions..
 from contextlib import contextmanager
 from typing import Text, Iterator, Optional
 
-from jiig.registry import RegisteredContext
-from jiig.runtime_tool import RuntimeTool
-from jiig.util.alias_catalog import AliasCatalog, open_alias_catalog
+from ..contexts.action import ActionContext
+from ..contexts.context import Context
+from ..util.alias_catalog import AliasCatalog, open_alias_catalog
 
-from .action import ActionContext
-from .context import Context
+from .context_registry import SelfRegisteringContextBase
 from .host_context import HostContext
+from .tool import Tool
 
 
 class RuntimeHelpGenerator:
@@ -26,7 +26,7 @@ class RuntimeHelpGenerator:
         raise NotImplementedError
 
 
-class Runtime(ActionContext, RegisteredContext):
+class Runtime(ActionContext, SelfRegisteringContextBase):
     """
     Application Runtime class.
 
@@ -41,7 +41,7 @@ class Runtime(ActionContext, RegisteredContext):
 
     def __init__(self,
                  parent: Optional[Context],
-                 tool: RuntimeTool,
+                 tool: Tool,
                  help_generator: RuntimeHelpGenerator,
                  data: object,
                  **kwargs,
@@ -74,7 +74,7 @@ class Runtime(ActionContext, RegisteredContext):
             pip_packages=tool.pip_packages,
             project_name=tool.project_name,
             sub_task_label=tool.sub_task_label,
-            tool_name=tool.name,
+            tool_name=tool.tool_name,
             tool_root_folder=tool.tool_root_folder,
             top_task_label=tool.top_task_label,
             venv_folder=tool.venv_folder,
@@ -91,7 +91,7 @@ class Runtime(ActionContext, RegisteredContext):
 
         :return: catalog
         """
-        with open_alias_catalog(self.tool.name, self.tool.aliases_path) as catalog:
+        with open_alias_catalog(self.tool.tool_name, self.tool.aliases_path) as catalog:
             yield catalog
 
     def provide_help(self, *names: Text, show_hidden: bool = False):

@@ -24,10 +24,9 @@ def jiig_env_main():
         exec(tool_script_file.read(), tool_symbols)
     tool_name = tool_symbols['TOOL_NAME']
     pip_packages = tool_symbols['PIP_PACKAGES']
-    from jiig.util.python import build_virtual_environment
-    from jiig.tool import JIIG_VENV_ROOT
-    venv_folder = os.path.join(os.path.expanduser(JIIG_VENV_ROOT), tool_name)
-    build_virtual_environment(venv_folder, packages=pip_packages)
+    import jiig
+    venv_folder = os.path.join(os.path.expanduser(jiig.JIIG_VENV_ROOT), tool_name)
+    jiig.util.python.build_virtual_environment(venv_folder, packages=pip_packages)
 
 
 if __name__ == '__main__':

@@ -294,7 +294,11 @@ class HelpFormatter:
         help_text = help_text.strip() if help_text else ''
         if not help_text:
             return '(no help available)'
-        return self.footnote_builder.scan_text(help_text)
+        start_idx = len(self.footnote_builder.modified_body_paragraphs)
+        self.footnote_builder.parse(help_text)
+        paragraphs = self.footnote_builder.modified_body_paragraphs[start_idx:]
+        output_text = f'{os.linesep}{os.linesep}'.join(paragraphs)
+        return output_text
 
     def _format_description(self) -> Iterator[Text]:
         yield self._format_help_text(self.description)

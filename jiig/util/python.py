@@ -6,15 +6,15 @@ import importlib.util
 import os
 import sys
 import traceback
-from dataclasses import fields, is_dataclass
-from inspect import isclass, isfunction
+from dataclasses import fields, is_dataclass, MISSING
+from inspect import isclass, isfunction, signature
 from types import ModuleType
-from typing import Text, List, Tuple, Optional, IO, Dict, Type, Any, TypeVar
+from typing import Text, List, Tuple, Optional, IO, Dict, Type, Any, TypeVar, get_type_hints, get_args, Callable
 
-from . import OPTIONS
 from .log import abort, log_error, log_message, log_warning
 from .filesystem import delete_folder, short_path
-from .general import format_message_block, plural
+from .general import format_message_block, plural, DefaultValue
+from .options import OPTIONS
 from .process import run
 from .stream import open_text_source
 
@@ -385,3 +385,87 @@ def load_configuration_script(script_path: Text, **default_symbols) -> Dict:
               script_exc,
               exec_file_name=script_path,
               exception_traceback_skip=1)
+
+
+class ExtractedField:
+    """Annotation and default for dataclass or function-extracted field."""
+    def __init__(self, name: Text, hint: Any, default: DefaultValue = None):
+        """
+        ExtractedField constructor.
+
+        :param name: field name
+        :param hint: raw hint (parsed into type hint and annotation)
+        :param default: optional default value
+        """
+        self.name = name
+        hint_args = get_args(hint)
+        if len(hint_args) == 0:
+            self.type_hint = hint
+            self.annotation = None
+        else:
+            self.type_hint = hint_args[0]
+            if len(hint_args) == 2:
+                self.annotation = hint_args[1]
+            else:
+                self.annotation = None
+        self.default = default
+
+
+class ExtractedFields:
+    """Fields and defaults extracted from dataclass or function signature."""
+    def __init__(self):
+        self.fields: List[ExtractedField] = []
+        self.errors: List[Text] = []
+
+
+def get_dataclass_fields(dataclass_class: Type) -> ExtractedFields:
+    """
+    Extract fields and defaults from a dataclass.
+
+    :param dataclass_class: dataclass to probe
+    :return: Fields object with annotations and defaults by field name, plus error messages
+    """
+    fields_by_name: Dict[Text, ExtractedField] = {}
+    task_fields = ExtractedFields()
+    # Pass 1 - extract type hints.
+    for name, type_hint in get_type_hints(dataclass_class, include_extras=True).items():
+        extracted_field = ExtractedField(name, type_hint)
+        task_fields.fields.append(extracted_field)
+        fields_by_name[name] = extracted_field
+    # Pass 2 - extract default values.
+    # noinspection PyDataclass
+    for field in fields(dataclass_class):
+        if field.default is not MISSING:
+            fields_by_name[field.name].default = DefaultValue(field.default)
+        elif field.default_factory is not MISSING:
+            fields_by_name[field.name].default = DefaultValue(field.default_factory())
+    return task_fields
+
+
+def get_function_fields(function: Callable) -> ExtractedFields:
+    """
+    Extract fields and defaults from a function.
+
+    :param function: function to probe
+    :return: Fields object with annotations and defaults by field name, plus error messages
+    """
+    function_signature = signature(function)
+    parameters = function_signature.parameters
+    errors: List[Text] = []
+    task_fields = ExtractedFields()
+    for idx, parameter_pair in enumerate(parameters.items()):
+        name, parameter = parameter_pair
+        if parameter.kind in [parameter.VAR_POSITIONAL,
+                              parameter.VAR_KEYWORD,
+                              parameter.POSITIONAL_ONLY]:
+            errors.append('Variable arguments are not supported.')
+        elif parameter.annotation is not parameter.empty:
+            if parameter.default is not parameter.empty:
+                default_value = DefaultValue(parameter.default)
+            else:
+                default_value = None
+            field = ExtractedField(name, parameter.annotation, default=default_value)
+            task_fields.fields.append(field)
+        else:
+            errors.append(f'Parameter "{name}" is not a Jiig field.')
+    return task_fields

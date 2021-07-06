@@ -192,3 +192,6 @@ class Options:
         self._keep_files: Optional[bool] = other._keep_files
         self._message_indent = other._message_indent
         self._column_separator = other._column_separator
+
+
+OPTIONS = Options()

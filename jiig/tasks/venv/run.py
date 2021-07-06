@@ -5,7 +5,6 @@ Virtual environment general command execution task.
 import os
 
 import jiig
-from jiig.util.log import abort
 
 
 class Task(jiig.Task):
@@ -17,5 +16,5 @@ class Task(jiig.Task):
     def on_run(self, runtime: jiig.Runtime):
         command_path = runtime.format_path(f'{{venv_folder}}/bin/{self.command}')
         if not os.path.isfile(command_path):
-            abort(f'Command "{self.command}" does not exist in virtual environment.')
+            runtime.abort(f'Command "{self.command}" does not exist in virtual environment.')
         os.execl(command_path, command_path, *self.trailing_arguments)

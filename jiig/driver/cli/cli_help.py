@@ -4,11 +4,11 @@ import os
 from dataclasses import dataclass, field
 from typing import Text, Sequence, List, Optional
 
-from jiig.util.log import abort
-from jiig.util.footnotes import NotesDict, NotesList
-from jiig.util.general import DefaultValue
-from jiig.util.repetition import Repetition
-from jiig.util.help_formatter import HelpProvider, HelpFormatter
+from ...util.log import abort
+from ...util.footnotes import NotesDict, NotesList
+from ...util.general import DefaultValue
+from ...util.repetition import Repetition
+from ...util.help_formatter import HelpProvider, HelpFormatter
 
 from ..driver_task import DriverTask, DriverField
 

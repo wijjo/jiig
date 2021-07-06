@@ -6,11 +6,10 @@ import base64
 import binascii
 import os
 from time import mktime
-from typing import Text, Any, Optional, Tuple, Callable, Union
+from typing import Text, Any, Optional, Tuple, Union
 
-from . import util
-
-ArgumentAdapter = Callable[..., Any]
+from .registry import ArgumentAdapter
+from .util.date_time import parse_date_time, parse_time_interval, apply_date_time_delta_string
 
 
 def b64_decode(value: str) -> str:
@@ -156,7 +155,7 @@ def to_age(value: str) -> float:
     :param value: time delta string
     :return: timestamp float
     """
-    return mktime(util.date_time.apply_date_time_delta_string(value, negative=True))
+    return mktime(apply_date_time_delta_string(value, negative=True))
 
 
 def to_bool(value: Union[str, bool]) -> bool:
@@ -216,7 +215,7 @@ def to_interval(value: str) -> int:
     :param value: raw text value
     :return: returned interval integer
     """
-    return util.date_time.parse_time_interval(value)
+    return parse_time_interval(value)
 
 
 def to_timestamp(value: str) -> float:
@@ -226,7 +225,7 @@ def to_timestamp(value: str) -> float:
     :param value: date/time string
     :return: timestamp float, as returned by mktime()
     """
-    parsed_time_struct = util.date_time.parse_date_time(value)
+    parsed_time_struct = parse_date_time(value)
     if not parsed_time_struct:
         raise ValueError(f'bad date/time string "{value}"')
     return mktime(parsed_time_struct)

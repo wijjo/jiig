@@ -4,11 +4,13 @@ Field specification.
 Fields are not themselves registered, but are incorporated into registered tasks.
 """
 
-from typing import Any, Text, Collection, Dict
+from typing import Any, Text, Collection, Dict, Callable
 
-from .adapters import ArgumentAdapter
-from .hints import add_used_hints
-from .util.general import make_list
+from ..util.general import make_list
+
+from .hint_registry import HINT_REGISTRY
+
+ArgumentAdapter = Callable[..., Any]
 
 
 class Field:
@@ -36,7 +38,7 @@ class Field:
         self.hints = hints
         self.adapters = make_list(adapters, allow_none=True)
         # Keep track of used hint names so that a sanity check can be performed later.
-        add_used_hints(*hints.keys())
+        HINT_REGISTRY.add_used_hints(*hints.keys())
 
     def tweak(self,
               element_type: Any = None,

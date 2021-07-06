@@ -3,7 +3,6 @@ Show alias(es) task.
 """
 
 import jiig
-from jiig.util.log import log_error, log_message
 
 
 class Task(jiig.Task):
@@ -21,6 +20,6 @@ class Task(jiig.Task):
             for name in self.aliases:
                 resolved_alias = catalog.get_alias(name)
                 if resolved_alias is not None:
-                    log_message(resolved_alias)
+                    runtime.message(resolved_alias)
                 else:
-                    log_error(f'Alias "{name}" does not exist.')
+                    runtime.error(f'Alias "{name}" does not exist.')

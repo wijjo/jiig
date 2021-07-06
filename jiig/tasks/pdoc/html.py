@@ -5,7 +5,6 @@ Pdoc3 HTML documentation generation task.
 import os
 
 import jiig
-from jiig.util.log import abort, log_message
 from jiig.util.filesystem import create_folder, short_path
 
 from ._util import PdocBuilder
@@ -28,17 +27,17 @@ class Task(jiig.Task):
                 path = _module_path(module)
                 if os.path.exists(path):
                     if not os.path.isfile(path):
-                        abort(f'Output path exists, but is not a file.', path)
-                    abort(f'One or more output files exist in the'
-                          f' output folder "{runtime.tool.doc_folder}".',
-                          'Use -f or --force to overwrite.')
+                        runtime.abort(f'Output path exists, but is not a file.', path)
+                    runtime.abort(f'One or more output files exist in the'
+                                  f' output folder "{runtime.tool.doc_folder}".',
+                                  'Use -f or --force to overwrite.')
         for module in builder.iterate_modules():
             path = os.path.join(runtime.tool.doc_folder,
                                 *module.url().split('/')[1:])
             create_folder(os.path.dirname(path), quiet=True)
             try:
-                log_message(short_path(path))
+                runtime.message(short_path(path))
                 with open(path, 'w', encoding='utf-8') as html_file:
                     html_file.write(module.html())
             except (IOError, OSError) as exc:
-                abort(f'Failed to write HTML file.', path, exc)
+                runtime.abort(f'Failed to write HTML file.', path, exc)

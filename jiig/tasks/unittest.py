@@ -7,7 +7,6 @@ import unittest
 from glob import glob
 
 import jiig
-from jiig.util.log import abort, log_error
 from jiig.util.filesystem import check_folder_exists
 from jiig.util.python import import_module_path
 
@@ -31,11 +30,11 @@ class Task(jiig.Task):
                 if module_name in module_map:
                     module_names_to_run.append(module_name)
                 else:
-                    log_error(f'Ignoring unknown test module "{module_name}".')
+                    runtime.error(f'Ignoring unknown test module "{module_name}".')
         else:
             module_names_to_run.extend(module_map.keys())
         if not module_names_to_run:
-            abort('No test suites found.')
+            runtime.abort('No test suites found.')
         test_suites = []
         for module_name in module_names_to_run:
             test_module = import_module_path(module_map[module_name], module_name=module_name)

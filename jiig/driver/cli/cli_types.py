@@ -3,8 +3,8 @@
 from dataclasses import dataclass, field
 from typing import Text, Sequence, List, Optional
 
-from jiig.util.general import DefaultValue
-from jiig.util.repetition import Repetition
+from ...util.general import DefaultValue
+from ...util.repetition import Repetition
 
 
 class CLIError(Exception):
