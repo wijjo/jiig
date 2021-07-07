@@ -5,13 +5,13 @@ import jiig
 from . import html, pdf, server
 
 
-class Task(
-    jiig.Task,
+@jiig.task(
     tasks={
         'html': html,
         'pdf': pdf,
         'server': server,
     },
-):
+)
+def root(_runtime: jiig.Runtime):
     """Pdoc3 documentation tasks."""
     pass

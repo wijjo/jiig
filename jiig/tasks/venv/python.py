@@ -7,12 +7,12 @@ import os
 import jiig
 
 
-class Task(jiig.Task):
+@jiig.task
+def python(
+    runtime: jiig.Runtime,
+    trailing_arguments: jiig.f.text('Trailing CLI arguments.', cli_trailing=True),
+):
     """Run python from virtual environment."""
-
-    trailing_arguments: jiig.f.text('Trailing CLI arguments.', cli_trailing=True)
-
-    def on_run(self, runtime: jiig.Runtime):
-        python_path = runtime.format_path('{venv_folder}/bin/python')
-        env = {'PYTHONPATH': os.path.pathsep.join(runtime.tool.library_folders)}
-        os.execle(python_path, python_path, *self.trailing_arguments, env)
+    python_path = runtime.format_path('{venv_folder}/bin/python')
+    env = {'PYTHONPATH': os.path.pathsep.join(runtime.tool.library_folders)}
+    os.execle(python_path, python_path, *trailing_arguments, env)

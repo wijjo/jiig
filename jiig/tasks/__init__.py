@@ -5,8 +5,7 @@ import jiig
 from . import alias, help, pdoc, task, tool, unittest, venv
 
 
-class Task(
-    jiig.Task,
+@jiig.task(
     tasks={
         'task': task,
         'tool': tool,
@@ -16,5 +15,6 @@ class Task(
         'pdoc[s]': pdoc,
         'unittest[h]': unittest,
     },
-):
+)
+def root(_runtime: jiig.Runtime):
     pass

@@ -3,7 +3,7 @@ Runner provides data and an API to task call-back functions..
 """
 
 from contextlib import contextmanager
-from typing import Text, Iterator, Optional
+from typing import Text, Iterator, Optional, Callable, List
 
 from ..contexts.action import ActionContext
 from ..contexts.context import Context
@@ -61,6 +61,7 @@ class Runtime(ActionContext, SelfRegisteringContextBase):
         self.tool = tool
         self.help_generator = help_generator
         self.data = data
+        self.when_done_callables: List[Callable] = []
         super().__init__(
             parent,
             aliases_path=tool.aliases_path,
@@ -147,3 +148,17 @@ class Runtime(ActionContext, SelfRegisteringContextBase):
                        self.help_generator,
                        self.data,
                        **kwargs)
+
+    def when_done(self, when_done_callable: Callable):
+        """
+        Register "when-done" clean-up call-back.
+
+        When-done callables are called in LIFO (last in/first out) order.
+
+        When-done callables must accept no arguments. They are generally
+        implemented as inner functions within the task run function, and are
+        aware of the local stack frame and runtime.
+
+        :param when_done_callable: callable (accepts no arguments) that is called when done
+        """
+        self.when_done_callables.insert(0, when_done_callable)

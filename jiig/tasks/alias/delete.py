@@ -5,10 +5,11 @@ Alias sub-command tasks.
 import jiig
 
 
-class Task(jiig.Task):
+@jiig.task
+def delete(
+    runtime: jiig.Runtime,
+    alias: jiig.f.text('Name of alias to delete.'),
+):
     """Delete alias."""
-    alias: jiig.f.text('Name of alias to delete.')
-
-    def on_run(self, runtime: jiig.Runtime):
-        with runtime.open_alias_catalog() as catalog:
-            catalog.delete_alias(self.alias)
+    with runtime.open_alias_catalog() as catalog:
+        catalog.delete_alias(alias)

@@ -6,9 +6,8 @@ import jiig
 from jiig.util.python import update_virtual_environment
 
 
-class Task(jiig.Task):
+@jiig.task
+def update(runtime: jiig.Runtime):
     """Delete the tool virtual environment."""
-
-    def on_run(self, runtime: jiig.Runtime):
-        runtime.heading(1, 'Delete virtual environment')
-        update_virtual_environment(runtime.tool.venv_folder, packages=runtime.tool.pip_packages)
+    runtime.heading(1, 'Delete virtual environment')
+    update_virtual_environment(runtime.tool.venv_folder, packages=runtime.tool.pip_packages)

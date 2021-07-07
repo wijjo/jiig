@@ -5,11 +5,11 @@ import jiig
 from . import create
 
 
-class Task(
-    jiig.Task,
+@jiig.task(
     tasks={
         'create': create,
     }
-):
+)
+def root(_runtime: jiig.Runtime):
     """Manage task modules."""
     pass

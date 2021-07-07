@@ -210,15 +210,13 @@ def _populate_driver_task(driver_task: DriverTask,
 
 def _add_builtin_tasks(tool: Tool):
     visibility = 2 if tool.tool_options.hide_builtin_tasks else 1
+    root_task_names = set((sub_task.name for sub_task in tool.assigned_root_task.sub_tasks))
 
     def _add_if_needed(name: Text, task_ref: Text):
-        if f'{name}[s]' in tool.assigned_root_task.sub_tasks:
-            return
-        if f'{name}[h]' in tool.assigned_root_task.sub_tasks:
-            return
-        assigned_task = TASK_REGISTRY.resolve_assigned_task(task_ref, name, visibility)
-        if assigned_task is not None:
-            tool.assigned_root_task.sub_tasks.append(assigned_task)
+        if not root_task_names.intersection({name, f'{name}[s]', f'{name}[h]'}):
+            assigned_task = TASK_REGISTRY.resolve_assigned_task(task_ref, name, visibility)
+            if assigned_task is not None:
+                tool.assigned_root_task.sub_tasks.append(assigned_task)
 
     if not tool.tool_options.disable_help:
         _add_if_needed('help', 'jiig.tasks.help')

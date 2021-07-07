@@ -5,8 +5,7 @@ import jiig
 from . import build, ipython, pip, python, run, update
 
 
-class Task(
-    jiig.Task,
+@jiig.task(
     tasks={
         'build': build,
         'ipython': ipython,
@@ -15,11 +14,10 @@ class Task(
         'run': run,
         'update': update,
     },
-):
+)
+def root(runtime: jiig.Runtime):
     """Manage the tool virtual environment."""
-
-    def on_run(self, runtime: jiig.Runtime):
-        if not runtime.tool.pip_packages and not runtime.tool.tool_options.venv_required:
-            jiig.util.log.abort(f'A virtual environment is not required.')
-        if not runtime.tool.venv_folder:
-            jiig.util.log.abort(f'Virtual environment folder (venv_folder) is not set.')
+    if not runtime.tool.pip_packages and not runtime.tool.tool_options.venv_required:
+        runtime.abort(f'A virtual environment is not required.')
+    if not runtime.tool.venv_folder:
+        runtime.abort(f'Virtual environment folder (venv_folder) is not set.')

@@ -1,8 +1,5 @@
 # Improvements
 
-* [ ] Convert Tool to use registry.
-    * [ ] Use registered tool reference in Jiig tool script.
-
 * [ ] Support field descriptions in doc string.
     * [ ] Parse `:param:` for functions.
     * [ ] Parse `:field:` for task classes.
@@ -11,22 +8,22 @@
     * [ ] Support `@task(..., hints={...})` or support `cli_flags` as a keyword.
     * [ ] Support `class MyTask(Task, ..., hints={...})`.
 
-* [ ] Update and test app templates.
-    * [ ] Use task functions?
-    * [ ] Test tool script/project and task generator.
-
-* [ ] Add task function support for delayed clean-up.
-    * [ ] Support `runtime.add_cleanup(function)`? 
-    * [ ] Or add chained decorator, similar to @property getter/setter pairs.
-
-* [ ] Get rid of task classes when @task function support is ready?
-    * [ ] Consider removing support for self-registering Task classes. 
-
 * [ ] Get rid of task text parameters once doc string support is ready?
     * [ ] Pull description, notes, footnotes, and field descriptions from doc string. 
     * [ ] Remove parameters from @task decorators. 
     * [ ] Remove from self-registering Task classes (if they are still supported).
     * [ ] Retrofit existing applications, like tzar.
+
+* [ ] Update and test app templates.
+    * [ ] Use task functions?
+    * [ ] Test tool script/project and task generator.
+
+* [ ] Convert Tool to use registry.
+    * [ ] Use registered tool reference in Jiig tool script.
+
+* [ ] Add task function support for delayed clean-up?
+    * [ ] Support `runtime.add_cleanup(function)`? 
+    * [ ] Or add chained decorator, similar to @property getter/setter pairs.
 
 # Fixes
 

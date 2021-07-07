@@ -7,14 +7,14 @@ import os
 import jiig
 
 
-class Task(jiig.Task):
+@jiig.task
+def run(
+    runtime: jiig.Runtime,
+    command: jiig.f.text('Virtual environment command'),
+    trailing_arguments: jiig.f.text('Trailing CLI arguments.', cli_trailing=True),
+):
     """Run miscellaneous command from virtual environment."""
-
-    command: jiig.f.text('Virtual environment command')
-    trailing_arguments: jiig.f.text('Trailing CLI arguments.', cli_trailing=True)
-
-    def on_run(self, runtime: jiig.Runtime):
-        command_path = runtime.format_path(f'{{venv_folder}}/bin/{self.command}')
-        if not os.path.isfile(command_path):
-            runtime.abort(f'Command "{self.command}" does not exist in virtual environment.')
-        os.execl(command_path, command_path, *self.trailing_arguments)
+    command_path = runtime.format_path(f'{{venv_folder}}/bin/{command}')
+    if not os.path.isfile(command_path):
+        runtime.abort(f'Command "{command}" does not exist in virtual environment.')
+    os.execl(command_path, command_path, *trailing_arguments)

@@ -5,11 +5,12 @@ Pdoc3 documentation server task.
 import jiig
 
 
-class Task(jiig.Task):
-    """Use Pdoc3 to serve documentation using HTTP."""
-
+# noinspection PyUnusedLocal
+@jiig.task
+def server(
+    runtime: jiig.Runtime,
     port: jiig.f.integer('HTTP server port (default: 8080)',
-                         cli_flags=('-p', '--port'))
-
-    def on_run(self, runtime: jiig.Runtime):
-        raise NotImplementedError
+                         cli_flags=('-p', '--port')),
+):
+    """Use Pdoc3 to serve documentation using HTTP."""
+    raise NotImplementedError

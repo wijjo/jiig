@@ -7,15 +7,15 @@ provides a more type-specific API for accessing and querying the registry.
 
 import re
 import sys
-from dataclasses import dataclass, is_dataclass
-from inspect import isclass, isfunction, ismodule
-from typing import Text, Dict, Type, List, Optional, Union, cast, Any, Callable, Sequence
+from dataclasses import dataclass
+from inspect import isfunction, ismodule
+from typing import Text, Dict, List, Optional, Union, cast, Any, Callable, Sequence
 from types import ModuleType
 
 from ..util.general import DefaultValue, plural
 from ..util.log import log_warning, log_error, abort
 from ..util.footnotes import NotesList, NotesDict, FootnoteBuilder
-from ..util.python import get_function_fields, get_dataclass_fields
+from ..util.python import get_function_fields
 from ..util.repetition import Repetition
 
 from .context_registry import SelfRegisteringContextBase
@@ -31,11 +31,11 @@ TASK_IDENT_REGEX = re.compile(r'^'
 # The best we can do for now for a task function type hint, because Callable has
 # no syntax for variable keyword arguments.
 TaskFunction = Callable
-TaskReference = Union[Type['SelfRegisteringTaskBase'], Text, ModuleType, TaskFunction]
+TaskReference = Union[Text, ModuleType, TaskFunction]
 SubTaskList = Sequence[TaskReference]
 SubTaskDict = Dict[Text, TaskReference]
 SubTaskCollection = Union[SubTaskList, SubTaskDict]
-TaskImplementation = Union[Type['SelfRegisteringTaskBase'], TaskFunction]
+TaskImplementation = TaskFunction
 
 
 @dataclass
@@ -88,7 +88,9 @@ class TaskRegistrationRecord(RegistrationRecord):
         :param sub_task_references: sub-task references by name
         """
         if module is None:
-            module = sys.modules[implementation.__module__]
+            # Not sure why this cast is needed, since TaskImplementation is just
+            # an indirect reference to Callable.
+            module = sys.modules[cast(implementation, Callable).__module__]
         super().__init__(implementation, module)
         self.description = description
         self.notes = notes
@@ -106,59 +108,16 @@ class TaskRegistrationRecord(RegistrationRecord):
         return super().implementation
 
 
-class SelfRegisteringTaskBase:
-    """
-    Base Task handler (call-back class).
-
-    Use as a base for registered task classes. It provides type-checked method
-    overrides and automatic class registration and wrapping as a dataclass.
-
-    Self-registers to the task registry.
-
-    Also accepts an `skip_registration` boolean keyword to flag a base class
-    that should not itself be registered as a RegisteredTask sub-class.
-
-    The class declaration accepts the following keyword arguments:
-        - description: task description
-        - notes: notes list
-        - footnotes: footnotes dictionary
-        - tasks: sub-tasks dictionary
-    """
-    def __init_subclass__(cls, /,
-                          description: Text = None,
-                          notes: NotesList = None,
-                          footnotes: NotesDict = None,
-                          tasks: SubTaskCollection = None,
-                          **kwargs):
-        """Detect and register subclasses."""
-        skip_registration = kwargs.pop('skip_registration', False)
-        super().__init_subclass__(**kwargs)
-        if not skip_registration:
-            TASK_REGISTRY.register(
-                TaskRegistrationRecord(cls,
-                                       sys.modules[cls.__module__],
-                                       description,
-                                       notes,
-                                       footnotes,
-                                       tasks,
-                                       ),
-            )
-
-
 def _get_default_task_name(reference: TaskReference) -> Text:
-    if isclass(reference):
-        return reference.__name__.lower()
-    if isfunction(reference):
-        name = reference.__name__
-        # Strip trailing underscore, which can be used to avoid collisions with built-ins.
-        if name.endswith('_'):
-            name = name[:-1]
-        return name
     if ismodule(reference):
         return reference.__name__.split('.')[-1]
     if isinstance(reference, str):
         return reference.split('.')[-1]
-    abort('Bad reference encountered while generating default task name.', reference)
+    name = reference.__name__
+    # Strip trailing underscore, which can be used to avoid collisions with built-ins.
+    if name.endswith('_'):
+        name = name[:-1]
+    return name
 
 
 def _make_sub_tasks_map(raw_tasks: Optional[SubTaskCollection]) -> Optional[SubTaskDict]:
@@ -288,29 +247,17 @@ class AssignedTask:
         :return: task fields and defaults object
         """
         if self._fields is None:
-            # Prepare class fields? Wrap in a dataclass as needed.
-            if isclass(self.implementation):
-                if is_dataclass(self.implementation):
-                    dataclass_class = self.implementation
-                else:
-                    dataclass_class = dataclass(self.implementation)
-                extracted_fields = get_dataclass_fields(dataclass_class)
-                errors = extracted_fields.errors
-                raw_fields = extracted_fields.fields
-            # Prepare function fields?
-            elif isfunction(self.implementation):
-                extracted_fields = get_function_fields(self.implementation)
-                errors = extracted_fields.errors
-                if (len(extracted_fields.fields) == 0
-                        or not issubclass(extracted_fields.fields[0].type_hint,
-                                          SelfRegisteringContextBase)):
-                    abort(f'Task function first argument is not a context.',
-                          self.implementation)
-                raw_fields = extracted_fields.fields[1:]
-            else:
-                abort(f'Task implementation is neither a Task class nor a @task function.',
+            if not isfunction(self.implementation):
+                abort(f'Task implementation is not a @task function.', self.implementation)
+            extracted_fields = get_function_fields(self.implementation)
+            errors = extracted_fields.errors
+            if (len(extracted_fields.fields) == 0
+                    or not issubclass(extracted_fields.fields[0].type_hint,
+                                      SelfRegisteringContextBase)):
+                abort(f'Task function first argument is not a context.',
                       self.implementation)
-            # noinspection PyUnboundLocalVariable
+            raw_fields = extracted_fields.fields[1:]
+        # noinspection PyUnboundLocalVariable
             if errors:
                 # noinspection PyUnboundLocalVariable
                 abort(f'Bad task {self.full_name} {plural("field", errors)}.', *errors)
@@ -363,7 +310,7 @@ class TaskRegistry(Registry):
 
     def __init__(self):
         """Task registry constructor."""
-        super().__init__('task', support_functions=True)
+        super().__init__('task')
 
     def register(self, registration: TaskRegistrationRecord):
         """
@@ -422,7 +369,7 @@ class TaskRegistry(Registry):
         return super().is_registered(reference)
 
     def guess_root_task_implementation(self,
-                                       *packages: str,
+                                       *additional_packages: str,
                                        ) -> Optional[TaskImplementation]:
         """
         Attempt to guess the root task by finding one with no references.
@@ -431,61 +378,59 @@ class TaskRegistry(Registry):
         intended for long-lived projects. It has the following caveats.
 
         CAVEAT 1: It produces a heuristic guess (not perfect).
-        CAVEAT 2: It is quite inefficient for large numbers of tasks.
+        CAVEAT 2: It is quite inefficient, O(N^2), for large numbers of tasks.
+        CAVEAT 3: It only works with registered tasks, and won't find non-loaded ones.
 
         Caveats aside, it prefers to fail, rather than return a bad root task.
 
-        :param packages: top level package names
+        :param additional_packages: additional package names for resolving named modules
         :return: root task implementation if found, None if not
         """
-        candidates_by_class_id: Dict[int, TaskRegistrationRecord] = {}
-        for class_id, registration in self.by_class_id.items():
+
+        # Gather the full initial candidate pool.
+        candidates_by_id: Dict[int, TaskRegistrationRecord] = {}
+        candidate_ids_by_module_name: Dict[Text, int] = {}
+        for item_id, registration in self.by_id.items():
             if not registration.implementation.__module__.startswith('jiig.'):
                 # Need to cast to TaskRegistrationRecord (also below).
-                candidates_by_class_id[class_id] = cast(registration, TaskRegistrationRecord)
-        # Crude check for need to warn about possible performance issues.
-        if len(candidates_by_class_id) > 20:
+                candidates_by_id[item_id] = cast(registration, TaskRegistrationRecord)
+                candidate_ids_by_module_name[registration.implementation.__module__] = item_id
+        if len(candidates_by_id) > 20:
             log_warning('Larger projects should declare an explicit root task.')
-        # Build and pare down a list of candidate registered tasks.
-        for registration in self.by_class_id.values():
+
+        # Reduce candidate pool by looking for references to candidates.
+        for registration in self.by_id.values():
+            # Remove any candidates that are referenced. Handle module
+            # instances, module strings, and function references.
             task_registration = cast(registration, TaskRegistrationRecord)
-            remove_class_ids: List[int] = []
             for reference in task_registration.tasks.values():
-                # Function reference? Remove exact match from unreferenced.
-                if isfunction(reference):
-                    for candidate_class_id in candidates_by_class_id.keys():
-                        if candidate_class_id == id(reference):
-                            remove_class_ids.append(candidate_class_id)
-                # Class reference? Remove exact match from unreferenced.
-                elif isclass(reference) and issubclass(reference, SelfRegisteringTaskBase):
-                    for candidate_class_id in candidates_by_class_id.keys():
-                        if candidate_class_id == id(reference):
-                            remove_class_ids.append(candidate_class_id)
-                # Module string or instance? Remove matching names from unreferenced.
-                else:
-                    module_names: List[str] = []
-                    if isinstance(reference, str):
-                        module_names.append(reference)
-                        for package in packages:
-                            module_names.append('.'.join([package, reference]))
-                    else:
-                        module_names.append(reference.__name__)
-                    for candidate_class_id, candidate in candidates_by_class_id.items():
-                        for module_name in module_names:
-                            if candidate.module.__name__ == module_name:
-                                remove_class_ids.append(candidate_class_id)
+                # Module name?
+                if isinstance(reference, str):
+                    reference_id = candidate_ids_by_module_name.get(reference)
+                    if reference_id is None:
+                        for package in additional_packages:
+                            module_name = '.'.join([package, reference])
+                            reference_id = candidate_ids_by_module_name.get(module_name)
+                            if reference_id is not None:
                                 break
-            # Remove matches.
-            for remove_class_id in remove_class_ids:
-                del candidates_by_class_id[remove_class_id]
-        if len(candidates_by_class_id) == 0:
+                # Module instance?
+                elif ismodule(reference):
+                    reference_id = candidate_ids_by_module_name.get(reference.__name__)
+                # @task function?
+                else:
+                    reference_id = id(reference)
+                if reference_id is not None and reference_id in candidates_by_id:
+                    del candidates_by_id[reference_id]
+
+        # Wrap-up.
+        if len(candidates_by_id) == 0:
             log_error('Root task not found.')
             return None
-        if len(candidates_by_class_id) != 1:
-            names = sorted([candidate.full_name for candidate in candidates_by_class_id.values()])
+        if len(candidates_by_id) != 1:
+            names = sorted([candidate.full_name for candidate in candidates_by_id.values()])
             log_error(f'More than one root task candidate.', *names)
             return None
-        return list(candidates_by_class_id.values())[0].implementation
+        return list(candidates_by_id.values())[0].implementation
 
 
 TASK_REGISTRY = TaskRegistry()

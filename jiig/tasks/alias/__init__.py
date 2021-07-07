@@ -5,8 +5,7 @@ import jiig
 from . import delete, description, list, rename, set, show
 
 
-class Task(
-    jiig.Task,
+@jiig.task(
     tasks={
         'delete': delete,
         'description': description,
@@ -15,6 +14,7 @@ class Task(
         'set': set,
         'show': show,
     },
-):
+)
+def root(_runtime: jiig.Runtime):
     """Alias management tasks."""
     pass

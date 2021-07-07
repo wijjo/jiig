@@ -9,21 +9,21 @@ from jiig.util.alias_catalog import Alias
 from jiig.util.general import format_table
 
 
-class Task(jiig.Task):
-    """List aliases."""
-
+@jiig.task
+def list_(
+    runtime: jiig.Runtime,
     expand_names: jiig.f.boolean('Display expanded paths in names.',
-                                 cli_flags=('-e', '--expand-names'))
-
-    def on_run(self, runtime: jiig.Runtime):
-        displayed_line_count = 0
-        with runtime.open_alias_catalog() as catalog:
-            for line in _format_aliases(catalog.iterate_aliases(), long_names=self.expand_names):
-                runtime.message(line)
-                displayed_line_count += 1
-        # _format_aliases() returns no lines, not even a heading, if no aliases exist.
-        if displayed_line_count == 0:
-            runtime.message('No aliases exist.')
+                                 cli_flags=('-e', '--expand-names')),
+):
+    """List aliases."""
+    displayed_line_count = 0
+    with runtime.open_alias_catalog() as catalog:
+        for line in _format_aliases(catalog.iterate_aliases(), long_names=expand_names):
+            runtime.message(line)
+            displayed_line_count += 1
+    # _format_aliases() returns no lines, not even a heading, if no aliases exist.
+    if displayed_line_count == 0:
+        runtime.message('No aliases exist.')
 
 
 def _format_aliases(aliases: Iterable[Alias],

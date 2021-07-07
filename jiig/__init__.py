@@ -9,7 +9,7 @@ from .decorators import task
 from .driver import Driver, DriverTask
 from .contexts import Context, ActionContext
 from .registry import AssignedTask, Field, ArgumentAdapter, \
-    Runtime, RuntimeHelpGenerator, Task, Tool, ToolOptions, JIIG_VENV_ROOT
+    Runtime, RuntimeHelpGenerator, Tool, ToolOptions, JIIG_VENV_ROOT
 from .startup import main
 from .util.options import OPTIONS
 

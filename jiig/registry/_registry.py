@@ -1,7 +1,7 @@
 """Generic registry class."""
 import sys
 from importlib import import_module
-from inspect import ismodule, isclass, isfunction
+from inspect import ismodule, isfunction
 from typing import Dict, Type, Union, Text, Optional, Callable
 from types import ModuleType
 
@@ -62,20 +62,22 @@ class RegistrationRecord:
 
 
 class Registry:
-    """Registry indexed by module, class ID, and function ID."""
+    """
+    Registry indexed by module and class or function ID.
 
-    def __init__(self, name: Text, support_functions: bool = False):
+    Note that this base registry class does not care if the registered item is a
+    class or a function.
+    """
+
+    def __init__(self, name: Text):
         """
         Registry constructor.
 
         :param name: registry name
-        :param support_functions: True to support function references
         """
         self.name = name
-        self.support_functions = support_functions
+        self.by_id: Dict[int, RegistrationRecord] = {}
         self.by_module_id: Dict[int, RegistrationRecord] = {}
-        self.by_class_id: Dict[int, RegistrationRecord] = {}
-        self.by_function_id: Dict[int, RegistrationRecord] = {}
 
     def register(self, registration: RegistrationRecord):
         """
@@ -83,13 +85,8 @@ class Registry:
 
         :param registration: registration record
         """
+        self.by_id[id(registration.implementation)] = registration
         self.by_module_id[id(registration.module)] = registration
-        if isclass(registration.implementation):
-            self.by_class_id[id(registration.implementation)] = registration
-        elif isfunction(registration.implementation) and self.support_functions:
-            self.by_function_id[id(registration.implementation)] = registration
-        else:
-            abort('Bad registration item type.', registration.implementation)
 
     def resolve(self,
                 reference: RegisteredReference,
@@ -114,25 +111,12 @@ class Registry:
                 return None
         # Resolve module reference?
         if ismodule(reference):
-            type_name = 'module reference'
-            reference_text = reference.__name__
             registration = self.by_module_id.get(id(reference))
-        # Resolve class reference?
-        elif isclass(reference):
-            type_name = 'class reference'
-            reference_text = reference.__name__
-            registration = self.by_class_id.get(id(reference))
-        # Resolve function reference?
-        elif isfunction(reference) and self.support_functions:
-            type_name = 'function reference'
-            reference_text = reference.__name__
-            registration = self.by_function_id.get(id(reference))
+        # Resolve item reference (i.e. class or function)?
         else:
-            type_name = 'reference'
-            reference_text = '(bad reference type)'
-            registration = None
+            registration = self.by_id.get(id(reference))
         if registration is None:
-            error_function(f'Failed to resolve {self.name} {type_name}: {reference_text}')
+            error_function(f'Failed to resolve {self.name}: {reference.__name__}')
             return None
         return registration
 
@@ -143,12 +127,8 @@ class Registry:
         :param reference: reference to test
         :return: True if the reference is registered
         """
-        if isfunction(reference):
-            return self.support_functions and id(reference) in self.by_function_id
-        if isclass(reference):
-            return id(reference) in self.by_class_id
-        if ismodule(reference):
-            return id(reference) in self.by_module_id
         if isinstance(reference, str):
             return reference in sys.modules and id(sys.modules[reference]) in self.by_module_id
-        return False
+        if ismodule(reference):
+            return id(reference) in self.by_module_id
+        return id(reference) in self.by_id
