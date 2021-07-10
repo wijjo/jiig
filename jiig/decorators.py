@@ -23,10 +23,11 @@ def task(naked_task_function: TaskFunction = None,
     :param hidden: optional hidden sub-task reference(s) as sequence or dictionary
     """
     def _register(task_function: TaskFunction) -> TaskFunction:
+        # task_function.__module__ may be None, e.g. for tasks in a Jiig script.
         # noinspection PyUnresolvedReferences
         registered_task = TaskRegistrationRecord(
             implementation=task_function,
-            module=sys.modules[task_function.__module__],
+            module=sys.modules.get(task_function.__module__),
             primary_tasks=tasks,
             secondary_tasks=secondary,
             hidden_tasks=hidden,

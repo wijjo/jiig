@@ -87,10 +87,10 @@ class TaskRegistrationRecord(RegistrationRecord):
         :param hidden_tasks: hidden sub-task references by name
         :param driver_hints: additional hints interpreted by the driver
         """
-        if module is None:
-            # Not sure why this cast is needed, since TaskImplementation is just
-            # an indirect reference to Callable.
-            module = sys.modules[cast(implementation, Callable).__module__]
+        # noinspection PyUnresolvedReferences
+        if module is None and implementation.__module__ is not None:
+            # noinspection PyUnresolvedReferences
+            module = sys.modules[implementation.__module__]
         super().__init__(implementation, module)
         self.description = None
         self.notes = []
@@ -414,9 +414,10 @@ class TaskRegistry(Registry):
         candidates_by_id: Dict[int, TaskRegistrationRecord] = {}
         candidate_ids_by_module_name: Dict[Text, int] = {}
         for item_id, registration in self.by_id.items():
-            if not registration.implementation.__module__.startswith('jiig.'):
+            if (not registration.implementation.__module__
+                    or not registration.implementation.__module__.startswith('jiig.')):
                 # Need to cast to TaskRegistrationRecord (also below).
-                candidates_by_id[item_id] = cast(registration, TaskRegistrationRecord)
+                candidates_by_id[item_id] = cast(TaskRegistrationRecord, registration)
                 candidate_ids_by_module_name[registration.implementation.__module__] = item_id
         if len(candidates_by_id) > 20:
             log_warning('Larger projects should declare an explicit root task.')
