@@ -9,7 +9,7 @@ import re
 import sys
 from dataclasses import dataclass
 from inspect import isfunction, ismodule
-from typing import Text, Dict, List, Optional, Union, cast, Any, Callable, Sequence
+from typing import Text, Dict, List, Optional, Union, cast, Any, Callable, Sequence, Iterator
 from types import ModuleType
 
 from ..util.general import DefaultValue, plural
@@ -111,6 +111,27 @@ class TaskRegistrationRecord(RegistrationRecord):
         """
         # noinspection PyTypeChecker
         return super().implementation
+
+    def get_tasks(self,
+                  exclude_secondary: bool = False,
+                  exclude_hidden: bool = False,
+                  ) -> Iterator[TaskReference]:
+        """
+        Iterate all tasks, including primary, secondary, and hidden.
+
+        :param exclude_secondary: omit secondary task references
+        :param exclude_hidden: omit hidden task references
+        :return: task reference iterator
+        """
+        if self.primary_tasks:
+            for task_reference in self.primary_tasks.values():
+                yield task_reference
+        if self.secondary_tasks and not exclude_secondary:
+            for task_reference in self.secondary_tasks.values():
+                yield task_reference
+        if self.hidden_tasks and not exclude_hidden:
+            for task_reference in self.hidden_tasks.values():
+                yield task_reference
 
 
 def _get_default_task_name(reference: TaskReference) -> Text:
@@ -404,8 +425,8 @@ class TaskRegistry(Registry):
         for registration in self.by_id.values():
             # Remove any candidates that are referenced. Handle module
             # instances, module strings, and function references.
-            task_registration = cast(registration, TaskRegistrationRecord)
-            for reference in task_registration.tasks.values():
+            task_registration = cast(TaskRegistrationRecord, registration)
+            for reference in task_registration.get_tasks():
                 # Module name?
                 if isinstance(reference, str):
                     reference_id = candidate_ids_by_module_name.get(reference)
