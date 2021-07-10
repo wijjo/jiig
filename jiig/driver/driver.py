@@ -14,7 +14,8 @@ IMPLEMENTATION_CLASS_NAME = 'Implementation'
 
 class Driver(SelfRegisteringDriverBase, skip_registration=True):
     """Jiig driver base class."""
-    supported_hints: List[Text] = []
+    supported_task_hints: List[Text] = []
+    supported_field_hints: List[Text] = []
 
     def __init__(self,
                  name: Text,

@@ -9,13 +9,23 @@ from jiig.util.alias_catalog import Alias
 from jiig.util.general import format_table
 
 
-@jiig.task
+@jiig.task(
+    cli={
+        'options': {
+            'expand_names': ('-e', '--expand-names'),
+        }
+    }
+)
 def list_(
     runtime: jiig.Runtime,
-    expand_names: jiig.f.boolean('Display expanded paths in names.',
-                                 cli_flags=('-e', '--expand-names')),
+    expand_names: jiig.f.boolean(),
 ):
-    """List aliases."""
+    """
+    List aliases.
+
+    :param runtime: Jiig runtime API.
+    :param expand_names: Display expanded paths in names.
+    """
     displayed_line_count = 0
     with runtime.open_alias_catalog() as catalog:
         for line in _format_aliases(catalog.iterate_aliases(), long_names=expand_names):

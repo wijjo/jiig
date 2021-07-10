@@ -5,16 +5,8 @@ import jiig
 from . import alias, help, pdoc, task, tool, unittest, venv
 
 
-@jiig.task(
-    tasks={
-        'task': task,
-        'tool': tool,
-        'venv': venv,
-        'alias[s]': alias,
-        'help[s]': help,
-        'pdoc[s]': pdoc,
-        'unittest[h]': unittest,
-    },
-)
+@jiig.task(tasks=(task, tool, venv),
+           secondary=(alias, help, pdoc),
+           hidden=(unittest,))
 def root(_runtime: jiig.Runtime):
     pass

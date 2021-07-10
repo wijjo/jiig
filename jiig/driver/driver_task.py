@@ -20,6 +20,7 @@ class DriverTask:
     notes: NotesList
     footnotes: NotesDict
     visibility: int
+    hints: Dict
 
     def add_sub_task(self,
                      name: Text,
@@ -27,6 +28,7 @@ class DriverTask:
                      notes: NotesList,
                      footnotes: NotesDict,
                      visibility: int,
+                     hints: Dict,
                      ) -> 'DriverTask':
         """
         Add sub-task data.
@@ -36,9 +38,10 @@ class DriverTask:
         :param notes: task notes list
         :param footnotes: task footnotes dictionary
         :param visibility: 0=normal, 1=secondary, 2=hidden
+        :param hints: raw hint dictionary
         :return: new sub-task
         """
-        sub_task = DriverTask(name, description, [], [], notes, footnotes, visibility)
+        sub_task = DriverTask(name, description, [], [], notes, footnotes, visibility, hints)
         self.sub_tasks.append(sub_task)
         return sub_task
 
@@ -46,7 +49,6 @@ class DriverTask:
                   name: Text,
                   description: Text,
                   element_type: Any,
-                  hints: Dict,
                   repeat: Optional[Repetition] = None,
                   default: Optional[DefaultValue] = None,
                   choices: Optional[Sequence] = None,
@@ -57,7 +59,6 @@ class DriverTask:
         :param name: field name
         :param description: field description
         :param element_type: field element type
-        :param hints: field hints, possibly including ones managed by driver sub-class
         :param repeat: optional repeat min/max
         :param default: optional default value
         :param choices: optional value choice list
@@ -65,7 +66,6 @@ class DriverTask:
         self.fields.append(DriverField(name=name,
                                        description=description,
                                        element_type=element_type,
-                                       hints=hints,
                                        repeat=repeat,
                                        default=default,
                                        choices=choices))

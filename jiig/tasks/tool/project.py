@@ -11,19 +11,31 @@ from jiig.util.template_expansion import expand_folder
 DEFAULT_TASK_NAME = 'mytask'
 
 
-@jiig.task
+@jiig.task(
+    cli={
+        'options': {
+            'force': ('-f', '--force'),
+            'tool_name': ('-T', '--tool-name'),
+            'task_name': ('-t', '--task-name'),
+        }
+    }
+)
 def project(
     runtime: jiig.Runtime,
-    force: jiig.f.boolean('Force overwriting of target files.',
-                          cli_flags=('-f', '--force')),
-    tool_name: jiig.f.text('Tool name (default: <folder name>).',
-                           cli_flags=('-T', '--tool-name')),
-    task_name: jiig.f.text(f'Task name (default: "{DEFAULT_TASK_NAME}").',
-                           cli_flags=('-t', '--task-name')) = DEFAULT_TASK_NAME,
-    tool_folder: jiig.f.filesystem_folder('Generated tool output folder.',
-                                          absolute_path=True) = '.',
+    force: jiig.f.boolean(),
+    tool_name: jiig.f.text(),
+    task_name: jiig.f.text() = DEFAULT_TASK_NAME,
+    tool_folder: jiig.f.filesystem_folder(absolute_path=True) = '.',
 ):
-    """Create Jiig tool project."""
+    """
+    Create Jiig tool project.
+
+    :param runtime: Jiig runtime API.
+    :param force: Force overwriting of target files.
+    :param tool_name: Tool name (default: <folder name>).
+    :param task_name: Task name (default: "{DEFAULT_TASK_NAME}").
+    :param tool_folder: Generated tool output folder.
+    """
     expand_folder(
         os.path.join(runtime.tool.jiig_root_folder, 'templates/tool/project'),
         tool_folder,

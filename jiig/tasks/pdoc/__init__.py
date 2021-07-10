@@ -5,13 +5,12 @@ import jiig
 from . import html, pdf, server
 
 
-@jiig.task(
-    tasks={
-        'html': html,
-        'pdf': pdf,
-        'server': server,
-    },
-)
-def root(_runtime: jiig.Runtime):
-    """Pdoc3 documentation tasks."""
+# noinspection PyUnusedLocal
+@jiig.task(tasks=(html, pdf, server))
+def root(runtime: jiig.Runtime):
+    """
+    Pdoc3 documentation tasks.
+
+    :param runtime: Jiig runtime API.
+    """
     pass

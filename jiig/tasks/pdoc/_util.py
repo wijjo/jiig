@@ -31,6 +31,7 @@ class PdocBuilder:
         self.context = pdoc.Context()
         # Load pdoc modules and redirect/filter out unwanted Pdoc noise.
         with OutputRedirector(line_filter=_output_filter, auto_flush=True):
+            # noinspection PyTypeChecker
             self.modules = [
                 pdoc.Module(package_name,
                             context=self.context,
@@ -58,4 +59,5 @@ class PdocBuilder:
 
     def iterate_modules(self) -> Iterator:
         for module in self.modules:
+            # noinspection PyTypeChecker
             yield from self._iterate_module(module)

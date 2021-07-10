@@ -195,7 +195,6 @@ def _populate_driver_task(driver_task: DriverTask,
         driver_task.add_field(name=task_field.name,
                               description=task_field.description,
                               element_type=task_field.element_type,
-                              hints=task_field.hints,
                               default=task_field.default,
                               repeat=task_field.repeat,
                               choices=task_field.choices)
@@ -204,7 +203,8 @@ def _populate_driver_task(driver_task: DriverTask,
                                                    sub_task.description,
                                                    sub_task.notes,
                                                    sub_task.footnotes,
-                                                   sub_task.visibility)
+                                                   sub_task.visibility,
+                                                   sub_task.hints)
         _populate_driver_task(driver_sub_task, sub_task.fields, sub_task.sub_tasks)
 
 
@@ -306,14 +306,14 @@ def main(tool: Tool,
     _add_builtin_tasks(tool)
 
     # Convert the runtime task hierarchy to a driver task hierarchy.
-    # Add automatic secondary ('...[s]') sub-tasks, if not disabled.
     driver_root_task = DriverTask(name=tool.tool_name,
                                   description=tool.assigned_root_task.description,
                                   sub_tasks=[],
                                   fields=[],
                                   notes=tool.assigned_root_task.notes,
                                   footnotes=tool.assigned_root_task.footnotes,
-                                  visibility=0)
+                                  visibility=0,
+                                  hints=tool.assigned_root_task.hints)
     _populate_driver_task(driver_root_task,
                           tool.assigned_root_task.fields,
                           tool.assigned_root_task.sub_tasks)
@@ -327,13 +327,20 @@ def main(tool: Tool,
                                                     driver_root_task)
     log_message('Application initialized.', debug=True)
 
-    # Check hint usage.
-    HINT_REGISTRY.add_supported_hints('repeat', 'choices', 'default')
-    if driver.supported_hints:
-        HINT_REGISTRY.add_supported_hints(*driver.supported_hints)
-    bad_hints = HINT_REGISTRY.get_bad_hints()
-    if bad_hints:
-        log_error(f'Bad field {plural("hint", bad_hints)}:', *bad_hints)
+    # Check task hint usage.
+    if driver.supported_task_hints:
+        HINT_REGISTRY.add_supported_task_hints(*driver.supported_task_hints)
+    bad_task_hints = HINT_REGISTRY.get_bad_task_hints()
+    if bad_task_hints:
+        log_error(f'Bad task {plural("hint", bad_task_hints)}:', *bad_task_hints)
+
+    # Check field hint usage.
+    HINT_REGISTRY.add_supported_field_hints('repeat', 'choices', 'default')
+    if driver.supported_field_hints:
+        HINT_REGISTRY.add_supported_field_hints(*driver.supported_field_hints)
+    bad_field_hints = HINT_REGISTRY.get_bad_field_hints()
+    if bad_field_hints:
+        log_error(f'Bad field {plural("hint", bad_field_hints)}:', *bad_field_hints)
 
     # Convert driver task stack to RegisteredTask stack.
     task_stack: List[AssignedTask] = [tool.assigned_root_task]

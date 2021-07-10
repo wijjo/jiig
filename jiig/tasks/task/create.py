@@ -8,17 +8,28 @@ import jiig
 from jiig.util.template_expansion import expand_folder
 
 
-@jiig.task
+@jiig.task(
+    cli={
+        'options': {
+            'force': ('-f', '--force'),
+            'output_folder': ('-o', '--output-folder'),
+        }
+    },
+)
 def create(
     runtime: jiig.Runtime,
-    force: jiig.f.boolean('Force overwriting of target files.', cli_flags=('-f', '--force')),
-    new_task_name: jiig.f.text('Task/module name(s).', repeat=(1, None)),
-    output_folder: jiig.f.filesystem_folder('Output tasks folder for generated modules.',
-                                            absolute_path=True,
-                                            cli_flags=('-o', '--output-folder'),
-                                            ) = '.',
+    force: jiig.f.boolean(),
+    new_task_name: jiig.f.text(repeat=(1, None)),
+    output_folder: jiig.f.filesystem_folder(absolute_path=True) = '.',
 ):
-    """Create task module(s)."""
+    """
+    Create task module(s).
+
+    :param runtime: Jiig runtime API.
+    :param force: Force overwriting of target files.
+    :param new_task_name: Task/module name(s).
+    :param output_folder: Output tasks folder for generated modules.
+    """
     if not os.path.exists(os.path.join(output_folder, '../__init__.py')):
         runtime.abort(f'Target folder is not a Python package.', output_folder)
     source_folder = os.path.join(runtime.tool.jiig_root_folder, 'templates/task')

@@ -3,14 +3,28 @@
 import jiig
 
 
-@jiig.task
+@jiig.task(
+    cli={
+        'options': {
+            'upper': ('-u', '--upper'),
+            'lower': ('-l', '--lower'),
+        }
+    }
+)
 def case(
     runtime: jiig.Runtime,
-    upper: jiig.f.boolean('convert to all-uppercase', cli_flags='-u'),
-    lower: jiig.f.boolean('convert to all-lowercase', cli_flags='-l'),
-    blocks: jiig.f.text('text block(s) to convert', repeat=(1, None)),
+    upper: jiig.f.boolean(),
+    lower: jiig.f.boolean(),
+    blocks: jiig.f.text(repeat=(1, None)),
 ):
-    """Convert text case (default is "smart" conversion)."""
+    """
+    convert text case (default is "smart" conversion)
+
+    :param runtime: jiig runtime api
+    :param upper: convert to all-uppercase
+    :param lower: convert to all-lowercase
+    :param blocks: text block(s) to convert
+    """
     if upper and lower:
         raise RuntimeError('Conflicting upper/lower options specified.')
     if not upper and not lower:

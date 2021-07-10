@@ -8,9 +8,14 @@ import jiig
 @jiig.task
 def show(
     runtime: jiig.Runtime,
-    aliases: jiig.f.text('Alias name(s) to display.', repeat=(1, None)),
+    aliases: jiig.f.text(repeat=(1, None)),
 ):
-    """Display alias(es)."""
+    """
+    Display alias(es).
+
+    :param runtime: jiig Runtime API.
+    :param aliases: Alias name(s) to display.
+    """
     with runtime.open_alias_catalog() as catalog:
         for name in aliases:
             resolved_alias = catalog.get_alias(name)

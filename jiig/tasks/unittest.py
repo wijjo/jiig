@@ -16,10 +16,14 @@ from jiig.util.python import import_module_path
 @jiig.task
 def unittest(
     runtime: jiig.Runtime,
-    tests: jiig.f.text('Run unit tests using Python standard library unittest module.',
-                       repeat=None),
+    tests: jiig.f.text(repeat=(None, None)),
 ):
-    """Run unit tests using Python standard library unittest module."""
+    """
+    Run unit tests using Python standard library unittest module.
+
+    :param runtime: jiig Runtime API.
+    :param tests: Test names to run, or all tests if omitted.
+    """
     check_folder_exists(runtime.tool.test_folder)
     module_map = {
         os.path.splitext(os.path.basename(file_path))[0]: file_path

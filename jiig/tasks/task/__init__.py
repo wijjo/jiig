@@ -5,11 +5,12 @@ import jiig
 from . import create
 
 
-@jiig.task(
-    tasks={
-        'create': create,
-    }
-)
-def root(_runtime: jiig.Runtime):
-    """Manage task modules."""
+# noinspection PyUnusedLocal
+@jiig.task(tasks=(create,))
+def root(runtime: jiig.Runtime):
+    """
+    Manage task modules.
+
+    :param runtime: Jiig runtime API.
+    """
     pass

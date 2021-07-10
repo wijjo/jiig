@@ -8,12 +8,21 @@ import jiig
 from jiig.util.process import run
 
 
-@jiig.task
+@jiig.task(
+    cli={
+        'trailing': 'trailing_arguments',
+    },
+)
 def ipython(
     runtime: jiig.Runtime,
-    trailing_arguments: jiig.f.text('Trailing CLI arguments.', cli_trailing=True),
+    trailing_arguments: jiig.f.text(repeat=(1, None)),
 ):
-    """Run ipython from virtual environment."""
+    """
+    Run ipython from virtual environment.
+
+    :param runtime: jiig Runtime API.
+    :param trailing_arguments: Trailing CLI arguments.
+    """
     ipython_path = runtime.format_path('{venv_folder}/bin/ipython')
     if not os.path.exists(ipython_path):
         pip_path = runtime.format_path('{venv_folder}/bin/pip')

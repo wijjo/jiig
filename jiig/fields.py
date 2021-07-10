@@ -1,116 +1,101 @@
 """
-Task field functions and classes.
+Task field declaration functions.
 """
 
-from typing import Text, Annotated, Union, Callable, Protocol, List
+from typing import Text, Union, List, Type, Collection
 
 from .adapters import to_timestamp, to_interval, to_age, to_comma_tuple, \
     to_int, to_float, to_bool, path_is_folder, path_to_absolute, path_exists
 from .registry import Field
+from .util.repetition import RepeatSpec
+
+# Returned types need to handle List[...] when repeat is specified.
+FIELD_TEXT_TYPE = Type[Union[Text, List[Text]]]
+FIELD_BOOL_TYPE = Type[Union[bool, List[bool]]]
+FIELD_INT_TYPE = Type[Union[int, List[int]]]
+FIELD_FLOAT_TYPE = Type[Union[float, List[float]]]
+FIELD_NUMBER_TYPE = Type[Union[Union[int, float], List[Union[int, float]]]]
+FIELD_TEXT_LIST_TYPE = Type[Union[List[Text], List[List[Text]]]]
 
 
-# === Field declaration functions.
-
-
-def field_function(function: Callable[..., Field]) -> Callable:
-    """
-    Decorator for custom field declaration functions.
-
-    Use naked, i.e. without calling.
-
-    Provides the requisite Annotated type wrapped around a FieldSpecification.
-    """
-    def inner(*args, **kwargs) -> object:
-        field_spec = function(*args, **kwargs)
-        return Annotated[field_spec.field_type, field_spec]
-    return inner
-
-
-class FieldWrapperCallable(Protocol):
-    """Field wrapper type hint that receive a specification plus variable arguments."""
-    def __call__(self, spec: Field, *args, **kwargs) -> Field: ...
-
-
-@field_function
-def integer(description: Text, **hints) -> Field:
+def integer(repeat: RepeatSpec = None,
+            choices: Collection[int] = None,
+            ) -> FIELD_INT_TYPE:
     """
     Declare an integer numeric field.
 
-    :param description: field description
-    :param hints: driver hints
+    :param repeat: optional repetition as count or minimum/maximum pair
+    :param choices: optional permitted values
     :return: field specification
     """
-    return Field(int, description, hints, adapters=[to_int])
+    return Field.wrap(int, adapters=[to_int], repeat=repeat, choices=choices)
 
 
-@field_function
-def number(description: Text, **hints) -> Field:
+def number(repeat: RepeatSpec = None,
+           choices: Collection[int] = None,
+           ) -> FIELD_NUMBER_TYPE:
     """
     Declare a float or integer numeric field.
 
-    :param description: field description
-    :param hints: driver hints
+    :param repeat: optional repetition as count or minimum/maximum pair
+    :param choices: optional permitted values
     :return: field specification
     """
-    return Field(Union[float, int], description, hints, adapters=[to_float])
+    return Field.wrap(Union[float, int],
+                      adapters=[to_float],
+                      repeat=repeat,
+                      choices=choices)
 
 
-@field_function
-def text(description: Text, **hints) -> Field:
+def text(repeat: RepeatSpec = None,
+         choices: Collection[Text] = None,
+         ) -> FIELD_TEXT_TYPE:
     """
     Declare a text field.
 
-    :param description: field description
-    :param hints: driver hints
+    :param repeat: optional repetition as count or minimum/maximum pair
+    :param choices: optional permitted values
     :return: field specification
     """
-    return Field(Text, description, hints)
+    return Field.wrap(Text, repeat=repeat, choices=choices)
 
 
-@field_function
-def boolean(description: Text, **hints) -> Field:
+def boolean(repeat: RepeatSpec = None) -> FIELD_BOOL_TYPE:
     """
     Declare a boolean field.
 
-    :param description: field description
-    :param hints: driver hints
+    :param repeat: optional repetition as count or minimum/maximum pair
     :return: field specification
     """
-    return Field(bool, description, hints, adapters=[to_bool])
+    return Field.wrap(bool, adapters=[to_bool], repeat=repeat)
 
 
-@field_function
-def filesystem_folder(description: Text, /,
-                      absolute_path: bool = False,
-                      **hints,
-                      ) -> Field:
+def filesystem_folder(absolute_path: bool = False,
+                      repeat: RepeatSpec = None,
+                      ) -> FIELD_TEXT_TYPE:
     """
     Declare a folder path field.
 
-    :param description: field description
     :param absolute_path: convert to absolute path if True
-    :param hints: driver hints
+    :param repeat: optional repetition as count or minimum/maximum pair
     :return: field specification
     """
     adapters_list = [path_is_folder]
     if absolute_path:
         adapters_list.append(path_to_absolute)
-    return Field(Text, description, hints, adapters=adapters_list)
+    return Field.wrap(Text, adapters=adapters_list, repeat=repeat)
 
 
-@field_function
-def filesystem_object(description: Text, /,
-                      absolute_path: bool = False,
+def filesystem_object(absolute_path: bool = False,
                       exists: bool = False,
-                      **hints,
-                      ) -> Field:
+                      repeat: RepeatSpec = None,
+                      ) -> FIELD_TEXT_TYPE:
     """
     Declare a folder path field.
 
-    :param description: field description
     :param absolute_path: convert to absolute path if True
     :param exists: it must exist if True
-    :param hints: driver hints
+    :param repeat: optional repetition as count or minimum/maximum pair
     :return: field specification
     """
     adapters_list = []
@@ -118,52 +103,50 @@ def filesystem_object(description: Text, /,
         adapters_list.append(path_to_absolute)
     if exists:
         adapters_list.append(path_exists)
-    return Field(Text, description, hints, adapters=adapters_list)
+    return Field.wrap(Text, adapters=adapters_list, repeat=repeat)
 
 
-@field_function
-def age(description: Text, **hints) -> Field:
+def age(repeat: RepeatSpec = None,
+        choices: Collection[int] = None,
+        ) -> FIELD_FLOAT_TYPE:
     """
     Age based on string specification.
 
-    :param description: field description
-    :param hints: driver hints
+    :param repeat: optional repetition as count or minimum/maximum pair
+    :param choices: optional permitted values
     :return: field specification
     """
-    return Field(float, description, hints, adapters=[to_age])
+    return Field.wrap(float, adapters=[to_age], repeat=repeat, choices=choices)
 
 
-@field_function
-def timestamp(description: Text, **hints) -> Field:
+def timestamp(repeat: RepeatSpec = None) -> FIELD_FLOAT_TYPE:
     """
     Timestamp based on string specification.
 
-    :param description: field description
-    :param hints: driver hints
+    :param repeat: optional repetition as count or minimum/maximum pair
     :return: field specification
     """
-    return Field(float, description, hints, adapters=[to_timestamp])
+    return Field.wrap(float, adapters=[to_timestamp], repeat=repeat)
 
 
-@field_function
-def interval(description: Text, **hints) -> Field:
+def interval(repeat: RepeatSpec = None,
+             choices: Collection[int] = None,
+             ) -> FIELD_FLOAT_TYPE:
     """
     Time interval based on string specification.
 
-    :param description: field description
-    :param hints: driver hints
+    :param repeat: optional repetition as count or minimum/maximum pair
+    :param choices: optional permitted values
     :return: field specification
     """
-    return Field(float, description, hints, adapters=[to_interval])
+    return Field.wrap(float, adapters=[to_interval], repeat=repeat, choices=choices)
 
 
-@field_function
-def comma_tuple(description: Text, **hints) -> Field:
+def comma_tuple(repeat: RepeatSpec = None) -> FIELD_TEXT_LIST_TYPE:
     """
     Comma-separated string converted to tuple.
 
-    :param description: field description
-    :param hints: driver hints
+    :param repeat: optional repetition as count or minimum/maximum pair
     :return: field specification
     """
-    return Field(List[Text], description, hints, adapters=[to_comma_tuple])
+    return Field.wrap(List[Text], adapters=[to_comma_tuple], repeat=repeat)

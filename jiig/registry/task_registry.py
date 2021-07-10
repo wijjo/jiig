@@ -4,7 +4,7 @@ Task registry.
 Uses common Registry support, but adds data to the registration record and
 provides a more type-specific API for accessing and querying the registry.
 """
-
+import os
 import re
 import sys
 from dataclasses import dataclass
@@ -18,15 +18,14 @@ from ..util.footnotes import NotesList, NotesDict, FootnoteBuilder
 from ..util.python import get_function_fields
 from ..util.repetition import Repetition
 
-from .context_registry import SelfRegisteringContextBase
 from ._registry import RegistrationRecord, Registry
+from .context_registry import SelfRegisteringContextBase
+from .hint_registry import HINT_REGISTRY
 from .field import Field, ArgumentAdapter
 
-DEFAULT_TASK_DESCRIPTION = '(no description, e.g. in task doc string)'
-TASK_IDENT_REGEX = re.compile(r'^'
-                              r'([a-zA-Z][a-zA-Z0-9\-_]*)'
-                              r'(?:\[(s|secondary|h|hidden)\])?'
-                              r'$')
+DEFAULT_TASK_DESCRIPTION = '(no task description, e.g. in task doc string)'
+DEFAULT_FIELD_DESCRIPTION = '(no field description, e.g. in doc string :param:)'
+DOC_STRING_PARAM_REGEX = re.compile(r'^\s*:param\s+(\w+)\s*:\s*(.*)\s*$')
 
 # The best we can do for now for a task function type hint, because Callable has
 # no syntax for variable keyword arguments.
@@ -48,15 +47,16 @@ class TaskField:
     default: Optional[DefaultValue]
     repeat: Optional[Repetition]
     choices: Optional[List]
-    hints: Dict
     adapters: List[ArgumentAdapter]
 
 
 @dataclass
-class _DocStringFields:
+class ParsedDocString:
+    """Parsed doc string fields."""
     description: Text
     notes: NotesList
     footnotes: NotesDict
+    field_descriptions: Dict[Text, Text]
 
 
 class TaskRegistrationRecord(RegistrationRecord):
@@ -72,30 +72,35 @@ class TaskRegistrationRecord(RegistrationRecord):
     def __init__(self,
                  implementation: TaskImplementation,
                  module: Optional[ModuleType],
-                 description: Optional[Text],
-                 notes: Optional[NotesList],
-                 footnotes: Optional[NotesDict],
-                 sub_task_references: Optional[SubTaskCollection],
+                 primary_tasks: Optional[SubTaskCollection],
+                 secondary_tasks: Optional[SubTaskCollection],
+                 hidden_tasks: Optional[SubTaskCollection],
+                 driver_hints: Optional[Dict],
                  ):
         """
         Task registration constructor.
 
         :param implementation: task class or function
         :param module: containing module
-        :param description: task description
-        :param notes: task help notes
-        :param footnotes: named footnotes displayed in task help if referenced by "[<name>]"
-        :param sub_task_references: sub-task references by name
+        :param primary_tasks: primary sub-task references by name
+        :param secondary_tasks: secondary sub-task references by name
+        :param hidden_tasks: hidden sub-task references by name
+        :param driver_hints: additional hints interpreted by the driver
         """
         if module is None:
             # Not sure why this cast is needed, since TaskImplementation is just
             # an indirect reference to Callable.
             module = sys.modules[cast(implementation, Callable).__module__]
         super().__init__(implementation, module)
-        self.description = description
-        self.notes = notes
-        self.footnotes = footnotes
-        self.sub_task_references = _make_sub_tasks_map(sub_task_references)
+        self.description = None
+        self.notes = []
+        self.footnotes = {}
+        self.primary_tasks = _make_sub_tasks_map(primary_tasks)
+        self.secondary_tasks = _make_sub_tasks_map(secondary_tasks)
+        self.hidden_tasks = _make_sub_tasks_map(hidden_tasks)
+        self.driver_hints = driver_hints or {}
+        # Keep track of used task hint names so that a sanity check can be performed later.
+        HINT_REGISTRY.add_used_task_hints(*driver_hints.keys())
 
     @property
     def implementation(self) -> TaskImplementation:
@@ -158,7 +163,7 @@ class AssignedTask:
         self._registered_task = registered_task
         self.name = name
         self.visibility = visibility
-        self._parsed_doc_string_fields: Optional[_DocStringFields] = None
+        self._parsed_doc_string: Optional[ParsedDocString] = None
         self._sub_tasks: Optional[List['AssignedTask']] = None
         self._fields: Optional[List[TaskField]] = None
 
@@ -189,7 +194,7 @@ class AssignedTask:
         """
         return (self._registered_task.description
                 if self._registered_task.description is not None
-                else self._doc_string_fields.description)
+                else self.parsed_doc_string.description)
 
     @property
     def notes(self) -> NotesList:
@@ -199,7 +204,7 @@ class AssignedTask:
         :return: description text
         """
         return (self._registered_task.notes if self._registered_task.notes is not None
-                else self._doc_string_fields.notes)
+                else self.parsed_doc_string.notes)
 
     @property
     def footnotes(self) -> NotesDict:
@@ -209,7 +214,7 @@ class AssignedTask:
         :return: description text
         """
         return (self._registered_task.footnotes if self._registered_task.footnotes is not None
-                else self._doc_string_fields.footnotes)
+                else self.parsed_doc_string.footnotes)
 
     @property
     def sub_tasks(self) -> List['AssignedTask']:
@@ -220,23 +225,18 @@ class AssignedTask:
         """
         if self._sub_tasks is None:
             self._sub_tasks: List[AssignedTask] = []
-            if self._registered_task.sub_task_references:
-                for ident, task_ref in self._registered_task.sub_task_references.items():
-                    ident_match = TASK_IDENT_REGEX.match(ident)
-                    if ident_match is None:
-                        log_error(f'Bad task identifier "{ident}".')
-                        continue
-                    name = ident_match.group(1)
-                    visibility_spec = ident_match.group(2).lower() if ident_match.group(2) else ''
-                    if visibility_spec in ['s', 'secondary']:
-                        visibility = 1
-                    elif visibility_spec in ['h', 'hidden']:
-                        visibility = 2
-                    else:
-                        visibility = 0
-                    assigned_task = TASK_REGISTRY.resolve_assigned_task(
-                        task_ref, name, visibility, required=True)
-                    self._sub_tasks.append(assigned_task)
+            if self._registered_task.primary_tasks:
+                for name, task_ref in self._registered_task.primary_tasks.items():
+                    task = TASK_REGISTRY.resolve_assigned_task(task_ref, name, 0, required=True)
+                    self._sub_tasks.append(task)
+            if self._registered_task.secondary_tasks:
+                for name, task_ref in self._registered_task.secondary_tasks.items():
+                    task = TASK_REGISTRY.resolve_assigned_task(task_ref, name, 1, required=True)
+                    self._sub_tasks.append(task)
+            if self._registered_task.hidden_tasks:
+                for name, task_ref in self._registered_task.hidden_tasks.items():
+                    task = TASK_REGISTRY.resolve_assigned_task(task_ref, name, 2, required=True)
+                    self._sub_tasks.append(task)
         return self._sub_tasks
 
     @property
@@ -264,27 +264,20 @@ class AssignedTask:
             task_fields: List[TaskField] = []
             # noinspection PyUnboundLocalVariable
             for raw_field in raw_fields:
+                description = self.parsed_doc_string.field_descriptions.get(raw_field.name)
+                if description is None:
+                    description = raw_field.annotation.description
                 if not isinstance(raw_field.annotation, Field):
                     abort(f'Not all fields in task {self.full_name} have Jiig field hints.')
-                field_annotation: Field = raw_field.annotation
-                default = raw_field.default
-                if default is None and 'default' in field_annotation.hints:
-                    default = DefaultValue(field_annotation.hints['default'])
-                if 'repeat' in field_annotation.hints:
-                    repeat = Repetition.from_spec(field_annotation.hints['repeat'])
-                else:
-                    repeat = None
-                choices: Optional[List] = field_annotation.hints.get('choices', None)
                 task_fields.append(
                     TaskField(raw_field.name,
-                              field_annotation.description,
+                              description,
                               raw_field.type_hint,
-                              field_annotation.field_type,
-                              default,
-                              repeat,
-                              choices,
-                              field_annotation.hints,
-                              field_annotation.adapters),
+                              raw_field.annotation.field_type,
+                              raw_field.default,
+                              raw_field.annotation.repeat,
+                              raw_field.annotation.choices,
+                              raw_field.annotation.adapters),
                 )
             self._fields = task_fields
         return self._fields
@@ -299,10 +292,19 @@ class AssignedTask:
         return self._registered_task.full_name
 
     @property
-    def _doc_string_fields(self) -> _DocStringFields:
-        if self._parsed_doc_string_fields is None:
-            self._parsed_doc_string_fields = _parse_doc_string(self.implementation)
-        return self._parsed_doc_string_fields
+    def parsed_doc_string(self) -> ParsedDocString:
+        if self._parsed_doc_string is None:
+            self._parsed_doc_string = _parse_doc_string(self.implementation)
+        return self._parsed_doc_string
+
+    @property
+    def hints(self) -> Dict:
+        """
+        Task hints for driver.
+
+        :return: hint dictionary
+        """
+        return self._registered_task.driver_hints
 
 
 class TaskRegistry(Registry):
@@ -436,9 +438,29 @@ class TaskRegistry(Registry):
 TASK_REGISTRY = TaskRegistry()
 
 
-def _parse_doc_string(implementation: TaskImplementation) -> _DocStringFields:
+def _parse_doc_string(implementation: TaskImplementation) -> ParsedDocString:
     footnote_builder = FootnoteBuilder()
     doc_string = implementation.__doc__ or ''
+    # Pull out and parse `:param <name>: description` items from the doc string.
+    non_param_lines: List[Text] = []
+    field_descriptions: Dict[Text, Text] = {}
+    param_name: Optional[Text] = None
+    for line in doc_string.split(os.linesep):
+        param_matched = DOC_STRING_PARAM_REGEX.match(line)
+        if param_matched:
+            param_name, param_description = param_matched.groups()
+            field_descriptions[param_name] = param_description
+        else:
+            stripped_line = line.strip()
+            if stripped_line:
+                if param_name:
+                    field_descriptions[param_name] += ' ' + stripped_line
+            else:
+                param_name = None
+        if not param_name:
+            non_param_lines.append(line)
+    # Parse the non-param lines to get the description, notes, and footnotes.
+    doc_string = os.linesep.join(non_param_lines)
     footnote_builder.parse(doc_string)
     description = DEFAULT_TASK_DESCRIPTION
     notes: NotesList = []
@@ -447,4 +469,7 @@ def _parse_doc_string(implementation: TaskImplementation) -> _DocStringFields:
             description = paragraph
         else:
             notes.append(paragraph)
-    return _DocStringFields(description, notes, footnote_builder.footnotes)
+    return ParsedDocString(description,
+                           notes,
+                           footnote_builder.footnotes,
+                           field_descriptions)

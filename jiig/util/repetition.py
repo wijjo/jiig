@@ -25,7 +25,7 @@ class Repetition:
         :return: Repeat object or None for bad or missing input data
         """
         if spec is None:
-            return Repetition(None, None)
+            return None
         if isinstance(spec, int):
             if spec > 0:
                 return cls(spec, spec)

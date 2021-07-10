@@ -12,7 +12,7 @@ from ...util.help_formatter import HelpProvider, HelpFormatter
 
 from ..driver_task import DriverTask, DriverField
 
-from .cli_hints import CLI_HINT_FLAGS, CLI_HINT_TRAILING
+from .cli_hints import CLIHintRegistry
 from .global_options import GLOBAL_OPTIONS
 
 
@@ -29,10 +29,13 @@ class CLIHelpProvider(HelpProvider):
                  tool_name: Text,
                  tool_description: Text,
                  root_task: DriverTask,
-                 options: CLIHelpProviderOptions = None):
+                 hint_registry: CLIHintRegistry,
+                 options: CLIHelpProviderOptions = None,
+                 ):
         self.tool_name = tool_name
         self.tool_description = tool_description
         self.root_task = root_task
+        self.hint_registry = hint_registry
         self.options = options or CLIHelpProviderOptions()
 
     def format_help(self, *names: Text, show_hidden: bool = False) -> Text:
@@ -115,10 +118,11 @@ class CLIHelpProvider(HelpProvider):
 
         # Add flagged options, if any (tasks only).
         task_receives_trailing = False
+        hint_registrar = self.hint_registry.registrar(*names)
         for option_field in fields:
-            if not task_receives_trailing and option_field.hints.get(CLI_HINT_TRAILING):
+            if not task_receives_trailing and hint_registrar.trailing_field:
                 task_receives_trailing = True
-            flags = option_field.hints.get(CLI_HINT_FLAGS)
+            flags = hint_registrar.options_by_field.get(option_field.name)
             if flags is not None:
                 if option_field.repeat is None:
                     repeat = None
@@ -146,7 +150,7 @@ class CLIHelpProvider(HelpProvider):
 
         # Add positional arguments.
         for positional_field in fields:
-            if positional_field.hints.get(CLI_HINT_FLAGS) is None:
+            if positional_field.name not in hint_registrar.options_by_field:
                 if positional_field.repeat is None:
                     repeat = None
                 else:
@@ -164,10 +168,8 @@ class CLIHelpProvider(HelpProvider):
 
         # Add help for sub-tasks.
         for active_sub_task in sorted(sub_tasks, key=lambda t: t.name):
-            sub_task_receives_trailing = False
-            for sub_task_field in active_sub_task.fields:
-                if not sub_task_receives_trailing and sub_task_field.hints.get(CLI_HINT_TRAILING):
-                    sub_task_receives_trailing = True
+            hint_sub_registrar = hint_registrar.sub_registrar(active_sub_task.name)
+            sub_task_receives_trailing = bool(hint_sub_registrar.trailing_field)
             if show_hidden or active_sub_task.visibility != 2:
                 formatter.add_command(
                     active_sub_task.name,

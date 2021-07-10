@@ -11,13 +11,42 @@ import jiig
 
 
 @jiig.task
+def calc(
+    runtime: jiig.Runtime,
+    blocks: jiig.f.text(repeat=(1, None)),
+):
+    """
+    evaluate formula using Python interpreter
+
+    :param runtime: jiig runtime api
+    :param blocks: formula block(s) to evaluate
+    """
+    result = eval(' '.join(blocks))
+    runtime.message(f'The result is {result}.')
+
+
+@jiig.task(
+    cli={
+        'options': {
+            'upper': ('-u', '--upper'),
+            'lower': ('-l', '--lower'),
+        }
+    }
+)
 def case(
     runtime: jiig.Runtime,
-    upper: jiig.f.boolean('convert to all-uppercase', cli_flags='-u'),
-    lower: jiig.f.boolean('convert to all-lowercase', cli_flags='-l'),
-    blocks: jiig.f.text('text block(s) to convert', repeat=(1, None)),
+    upper: jiig.f.boolean(),
+    lower: jiig.f.boolean(),
+    blocks: jiig.f.text(repeat=(1, None)),
 ):
-    """Convert text case (default is "smart" conversion)."""
+    """
+    convert text case (default is "smart" conversion)
+
+    :param runtime: jiig runtime api
+    :param upper: convert to all-uppercase
+    :param lower: convert to all-lowercase
+    :param blocks: text block(s) to convert
+    """
     if upper and lower:
         raise RuntimeError('Conflicting upper/lower options specified.')
     if not upper and not lower:
@@ -36,26 +65,26 @@ def case(
 @jiig.task
 def words(
     runtime: jiig.Runtime,
-    blocks: jiig.f.text('text block(s) with words to count', repeat=(1, None)),
+    blocks: jiig.f.text(repeat=(1, None)),
 ):
-    """Count words using primitive whitespace splitting."""
+    """
+    count words using primitive whitespace splitting
+
+    :param runtime: jiig runtime api
+    :param blocks: text block(s) with words to count
+    """
     count = len(' '.join(blocks).split())
     runtime.message(f'The word count is {count}.')
 
 
-@jiig.task
-def calc(
-    runtime: jiig.Runtime,
-    blocks: jiig.f.text('formula block(s) to evaluate', repeat=(1, None)),
-):
-    """Evaluate formula using Python interpreter."""
-    result = eval(' '.join(blocks))
-    runtime.message(f'The result is {result}.')
-
-
+# noinspection PyUnusedLocal
 @jiig.task(tasks=(case, words, calc))
-def root(_runtime: jiig.Runtime):
-    """Various text manipulations."""
+def root(runtime: jiig.Runtime):
+    """
+    various text manipulations
+
+    :param runtime: jiig runtime api
+    """
     pass
 
 

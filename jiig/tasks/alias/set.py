@@ -5,17 +5,30 @@ Alias set task.
 import jiig
 
 
-@jiig.task
+@jiig.task(
+    cli={
+        'options': {
+            'description': ('-d', '--description'),
+        },
+        'trailing': 'command_arguments',
+    },
+)
 def set_(
     runtime: jiig.Runtime,
-    description: jiig.f.text('New alias description.',
-                             cli_flags=('-d', '--description')),
-    alias: jiig.f.text('Name of alias to create or update.'),
-    command: jiig.f.text('Aliased command name.'),
-    command_arguments: jiig.f.text('Aliased command arguments.',
-                                   cli_trailing=True),
+    description: jiig.f.text(),
+    alias: jiig.f.text(),
+    command: jiig.f.text(),
+    command_arguments: jiig.f.text(repeat=(1, None)),
 ):
-    """Create or update alias."""
+    """
+    Create or update alias.
+
+    :param runtime: jiig Runtime API.
+    :param description: New alias description.
+    :param alias: Name of alias to create or update.
+    :param command: Aliased command name.
+    :param command_arguments: Aliased command arguments.
+    """
     with runtime.open_alias_catalog() as catalog:
         if catalog.get_alias(alias):
             catalog.update_alias(alias,

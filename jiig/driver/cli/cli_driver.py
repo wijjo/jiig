@@ -6,8 +6,8 @@ from inspect import isclass
 from typing import Text, Sequence, List, Optional, Type
 
 from ...util.alias_catalog import is_alias_name, open_alias_catalog
-from ...util.log import abort, ConsoleLogWriter
-from ...util.general import make_list, plural
+from ...util.log import abort, log_message, ConsoleLogWriter
+from ...util.general import plural
 from ...util.process import shell_command_string
 from ...util.python import import_module_path
 
@@ -18,7 +18,7 @@ from ..driver_types import DriverInitializationData, DriverApplicationData
 
 from .cli_command import CLICommand
 from .cli_help import CLIHelpProvider, CLIHelpProviderOptions
-from .cli_hints import CLI_HINT_FLAGS, CLI_HINT_TRAILING
+from .cli_hints import CLIHintRegistry, CLITaskHintRegistrar, CLI_HINT_ROOT_NAME
 from .cli_implementation import CLIImplementation
 from .cli_types import CLIOptions, CLIOption
 from .global_options import GLOBAL_OPTIONS
@@ -43,7 +43,7 @@ class CLIDriver(Driver):
 
     Note that this driver is stateful, and assumes a particular calling sequence.
     """
-    supported_hints: List[Text] = [CLI_HINT_FLAGS, CLI_HINT_TRAILING]
+    supported_task_hints: List[Text] = [CLI_HINT_ROOT_NAME]
 
     def __init__(self,
                  name: Text,
@@ -60,6 +60,7 @@ class CLIDriver(Driver):
         super().__init__(name=name,
                          description=description,
                          options=options)
+        self.hint_registry = CLIHintRegistry()
 
     def on_initialize_driver(self,
                              command_line_arguments: Sequence[Text],
@@ -112,15 +113,8 @@ class CLIDriver(Driver):
         :return: driver application data
         """
 
-        root_command = CLICommand(root_task.name,
-                                  root_task.description,
-                                  root_task.visibility)
-        _add_task_fields(root_command, root_task)
-        for sub_task in root_task.sub_tasks:
-            command = root_command.add_sub_command(sub_task.name,
-                                                   sub_task.description,
-                                                   sub_task.visibility)
-            _add_task_fields_and_subcommands(command, sub_task)
+        builder = _CLITaskBuilder(root_task, self.hint_registry)
+        builder.build()
 
         options = CLIOptions(capture_trailing=True,
                              raise_exceptions=False,
@@ -129,7 +123,7 @@ class CLIDriver(Driver):
             initialization_data.final_arguments,
             self.name,
             self.phase,
-            root_command,
+            builder.root_command,
             options,
         )
 
@@ -143,11 +137,15 @@ class CLIDriver(Driver):
         if parse_results.names:
             try:
                 task_stack = root_task.resolve_task_stack(parse_results.names)
+                hint_registrar = self.hint_registry.registrar(*parse_results.names)
                 if task_stack is None:
                     abort(f'Failed to resolve command.', ' '.join(parse_results.names))
                 for field in task_stack[-1].fields:
-                    receives_trailing_arguments = bool(field.hints.get(CLI_HINT_TRAILING))
-                    if receives_trailing_arguments:
+                    if field.name == hint_registrar.trailing_field:
+                        if field.repeat is None:
+                            abort(f'Field assigned to trailing arguments must repeat.',
+                                  task=task_stack[-1].name,
+                                  field=field.name)
                         # Inject trailing arguments attribute into data object.
                         setattr(parse_results.data, field.name, parse_results.trailing_arguments)
                         break
@@ -183,10 +181,11 @@ class CLIDriver(Driver):
         provider = CLIHelpProvider(self.name,
                                    self.description,
                                    root_task,
+                                   self.hint_registry,
                                    options=options)
         text = provider.format_help(*names, show_hidden=show_hidden)
         if text:
-            print(text)
+            log_message(text)
 
     def get_log_writer(self) -> ConsoleLogWriter:
         """
@@ -197,39 +196,58 @@ class CLIDriver(Driver):
         return ConsoleLogWriter()
 
 
-def _add_task_fields(command: CLICommand,
-                     task: DriverTask):
-    for field in task.fields:
-        flags = field.hints.get(CLI_HINT_FLAGS)
-        if flags:
-            is_boolean = isclass(field.element_type) and issubclass(field.element_type, bool)
-            command.add_option(field.name,
-                               field.description,
-                               make_list(flags),
-                               is_boolean=is_boolean,
-                               repeat=field.repeat,
-                               default=field.default,
-                               choices=field.choices)
-    for field in task.fields:
-        flags = field.hints.get(CLI_HINT_FLAGS)
-        if not flags:
-            # Trailing argument capture is handled separately.
-            if not bool(field.hints.get(CLI_HINT_TRAILING)):
-                command.add_positional(field.name,
-                                       field.description or '(no description)',
-                                       repeat=field.repeat,
-                                       default=field.default,
-                                       choices=field.choices)
+class _CLITaskBuilder:
 
+    def __init__(self, root_task: DriverTask, registry: CLIHintRegistry):
+        self.root_task = root_task
+        self.root_command = CLICommand(root_task.name,
+                                       root_task.description,
+                                       root_task.visibility)
+        self._registry = registry
 
-def _add_task_fields_and_subcommands(command: CLICommand,
-                                     task: DriverTask):
-    _add_task_fields(command, task)
-    for sub_sub_task in task.sub_tasks:
-        sub_command = command.add_sub_command(sub_sub_task.name,
-                                              sub_sub_task.description,
-                                              sub_sub_task.visibility)
-        _add_task_fields_and_subcommands(sub_command, sub_sub_task)
+    def build(self):
+        self._add_task_fields_and_subcommands(
+            self._registry.registrar(),
+            self.root_command,
+            self.root_task,
+        )
+
+    @staticmethod
+    def _add_task_fields(registrar: CLITaskHintRegistrar,
+                         command: CLICommand,
+                         task: DriverTask):
+        registrar.set_hints(task.hints)
+        for field in task.fields:
+            if field.name in registrar.options_by_field:
+                is_boolean = isclass(field.element_type) and issubclass(field.element_type, bool)
+                command.add_option(field.name,
+                                   field.description,
+                                   registrar.options_by_field[field.name],
+                                   is_boolean=is_boolean,
+                                   repeat=field.repeat,
+                                   default=field.default,
+                                   choices=field.choices)
+        for field in task.fields:
+            if field.name not in registrar.options_by_field:
+                # Trailing argument capture is handled separately.
+                if field.name != registrar.trailing_field:
+                    command.add_positional(field.name,
+                                           field.description or '(no description)',
+                                           repeat=field.repeat,
+                                           default=field.default,
+                                           choices=field.choices)
+
+    def _add_task_fields_and_subcommands(self,
+                                         registrar: CLITaskHintRegistrar,
+                                         command: CLICommand,
+                                         task: DriverTask):
+        self._add_task_fields(registrar, command, task)
+        for sub_task in task.sub_tasks:
+            sub_command = command.add_sub_command(sub_task.name,
+                                                  sub_task.description,
+                                                  sub_task.visibility)
+            sub_registrar = registrar.sub_registrar(sub_task.name)
+            self._add_task_fields_and_subcommands(sub_registrar, sub_command, sub_task)
 
 
 def _expand_alias_as_needed(tool_name: Text, trailing_arguments: List[Text]) -> List[Text]:

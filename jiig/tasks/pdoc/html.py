@@ -14,12 +14,23 @@ def _module_path(module):
     return os.path.join('html', *module.url().split('/')[1:])
 
 
-@jiig.task
+@jiig.task(
+    cli={
+        'options': {
+            'force': ('-f', '--force'),
+        },
+    },
+)
 def html(
     runtime: jiig.Runtime,
-    force: jiig.f.boolean('Overwrite existing files.', cli_flags=('-f', '--force')),
+    force: jiig.f.boolean(),
 ):
-    """Use Pdoc3 to build HTML format documentation."""
+    """
+    Use Pdoc3 to build HTML format documentation.
+
+    :param runtime: Jiig runtime API.
+    :param force: Overwrite existing files.
+    """
     builder = PdocBuilder(runtime.tool.doc_api_packages,
                           runtime.tool.doc_api_packages_excluded)
     if not force:
