@@ -98,22 +98,19 @@ solely determined by whether or not they are referenced in active task lists.
 
 ### Main tool script and execution model
 
-Jiig tool scripts use `jiig-run` for the top "shebang" comment line. This line
-defines the shell executable program for the script. So tool scripts do not run
-Python directly. The final interpreter is pulled in by Jiig and configured to
+Jiig tool scripts can use `jiig` as the top "shebang" command line. In this case
+Jiig becomes the script interpreter. Such tool scripts do not run Python
+directly. The final Python interpreter is pulled in by Jiig and configured to
 provide the correct runtime environment, including the library path.
 
-The indirect execution structure also allows `jiig-run` to set up and use a
-virtual environment, if the tool is configured for one.
-
-The tool main script declares or imports the primary Tool class, which needs to
-be called "ToolClass".
+The main tool script can declare tool/project meta-data and task functions using
+the @task decorator.
 
 ### Dependencies and the virtual environment
 
 Jiig itself has no external dependencies beyond Python (version 3.x).
 
-Jiig-based tools depend on `jiig` and `jiig-run` being available in the path.
+Jiig-based tools depend on `jiig` being available in the path.
 
 Tool-specific dependencies can be handled by a virtual environment by defining a
 list of Pip-installed package that get automatically included when the virtual

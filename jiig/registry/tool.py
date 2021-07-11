@@ -67,7 +67,7 @@ class Tool:
     """
     Tool specification.
 
-    These members can also be initialized from jiig-run scripts with the
+    These members can also be initialized from jiig tool scripts with the
     variables represented by uppercase globals.
     """
 

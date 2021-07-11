@@ -231,10 +231,10 @@ def main(tool: Tool,
          cli_args: List[Text] = None,
          ):
     """
-    Main function called from jiig-run to drive tool and task initialization.
+    Main function called from jiig script to drive tool and task initialization.
 
     :param tool: registered tool configuration object
-    :param runner_args: optional Jiig runner preamble, e.g. for jiig-run
+    :param runner_args: optional Jiig runner preamble, e.g. for jiig shebang usage
     :param cli_args: command line arguments to override the default, sys.argv[1:]
     """
     # TODO: There is a lot of data copying to keep driver world encapsulated.

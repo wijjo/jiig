@@ -89,9 +89,3 @@ Add ability to save and use global tool options to be able to control features
 like history and output capture. Tools should be able to add their own options
 and hide some Jiig ones, e.g. if it doesn't want to support history or output
 capture for security reasons.
-
-## Polish usage without using jiig-run
-
-Split main() into portion that invokes the tool script and the remaining
-initializations. Make an API that a tool application can call without using
-jiig-run.

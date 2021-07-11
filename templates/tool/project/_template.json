@@ -3,7 +3,7 @@
     {
       "path": "bin/mytool",
       "output_path": "bin/$mytool",
-      "description": "$mytool main script (jiig-run version)",
+      "description": "$mytool main script (Jiig script version)",
       "expansion": "word",
       "executable": true
     },

@@ -1,16 +1,16 @@
 #!/usr/bin/env jiig
 """
-mytool Jiig tool script (Jiig script version).
+extool Jiig tool script.
 
 Jiig-run automatically deals with the Python package load path, manages any
 required virtual environment, and scrapes tool metadata from simple
 configuration variables.
 """
 
-TOOL_NAME = 'mytool'
+TOOL_NAME = 'extool'
 
-DESCRIPTION = 'mytool description.'
+DESCRIPTION = 'extool description.'
 
-ROOT_TASK = 'mytool.tasks'
+ROOT_TASK = 'extool.tasks'
 
 # PIP_PACKAGES = []

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-mytool (jiig monolithic tool script - pure-Python version).
+extool (jiig monolithic tool script - pure-Python version).
 
 PYTHONPATH (i.e. sys.path) must include Jiig lib for `import jiig` to work.
 
@@ -11,12 +11,19 @@ restart in it or activate the virtual environment prior to running this script.
 import os
 import sys
 
-# Add Jiig root to Python path so that Jiig modules can be loaded.
-# Alternatively, can use PYTHONPATH or any other supported mechanism for
-# extending the library load path.
-sys.path.insert(0, 'jiig_root')
+try:
+    import jiig
+except ImportError:
+    sys.stderr.write('''\
+ERROR: Unable to import "jiig" module.
 
-import jiig     # noqa: E402
+Make sure Jiig is installed and consider one of the following measures:
+
+- Set the PYTHONPATH environment variable to include the Jiig root.
+- Set sys.path inside the script to include the Jiig root. 
+- Install the `jiig` library folder under an existing Python library root.
+''')
+    sys.exit(1)
 
 
 @jiig.task
@@ -101,9 +108,9 @@ def root(runtime: jiig.Runtime):
 
 
 TOOL = jiig.Tool(
-    tool_name='mytool',
+    tool_name='extool',
     tool_root_folder=os.path.dirname(__file__),
-    description='mytool description.',
+    description='extool description.',
     root_task=root,
     # driver='jiig.driver.cli',
     # driver_variant='argparse',

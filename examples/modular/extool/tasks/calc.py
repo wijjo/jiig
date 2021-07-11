@@ -16,6 +16,6 @@ def calc(
     """
     try:
         result = eval(' '.join(blocks))
+        runtime.message(f'The result is {result}.')
     except Exception as exc:
         runtime.abort(f'Formula error: {exc}')
-    runtime.message(f'The result is {result}.')

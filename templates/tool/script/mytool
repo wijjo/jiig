@@ -1,8 +1,8 @@
-#!/usr/bin/env jiig-run
+#!/usr/bin/env jiig
 """
-mytool (jiig monolithic tool script - jiig-run version).
+mytool (Jiig-based monolithic tool scrip).
 
-Jiig-run automatically deals with the Python package load path, manages any
+Jiig automatically deals with adjusting Python package load path, manages any
 required virtual environment, and scrapes tool metadata from simple
 configuration variables.
 """
@@ -21,8 +21,11 @@ def calc(
     :param runtime: jiig runtime api
     :param blocks: formula block(s) to evaluate
     """
-    result = eval(' '.join(blocks))
-    runtime.message(f'The result is {result}.')
+    try:
+        result = eval(' '.join(blocks))
+        runtime.message(f'The result is {result}.')
+    except Exception as exc:
+        runtime.abort(f'Formula error: {exc}')
 
 
 @jiig.task(

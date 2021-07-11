@@ -3,7 +3,7 @@
     {
       "path": "mytool",
       "output_path": "$mytool",
-      "description": "$mytool stand-alone script (jiig-run version)",
+      "description": "$mytool stand-alone script (Jiig script version)",
       "expansion": "word",
       "executable": true
     },

@@ -1,22 +1,13 @@
-#!/usr/bin/env python3
+#!/usr/bin/env jiig
 """
-mytool (jiig monolithic tool script - pure-Python version).
+extool (jiig monolithic tool script - jiig script version).
 
-PYTHONPATH (i.e. sys.path) must include Jiig lib for `import jiig` to work.
-
-To use a virtual environment, either let `jiig.main()` automatically create and
-restart in it or activate the virtual environment prior to running this script.
+Jiig-run automatically deals with the Python package load path, manages any
+required virtual environment, and scrapes tool metadata from simple
+configuration variables.
 """
 
-import os
-import sys
-
-# Add Jiig root to Python path so that Jiig modules can be loaded.
-# Alternatively, can use PYTHONPATH or any other supported mechanism for
-# extending the library load path.
-sys.path.insert(0, 'jiig_root')
-
-import jiig     # noqa: E402
+import jiig
 
 
 @jiig.task
@@ -100,17 +91,10 @@ def root(runtime: jiig.Runtime):
     pass
 
 
-TOOL = jiig.Tool(
-    tool_name='mytool',
-    tool_root_folder=os.path.dirname(__file__),
-    description='mytool description.',
-    root_task=root,
-    # driver='jiig.driver.cli',
-    # driver_variant='argparse',
-    # pip_packages=[],
-    # options=jiig.ToolOptions(),
-)
+TOOL_NAME = 'extool'
 
+DESCRIPTION = 'extool description.'
 
-if __name__ == '__main__':
-    jiig.main(TOOL)
+ROOT_TASK = root
+
+# PIP_PACKAGES = []
