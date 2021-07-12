@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from io import StringIO
 from tempfile import NamedTemporaryFile
 from types import TracebackType
-from typing import Text, IO, Iterator, Any, Dict, Optional, Callable, AnyStr, Iterable, Type
+from typing import Text, IO, Iterator, Any, Dict, Optional, Callable, AnyStr, Iterable, Type, List
 from urllib.request import urlopen, Request
 
 from .log import abort, log_error
@@ -396,7 +396,7 @@ class OutputFile(IO):
         """Read line from file. See IO.readline()."""
         return self.open_file.readline(limit=limit)
 
-    def readlines(self, hint: int = ...) -> list[AnyStr]:
+    def readlines(self, hint: int = ...) -> List[AnyStr]:
         """Read lines from file. See IO.readlines()."""
         return self.open_file.readlines(hint=hint)
 
