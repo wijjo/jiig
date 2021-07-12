@@ -28,26 +28,6 @@
       "path": "mytool/tasks/__init__.py",
       "output_path": "$mytool/tasks/__init__.py",
       "expansion": "word"
-    },
-    {
-      "path": "mytool/tasks/root.py",
-      "output_path": "$mytool/tasks/root.py",
-      "expansion": "word"
-    },
-    {
-      "path": "mytool/tasks/calc.py",
-      "output_path": "$mytool/tasks/calc.py",
-      "expansion": "word"
-    },
-    {
-      "path": "mytool/tasks/case.py",
-      "output_path": "$mytool/tasks/case.py",
-      "expansion": "word"
-    },
-    {
-      "path": "mytool/tasks/words.py",
-      "output_path": "$mytool/tasks/words.py",
-      "expansion": "word"
     }
   ]
 }

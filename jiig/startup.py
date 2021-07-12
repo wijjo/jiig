@@ -21,7 +21,8 @@ from .driver import DriverOptions, DriverTask
 from .registry import CONTEXT_REGISTRY, DRIVER_REGISTRY, HINT_REGISTRY, TASK_REGISTRY, \
     Runtime, RuntimeHelpGenerator, Tool, TaskField, AssignedTask, \
     SUB_TASK_LABEL, TOP_TASK_LABEL, TOP_TASK_DEST_NAME
-from .util.general import format_exception, plural
+from .util.exceptions import format_exception
+from .util.general import plural
 from .util.log import abort, log_error, log_message, set_log_writer
 from .util.options import OPTIONS
 from .util.python import build_virtual_environment, PYTHON_NATIVE_ENVIRONMENT_NAME
@@ -105,7 +106,7 @@ class _ArgumentDataPreparer:
                         label = f'{assigned_task.full_name}:{arg_name}' \
                                 f':adapter={adapter_name}'
                         self.errors.append(
-                            format_exception(exc, label=label, skip_stack_levels=1))
+                            format_exception(exc, label=label, skip_frame_count=1))
                     else:
                         self.errors.append(f'{arg_name}: {str(exc)}')
 

@@ -2,7 +2,7 @@
 """
 mytool Jiig tool script (Jiig script version).
 
-Jiig-run automatically deals with the Python package load path, manages any
+Jiig automatically deals with the Python package load path, manages any
 required virtual environment, and scrapes tool metadata from simple
 configuration variables.
 """

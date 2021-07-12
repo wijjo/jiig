@@ -4,7 +4,7 @@ Task field declaration functions.
 
 from typing import Text, Union, List, Type, Collection
 
-from .adapters import to_timestamp, to_interval, to_age, to_comma_tuple, \
+from .adapters import to_timestamp, to_interval, to_age, to_comma_list, \
     to_int, to_float, to_bool, path_is_folder, path_to_absolute, path_exists
 from .registry import Field
 from .util.repetition import RepeatSpec
@@ -142,11 +142,11 @@ def interval(repeat: RepeatSpec = None,
     return Field.wrap(float, adapters=[to_interval], repeat=repeat, choices=choices)
 
 
-def comma_tuple(repeat: RepeatSpec = None) -> FIELD_TEXT_LIST_TYPE:
+def comma_list(repeat: RepeatSpec = None) -> FIELD_TEXT_LIST_TYPE:
     """
-    Comma-separated string converted to tuple.
+    Comma-separated string converted to list.
 
     :param repeat: optional repetition as count or minimum/maximum pair
     :return: field specification
     """
-    return Field.wrap(List[Text], adapters=[to_comma_tuple], repeat=repeat)
+    return Field.wrap(List[Text], adapters=[to_comma_list], repeat=repeat)

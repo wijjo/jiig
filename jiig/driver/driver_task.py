@@ -1,4 +1,4 @@
-"""Driver task class."""
+"""Driver task data."""
 
 from dataclasses import dataclass
 from typing import Text, List, Any, Dict, Optional, Sequence

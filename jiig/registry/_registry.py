@@ -107,7 +107,9 @@ class Registry:
             except Exception as exc:
                 error_function(f'Failed to load {self.name} module: {reference}',
                                exc,
-                               exception_traceback=True)
+                               exception_traceback=True,
+                               exception_traceback_skip=2,
+                               skip_non_source_frames=True)
                 return None
         # Resolve module reference?
         if ismodule(reference):

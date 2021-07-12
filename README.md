@@ -24,23 +24,17 @@ various other kinds of programs.
 * User-selected driver to interpret metadata as a user interface.
 * Tool definition, either as a special tool script or a Tool object.
     * Tool metadata.
-    * Root (top level) Task class reference.
-* Task classes (self-registering).
-    * Task class annotated fields.
-    * Task class call-back action methods.
-    * Optional child sub-task references.
+    * Root (top level) Task module or function reference.
+* Decorated @task functions.
+    * Task function annotated parameters.
+    * Optional child sub-task references in @task call.
+    * Optional CLI hints, e.g. option flags, in @task call.
 
-1. Task classes, their metadata and methods.
-2. Field annotations within task classes and metadata parameters.
-3. A selected driver that interprets task and field metadata to drive a running
-   program and user interface.
-
-Business logic coexists with task and field metadata as task class methods. The
-business logic can remain pure because field data validation and type conversion
-is handled externally.
+Task functions can have pure "business" logic, because field data validation and
+type conversion is handled externally.
 
 But when fields and business logic do need to change in concert they are likely
-found in the same file, the same class, and probably the same editor screen.
+found in the same file, the same function, and probably the same editor screen.
 
 
 ## User interface

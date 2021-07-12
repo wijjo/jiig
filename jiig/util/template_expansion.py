@@ -50,11 +50,12 @@ from fnmatch import fnmatch
 from string import Template
 from typing import Text, Dict, Tuple, List, Optional, Sequence, cast
 
+from .exceptions import format_exception
+from .filesystem import check_file_exists, short_path, create_folder, copy_file, make_relative_path
 from .log import abort, log_topic, TopicLogger, log_block_begin, log_block_end, \
     log_error, log_warning, log_message
-from .filesystem import check_file_exists, short_path, create_folder, copy_file, make_relative_path
-from .general import format_message_block, format_exception
 from .options import OPTIONS
+from .python import format_message_block
 from .stream import open_text_source, read_json_source
 
 TEMPLATE_FOLDER_SYMBOL_REGEX = re.compile(r'\(=(\w+)=\)')

@@ -6,7 +6,7 @@ import base64
 import binascii
 import os
 from time import mktime
-from typing import Text, Any, Optional, Tuple, Union
+from typing import Text, Any, Optional, Union, List
 
 from .registry import ArgumentAdapter
 from .util.date_time import parse_date_time, parse_time_interval, apply_date_time_delta_string
@@ -177,14 +177,14 @@ def to_bool(value: Union[str, bool]) -> bool:
     raise ValueError(f'bad boolean string "{value}"')
 
 
-def to_comma_tuple(value: str) -> Tuple[Text]:
+def to_comma_list(value: str) -> List[Text]:
     """
-    Adapter for comma-separated string to tuple conversion.
+    Adapter for comma-separated string to list conversion.
 
     :param value: comma-separated string
     :return: returned string tuple
     """
-    return tuple(tag.strip() for tag in value.split(','))
+    return list(value_item.strip() for value_item in value.split(','))
 
 
 def to_int(value: str, base: int = 10) -> int:

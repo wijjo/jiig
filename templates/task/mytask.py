@@ -1,7 +1,7 @@
 """
 task mytask module
 
-Refer to the documentation for more information about Task classes.
+Refer to the documentation for more information about Task functions.
 """
 
 import jiig

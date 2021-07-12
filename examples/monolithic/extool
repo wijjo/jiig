@@ -1,12 +1,14 @@
 #!/usr/bin/env jiig
 """
-extool (jiig monolithic tool script - jiig script version).
+extool (jiig monolithic tool script version).
 
-Jiig-run automatically deals with the Python package load path, manages any
+Jiig automatically deals with the Python package load path, manages any
 required virtual environment, and scrapes tool metadata from simple
 configuration variables.
 """
 
+# Technically, this is not necessary, but it helps with IDE type inspection.
+# Make sure to configure the IDE to recognize this file as a Python file type.
 import jiig
 
 

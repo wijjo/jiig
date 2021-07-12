@@ -1,20 +1,5 @@
 # Improvements
 
-* [ ] Clean up field parameters.
-    * [ ] Move description to doc string `:param:`.
-    * [ ] Parse `:param` descriptions in doc string.
-    * [ ] Move `cli_flags` to `@task(cli={'options': {'myfield': ('-x', '--long-x')}})`
-    * [ ] Hints like `repeat` might be better as a called wrapper function.
-
-* [ ] Get rid of task text parameters once full doc string support is ready?
-    * [ ] Pull description, notes, footnotes, and field descriptions from doc string. 
-    * [ ] Remove parameters from @task decorators. 
-    * [ ] Retrofit existing applications, like tzar.
-    
-* [ ] Update and test app templates.
-    * [ ] Use task functions?
-    * [ ] Test tool script/project and task generator.
-
 * [ ] Convert Tool to use registry.
     * [ ] Use registered tool reference in Jiig tool script.
 
@@ -24,7 +9,7 @@
 
 # Fixes
 
-## Rationalize (and limit) the tasks that are inherited by tools
+## Rationalize (and limit) the tasks that tools inherit from Jiig? 
 
 Jiig should probably handle all tasks not directly related to a tool's problem
 domain.

@@ -1,11 +1,10 @@
 import jiig
 
-from . import calc, case, words
+from . import task_imports          # noqa
 
 
-# noinspection PyUnusedLocal
-@jiig.task(tasks=(calc, case, words))
-def root(runtime: jiig.Runtime):
+@jiig.task(tasks=task_references)   # noqa
+def root(runtime: jiig.Runtime):    # noqa
     """
     top level tasks
 

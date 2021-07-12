@@ -13,7 +13,8 @@ from typing import Text, List, Tuple, Optional, IO, Dict, Type, Any, TypeVar, ge
 
 from .log import abort, log_error, log_message, log_warning
 from .filesystem import delete_folder, short_path
-from .general import format_message_block, plural, DefaultValue
+from .general import plural, DefaultValue
+from .messages import format_message_block
 from .options import OPTIONS
 from .process import run
 from .stream import open_text_source
@@ -383,7 +384,7 @@ def load_configuration_script(script_path: Text, **default_symbols) -> Dict:
     except Exception as script_exc:
         abort(f'Failed to load script: {script_path}',
               script_exc,
-              exec_file_name=script_path,
+              string_file_name=script_path,
               exception_traceback_skip=1)
 
 

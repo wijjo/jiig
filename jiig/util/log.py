@@ -6,8 +6,9 @@ import traceback
 from contextlib import contextmanager
 from typing import Any, Text, Set, Iterator, List, Sequence, Dict, Tuple, Optional
 
-from .general import format_message_lines, get_exception_stack
 from .options import OPTIONS
+from .exceptions import get_exception_stack
+from .messages import format_message_lines
 
 MESSAGES_ISSUED_ONCE: Set[Text] = set()
 LINES_WRITTEN = 0
@@ -71,15 +72,15 @@ def log_message(text: Any, *args, **kwargs):
     Display message line(s) and indented lines for relevant keyword data.
 
     Keywords:
-       tag                       prefix for all lines displayed in uppercase
-       sub_tag                   optional text to enclose in square brackets next to the tag
-       verbose                   True if requires VERBOSE mode
-       debug                     True if requires DEBUG mode
-       issue_once_tag            unique tag to prevent issuing the message more than once
-       exception_traceback       dump traceback stack if an exception is being reported
-       exception_traceback_skip  number of stack frames to skip
-       exec_file_name            file name to replace <string> in exception output for exec'd file
-       exclude_exec_frames       exclude exec() (non-source file) frames
+       tag                        prefix for all lines displayed in uppercase
+       sub_tag                    optional text to enclose in square brackets next to the tag
+       verbose                    True if requires VERBOSE mode
+       debug                      True if requires DEBUG mode
+       issue_once_tag             unique tag to prevent issuing the message more than once
+       exception_traceback        dump traceback stack if an exception is being reported
+       exception_traceback_skip   number of stack frames to skip
+       string_file_name           file name to replace <string> in exception output for exec'd file
+       skip_non_source_frames     exclude non-source file frames if True
     """
     tag = kwargs.pop('tag', None)
     verbose = kwargs.pop('verbose', None)
@@ -88,8 +89,8 @@ def log_message(text: Any, *args, **kwargs):
     is_error = kwargs.pop('is_error', False)
     exception_traceback = kwargs.pop('exception_traceback', None)
     exception_traceback_skip = kwargs.pop('exception_traceback_skip', None)
-    exclude_exec_frames = kwargs.pop('exclude_exec_frames', None)
-    exec_file_name = kwargs.pop('exec_file_name', None)
+    skip_non_source_frames = kwargs.pop('skip_non_source_frames', None)
+    string_file_name = kwargs.pop('string_file_name', None)
     if verbose and not OPTIONS.verbose:
         return
     if debug and not OPTIONS.debug:
@@ -100,7 +101,7 @@ def log_message(text: Any, *args, **kwargs):
         MESSAGES_ISSUED_ONCE.add(issue_once_tag)
     for line in format_message_lines(text, *args, **kwargs,
                                      tag=tag,
-                                     exec_file_name=exec_file_name):
+                                     string_file_name=string_file_name):
         _LOG_WRITER.write_line(line, is_error=is_error)
     has_exception = False
     for value in list(args) + list(kwargs.values()):
@@ -114,9 +115,10 @@ def log_message(text: Any, *args, **kwargs):
             if exc_lines:
                 log_message('Exception stack:', *exc_lines, tag='DEBUG', is_error=True)
         elif exception_traceback:
-            exc_stack = get_exception_stack(skip=exception_traceback_skip,
-                                            exclude_exec_frames=exclude_exec_frames,
-                                            exec_file_name=exec_file_name)
+            exc_stack = get_exception_stack(
+                skip_frame_count=exception_traceback_skip,
+                skip_non_source_frames=skip_non_source_frames,
+                string_file_name=string_file_name)
             if exc_stack.items:
                 lines: List[Text] = []
                 if exc_stack.package_path:

@@ -80,7 +80,7 @@ class TaskRegistrationRecord(RegistrationRecord):
         """
         Task registration constructor.
 
-        :param implementation: task class or function
+        :param implementation: task implementation, i.e. function
         :param module: containing module
         :param primary_tasks: primary sub-task references by name
         :param secondary_tasks: secondary sub-task references by name

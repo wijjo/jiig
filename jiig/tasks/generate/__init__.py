@@ -3,10 +3,10 @@
 import os
 import jiig
 
-from . import project, script
+from . import project, script, task
 
 
-@jiig.task(tasks=(project, script))
+@jiig.task(tasks=(project, script, task))
 def root(runtime: jiig.Runtime):
     """
     Manage tool assets.
