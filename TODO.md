@@ -6,6 +6,9 @@
 * [ ] Add task function support for delayed clean-up?
     * [ ] Support `runtime.add_cleanup(function)`? 
     * [ ] Or add chained decorator, similar to @property getter/setter pairs.
+    
+* [ ] Rather than have specialized script types, like provisioning, move out the
+      APIs to allow mixing and matching freely.
 
 # Fixes
 

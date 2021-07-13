@@ -246,8 +246,12 @@ class ProvisioningScript(ShellScript):
         """
         Install and configure ZSH for user.
 
-        NB: The oh-my-zsh option assumes the ~/.zshrc source file is
-        pre-configured for oh-my-zsh. It undoes the oh-my-zsh ~/.zshrc changes.
+        Caveats:
+        * Works with a set of user-provided configuration files, rather than
+          trying to edit existing ones.
+        * Configuration files are symlinked to the user home folder.
+        * Oh-my-zsh setup assumes the ~/.zshrc source file is pre-configured for
+          oh-my-zsh. It undoes the oh-my-zsh ~/.zshrc changes.
 
         :param user: user name
         :param rc_source: ~/.zshrc source path
@@ -278,7 +282,7 @@ class ProvisioningScript(ShellScript):
                 predicate='[[ ! -e ~/.oh-my-zsh ]]',
                 messages={
                     'before': 'Installing oh-my-zsh as needed...',
-                    'skip': 'oh-my-zsh is already installed.',
+                    'skip': '~/.oh-my-zsh exists, assuming oh-my-zsh is already installed.',
                 },
             ):
                 self.action(
@@ -361,3 +365,58 @@ class ProvisioningScript(ShellScript):
             },
         ):
             self.action(f'echo "{body}" > ~/.inputrc')
+
+    def setup_pyenv(self):
+        """
+        Install prerequisites, install pyenv, and configure shell to use it.
+
+        Caveats:
+        * Does nothing if ~/.pyenv exists.
+        * Expect that ~/.bashrc, ~/.zshrc, etc. will already have recommended
+          pyenv initialization environment setup and initialization.
+
+        See https://github.com/pyenv/pyenv.
+        """
+        # noinspection SpellCheckingInspection
+        self.apt_install('make',
+                         'build-essential',
+                         'libssl-dev',
+                         'zlib1g-dev',
+                         'libbz2-dev',
+                         'libreadline-dev',
+                         'libsqlite3-dev',
+                         'wget',
+                         'curl',
+                         'llvm',
+                         'libncursesw5-dev',
+                         'xz-utils',
+                         'tk-dev',
+                         'libxml2-dev',
+                         'libxmlsec1-dev',
+                         'libffi-dev',
+                         'liblzma-dev')
+        with self.block(
+            predicate='[[ ! -e ~/.pyenv ]]',
+            messages={
+                'before': 'Cloning ~/.pyenv...',
+                'skip': '~/.pyenv already exists.'
+            },
+        ):
+            self.git_clone('https://github.com/pyenv/pyenv.git', '~/.pyenv')
+            with self.block(location='~/.pyenv'):
+                self.action([
+                    'src/configure',
+                    'make -C src',
+                ])
+            self.action([
+                'export PATH="~/.pyenv/bin:$PATH"',
+                (r"_version=$("
+                    r"pyenv install --list"
+                    r" | sed -n 's/^ *\([0-9]\+\.[0-9]\+\.[0-9a-z]*\) *$/\1/p'"
+                    r" | tail -1"
+                    r")"),
+                'test -n "$_version"',
+                'pyenv install $_version',
+                'pyenv global $_version',
+                'eval "$(pyenv init --path)"',
+            ])
