@@ -6,7 +6,6 @@ from .driver_registry import DRIVER_REGISTRY, SelfRegisteringDriverBase, DriverR
     DriverImplementation, DriverRegistrationRecord, DriverRegistry
 from .field import ArgumentAdapter, Field
 from .hint_registry import HINT_REGISTRY
-from .host_context import HostContext
 from .runtime import Runtime, RuntimeHelpGenerator
 from .task_registry import TASK_REGISTRY, TaskRegistry, TaskReference, TaskImplementation, TaskFunction, \
     TaskRegistrationRecord, TaskField, AssignedTask, SubTaskList, SubTaskDict, SubTaskCollection

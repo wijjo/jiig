@@ -93,7 +93,7 @@ class Script:
         Add script action command(s) and display optional status messages.
 
         :param command_string_or_sequence: command or commands
-        :param messages: optional status messages
+        :param messages: optional success or failure status messages
         """
         # TODO: Handle message quoting/escaping for echo statements.
         action_messages = AttrDictReadOnly(messages or {})
@@ -128,7 +128,7 @@ class Script:
         """
         self.action(f'cd {folder}', messages=messages)
 
-    def _wrap_command(self, command: str, need_root: bool = False) -> str:
+    def wrap_command(self, command: str, need_root: bool = False) -> str:
         """
         Prefix with "sudo" as needed.
 

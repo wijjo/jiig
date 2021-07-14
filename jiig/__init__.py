@@ -12,6 +12,7 @@ from .registry import AssignedTask, Field, ArgumentAdapter, \
     Runtime, RuntimeHelpGenerator, Tool, ToolOptions, JIIG_VENV_ROOT
 from .startup import main
 from .util.options import OPTIONS
+from .util.script import Script
 
 # Top level public modules and their shortened aliases.
 from . import adapters, fields
@@ -19,6 +20,6 @@ from . import adapters as a
 from . import fields as f
 
 # Top level public packages and their shortened aliases.
-from . import contexts, driver, scripts, tasks, util
+from . import contexts, driver, scripters, tasks, util
 from . import contexts as c
-from . import scripts as s
+from . import scripters as s

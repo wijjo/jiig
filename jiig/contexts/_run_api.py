@@ -4,10 +4,10 @@ import os
 import subprocess
 from typing import Sequence, Union, Tuple, Optional, List
 
-from ..scripts import Script
 from ..util import OPTIONS
 from ..util.general import AttrDictReadOnly
 from ..util.network import format_host_string
+from ..util.script import Script
 
 from .context import Context
 from ._util import run_context_command, run_context_sub_process, open_context_output_file

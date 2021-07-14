@@ -2,15 +2,17 @@
 Runner provides data and an API to task call-back functions..
 """
 
+import os
 from contextlib import contextmanager
 from typing import Text, Iterator, Optional, Callable, List
 
 from ..contexts.action import ActionContext
 from ..contexts.context import Context
 from ..util.alias_catalog import AliasCatalog, open_alias_catalog
+from ..util.general import get_client_name
+from ..util.network import resolve_ip_address
 
 from .context_registry import SelfRegisteringContextBase
-from .host_context import HostContext
 from .tool import Tool
 
 
@@ -112,12 +114,12 @@ class Runtime(ActionContext, SelfRegisteringContextBase):
                      client_ssh_key_name: str = None,
                      host_ssh_source_key_name: str = None,
                      client: str = None,
-                     ):
+                     ) -> ActionContext:
         """
-        Construct new child HostContext with symbols and methods relevant to host connections.
+        Construct new child context with symbols relevant to host connections.
 
         To avoid confusion with host-related keywords, **kwargs is not supported
-        here. Use a sub-context or call update() to add expansion symbols.
+        here. Use a sub-context or call update() to add more symbols.
 
         :param host: host name
         :param host_ip: optional host address (default: queried at runtime)
@@ -127,14 +129,36 @@ class Runtime(ActionContext, SelfRegisteringContextBase):
         :param host_ssh_source_key_name: optional host SSH source key file base name (default: id_rsa_host)
         :param client: optional client name (default: queried at runtime)
         """
-        return HostContext(self,
-                           host,
-                           host_ip=host_ip,
-                           user=user,
-                           home_folder=home_folder,
-                           client_ssh_key_name=client_ssh_key_name,
-                           host_ssh_source_key_name=host_ssh_source_key_name,
-                           client=client)
+        if user is None:
+            user = os.environ['USER']
+        host_string = f'{user}@{host}'
+        if home_folder is None:
+            home_folder = f'/home/{user}'
+        if host_ip is None:
+            host_ip = resolve_ip_address(host)
+            if host_ip is None:
+                self.abort(f'Unable to resolve host "{host}" IP address for host context.')
+        if client is None:
+            client = get_client_name()
+        if client_ssh_key_name is None:
+            client_ssh_key_name = 'id_rsa_client'
+        if host_ssh_source_key_name is None:
+            host_ssh_source_key_name = 'id_rsa_host'
+        client_ssh_key = os.path.expanduser(f'~/.ssh/{client_ssh_key_name}')
+        host_ssh_source_key = os.path.expanduser(f'~/.ssh/{host_ssh_source_key_name}')
+        return Runtime(self,
+                       self.tool,
+                       self.help_generator,
+                       self.data,
+                       host=host,
+                       host_ip=host_ip,
+                       host_string=host_string,
+                       client=client,
+                       user=user,
+                       home_folder=home_folder,
+                       client_ssh_key=client_ssh_key,
+                       host_ssh_source_key=host_ssh_source_key,
+                       )
 
     def context(self, **kwargs) -> 'Runtime':
         """

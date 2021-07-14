@@ -14,7 +14,7 @@ Write-only modules return no data.
 
 import os
 import sys
-from inspect import ismethod, isfunction, isclass
+from inspect import isfunction
 from typing import List, Text, Callable, Tuple, Dict
 
 from .driver import DriverOptions, DriverTask
@@ -121,11 +121,11 @@ def _execute(runtime: Runtime, task_stack: List[AssignedTask], data: object):
               f' {plural("failure", data_preparer.errors)}:',
               *data_preparer.errors)
     try:
-        # Run functions are invoked outer to inner, and done functions are
-        # invoked in reverse order. The string is the name used for errors. The
-        # dict is for keyword call arguments (task functions only).
+        # Run functions are invoked outer to inner, and done functions, if
+        # added, are invoked in reverse, inner to outer order. The string is the
+        # name used for errors. The dict is for keyword call arguments (task
+        # functions only).
         run_calls: List[Tuple[Text, Callable, Dict]] = []
-        done_calls: List[Tuple[Text, Callable, Dict]] = []
         for task in task_stack:
             # Extract the data needed to populate task dataclass fields.
             # noinspection PyDataclass
@@ -139,27 +139,7 @@ def _execute(runtime: Runtime, task_stack: List[AssignedTask], data: object):
                 run_name = f' task "{task.name}" {task.full_name}'
                 run_function = task.implementation
                 run_calls.append((run_name, run_function, task_field_data))
-            # Add class method(s) to callables?
-            elif isclass(task.implementation):
-                try:
-                    # Instantiate the task handler class with required field data. Non-field
-                    # data members and type mismatches may cause errors.
-                    handler_instance = task.implementation(**task_field_data)
-                    run_method = getattr(handler_instance, 'on_run', None)
-                    if ismethod(run_method):
-                        run_name = f' task "{task.name}" {task.full_name}.on_run()'
-                        run_calls.append((run_name, run_method, {}))
-                    done_method = getattr(handler_instance, 'on_done', None)
-                    if ismethod(done_method):
-                        done_name = f' task "{task.name}" {task.full_name}.on_done()'
-                        done_calls.insert(0, (done_name, done_method, {}))
-                except Exception as exc:
-                    abort(f'Exception constructing task "{task.name}" class:',
-                          task.full_name,
-                          exc,
-                          exception_traceback_skip=1)
         # Invoke run callable stack.
-        # Invoke done callable stack (reverse of run callable order).
         for run_name, run_function, run_kwargs in run_calls:
             # noinspection PyBroadException
             try:
@@ -168,14 +148,17 @@ def _execute(runtime: Runtime, task_stack: List[AssignedTask], data: object):
                 abort(f'Exception invoking {run_name}.',
                       exc,
                       exception_traceback_skip=1)
-        for done_name, done_function, done_kwargs in done_calls:
-            # noinspection PyBroadException
-            try:
-                done_function(runtime, **done_kwargs)
-            except Exception as exc:
-                abort(f'Exception invoking {done_name}.',
-                      exc,
-                      exception_traceback_skip=1)
+        # Invoke done callable stack (reverse of run callable order).
+        if runtime.when_done_callables:
+            for done_call in runtime.when_done_callables:
+                try:
+                    # Takes no arguments, because callable supplier should
+                    # capture necessary data in a closure or callable object.
+                    done_call()
+                except Exception as exc:
+                    abort(f'Exception invoking clean-up call-back {done_call.__name__}.',
+                          exc,
+                          exception_traceback_skip=1)
     except KeyboardInterrupt:
         sys.stdout.write(os.linesep)
     except ArgumentNameError as exc:
