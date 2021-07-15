@@ -15,11 +15,7 @@ from .util.options import OPTIONS
 from .util.script import Script
 
 # Top level public modules and their shortened aliases.
-from . import adapters, fields
 from . import adapters as a
 from . import fields as f
-
-# Top level public packages and their shortened aliases.
-from . import contexts, driver, scripters, tasks, util
 from . import contexts as c
-from . import scripters as s
+from . import adapters, fields, contexts, driver, util, provisioning, tasks
