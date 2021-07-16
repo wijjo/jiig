@@ -263,6 +263,8 @@ def main(tool: Tool,
 
     # Initialize the driver. Only display message once.
     driver_initialization_data = driver.initialize_driver(raw_arguments)
+    if not driver_initialization_data.final_arguments:
+        driver_initialization_data.final_arguments = ['help']
     if not tool.venv_active:
         log_message('Jiig driver initialized.', debug=True)
 
@@ -301,11 +303,6 @@ def main(tool: Tool,
     _populate_driver_task(driver_root_task,
                           tool.assigned_root_task.fields,
                           tool.assigned_root_task.sub_tasks)
-
-    # Just display help if there sub-tasks and no arguments to process.
-    if have_tasks and not driver_initialization_data.final_arguments:
-        driver.provide_help(driver_root_task)
-        sys.exit(0)
 
     driver_app_data = driver.initialize_application(driver_initialization_data,
                                                     driver_root_task)

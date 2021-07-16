@@ -9,8 +9,9 @@ import jiig
     cli={
         'options': {
             'all_tasks': ('-a', '--all'),
+
         }
-    }
+    },
 )
 def help_(
     runtime: jiig.Runtime,
@@ -18,7 +19,7 @@ def help_(
     help_names: jiig.f.text(repeat=(None, None)),
 ):
     """
-    Display help screen.
+    Display tool help or task help (if task name(s) are provided).
 
     :param runtime: jiig Runtime API.
     :param all_tasks: Show all tasks, including hidden ones.
