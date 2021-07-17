@@ -5,7 +5,7 @@ Task field declaration functions.
 from typing import Text, Union, List, Type, Collection
 
 from .adapters import to_timestamp, to_interval, to_age, to_comma_list, \
-    to_int, to_float, to_bool, path_is_folder, path_to_absolute, path_exists
+    to_int, to_float, to_bool, path_is_folder, path_to_absolute, path_exists, path_is_file
 from .registry import Field
 from .util.repetition import RepeatSpec
 
@@ -86,12 +86,28 @@ def filesystem_folder(absolute_path: bool = False,
     return Field.wrap(Text, adapters=adapters_list, repeat=repeat)
 
 
+def filesystem_file(absolute_path: bool = False,
+                    repeat: RepeatSpec = None,
+                    ) -> FIELD_TEXT_TYPE:
+    """
+    Declare a folder path field.
+
+    :param absolute_path: convert to absolute path if True
+    :param repeat: optional repetition as count or minimum/maximum pair
+    :return: field specification
+    """
+    adapters_list = [path_is_file]
+    if absolute_path:
+        adapters_list.append(path_to_absolute)
+    return Field.wrap(Text, adapters=adapters_list, repeat=repeat)
+
+
 def filesystem_object(absolute_path: bool = False,
                       exists: bool = False,
                       repeat: RepeatSpec = None,
                       ) -> FIELD_TEXT_TYPE:
     """
-    Declare a folder path field.
+    Declare a file or folder path field.
 
     :param absolute_path: convert to absolute path if True
     :param exists: it must exist if True

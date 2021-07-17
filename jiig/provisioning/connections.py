@@ -86,14 +86,16 @@ def script_network_tool_installation(script: Script):
 def script_ssh_key_based_connection_test(script: Script,
                                          host: str,
                                          user: str,
+                                         key_path: str = None,
                                          messages: dict = None,
                                          ):
     """
     Test for successful key-based SSH connection.
 
     :param script: script to receive actions
-    :param host: optional host override (default: {host})
-    :param user: optional host user override (default: {user})
+    :param host: host override
+    :param user: host user override
+    :param key_path: optional private key path
     :param messages: optional display messages
     """
     if messages is None:
@@ -102,7 +104,11 @@ def script_ssh_key_based_connection_test(script: Script,
             'success': 'SSH connection is already configured.',
             'failure': 'SSH connection must be configured (multiple password prompts).',
         }
-    script.action(f'ssh -o PasswordAuthentication=no {user}@{host} true 2> /dev/null',
+    options = ['-o PasswordAuthentication=no']
+    if key_path:
+        options.append(f'-i "{key_path}"')
+    options_string = ' '.join(options)
+    script.action(f'ssh {options_string} {user}@{host} true 2> /dev/null',
                   messages=messages)
 
 
@@ -204,9 +210,10 @@ def provision_key_based_ssh_connection(context: ActionContext,
                                        host: str,
                                        host_ip: str,
                                        user: str,
-                                       client_ssh_key: str = None,
                                        admin_user: str = None,
                                        key_label: str = None,
+                                       user_key_path: str = None,
+                                       admin_key_path: str = None,
                                        ):
     """
     All-in-one function assures a key-based SSH connection is available.
@@ -217,31 +224,35 @@ def provision_key_based_ssh_connection(context: ActionContext,
       - Forget previous remembered instances of the host.
       - Create a missing user.
       - Generate SSH key pair.
-      - Configure host connection stanza in ~/.ssh/config.
 
     :param context: context used for script execution.
     :param host: host name
     :param host_ip: host IP address
     :param user: user name on host
-    :param client_ssh_key: ssh private key path (default is ~/.ssh/id_rsa)
-    :param admin_user: admin user that can create a user, if missing (default is root)
-    :param key_label: label for generated ssh key (default is user@host)
+    :param admin_user: admin user that can create a user (default is root)
+    :param key_label: label for new generated ssh key (default is user@host)
+    :param user_key_path: user ssh private key path (default is ~/.ssh/id_rsa)
+    :param admin_key_path: ssh private key path (default is not used)
     """
     # Local: Test for functioning SSH key-based connection or configure if necessary.
     test_ssh_script = Script()
-    script_ssh_key_based_connection_test(test_ssh_script, host, user)
+    script_ssh_key_based_connection_test(test_ssh_script, host_ip, user,
+                                         key_path=user_key_path)
     proc = context.run.script(test_ssh_script, ignore_dry_run=True, unchecked=True)
     if proc.returncode == 0:
         # We're good, key-based SSH connection works!.
+        context.message(f'SSH {user}@{host} key-based connection is working.')
         return
+
+    context.heading(2, f'SSH {user}@{host} key-based connection needs to be set up.')
 
     if not admin_user:
         admin_user = 'root'
     if not key_label:
         key_label = f'{user}@{host}'
-    if not client_ssh_key:
-        client_ssh_key = '~/.ssh/id_rsa'
-    host_string = f'{user}@{host}'
+    if not user_key_path:
+        user_key_path = '~/.ssh/id_rsa'
+    host_string = f'{user}@{host_ip}'
 
     # Local: Remove host from known hosts to avoid man-in-the-middle attack errors.
     forget_host_script = Script()
@@ -251,23 +262,17 @@ def provision_key_based_ssh_connection(context: ActionContext,
     # Remote: Create user as needed.
     create_user_script = Script()
     script_user_creation(create_user_script, user, 'sudo')
-    context.run.script(create_user_script, host=host, user=admin_user)
+    context.run.script(create_user_script,
+                       host=host_ip,
+                       user=admin_user,
+                       key_path=admin_key_path)
 
     # Local: Set up SSH key pair as needed.
     client_ssh_key_script = Script(unchecked=True)
     script_ssh_key_creation(client_ssh_key_script,
-                            key_path=client_ssh_key,
+                            key_path=user_key_path,
                             label=key_label)
     script_ssh_key_deployment(client_ssh_key_script,
                               host_string=host_string,
-                              key_path=client_ssh_key)
+                              key_path=user_key_path)
     context.run.script(client_ssh_key_script)
-
-    # Local: Configure ~/.ssh/config host stanza as needed.
-    host_ssh_script = Script(unchecked=True)
-    script_ssh_host_connection_configuration(host_ssh_script,
-                                             host,
-                                             host_ip,
-                                             user,
-                                             client_ssh_key)
-    context.run.script(host_ssh_script)

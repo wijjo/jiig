@@ -108,6 +108,7 @@ class ActionContextRunAPI:
                host: str = None,
                user: str = None,
                host_string: str = None,
+               key_path: str = None,
                messages: dict = None,
                unchecked: bool = False,
                ignore_dry_run: bool = False,
@@ -123,6 +124,7 @@ class ActionContextRunAPI:
         :param host: optional target host for remote command
         :param user: optional target host user name for remote command
         :param host_string: alternate user@host form for host and user
+        :param key_path: optional private key path
         :param messages: optional status messages
         :param unchecked: do not check return code for success
         :param ignore_dry_run: execute even if it is a dry run
@@ -134,9 +136,11 @@ class ActionContextRunAPI:
 
         host, user = self._get_host_user(host, user, host_string)
 
+        key_option = f' -i "{key_path}"' if key_path else ''
+
         if host:
-            command = 'ssh -qt {target_host_string} bash {script_file}'
-            deploy_command = 'scp {script_file} {target_host_string}:{script_file}'
+            command = 'ssh{key_option} -qt {target_host_string} bash {script_file}'
+            deploy_command = 'scp{key_option} {script_file} {target_host_string}:{script_file}'
         else:
             command = '/bin/bash {script_file}'
             deploy_command = None
@@ -147,7 +151,8 @@ class ActionContextRunAPI:
                                   target_host_string=format_host_string(host=host, user=user),
                                   script_preamble=_get_script_preamble(),
                                   script_body=_get_script_body(script_text_or_object),
-                                  output_label='[host={target_host}] ' if host else ''
+                                  output_label='[host={target_host}] ' if host else '',
+                                  key_option=key_option,
                                   ) as script_context:
 
             with open_context_output_file(script_context,
