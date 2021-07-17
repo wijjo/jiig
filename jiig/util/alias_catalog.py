@@ -373,13 +373,14 @@ class AliasCatalog:
         self.sorted = False
         self.modified = True
 
-    def _iterate_aliases(self) -> Iterator[Alias]:
+    def _iterate_aliases(self, tool_name: Text = None) -> Iterator[Alias]:
         """
-        Get all locations/aliases for current tool.
+        Get all locations/aliases for current or specified tool.
 
+        :param tool_name: tool name (default is current tool)
         :return: Alias object iterator
         """
-        tool_alias_map = self.catalog.get(self.tool_name)
+        tool_alias_map = self.catalog.get(tool_name or self.tool_name)
         if tool_alias_map:
             for alias_name, alias_data in tool_alias_map.items():
                 yield Alias(alias_name, alias_data['description'], alias_data['command'])
@@ -388,7 +389,7 @@ class AliasCatalog:
         # Sort aliases by label, followed by path.
         sorted_catalog = {}
         for tool_name in sorted(self.catalog.keys()):
-            sorted_aliases = sorted(self._iterate_aliases(),
+            sorted_aliases = sorted(self._iterate_aliases(tool_name=tool_name),
                                     key=lambda a: (a.label, a.path or ''))
             sorted_tool_alias_map = {}
             for alias in sorted_aliases:
