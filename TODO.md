@@ -7,9 +7,16 @@
     * [X] Support `runtime.when_done(function)`? 
     * [ ] Or add chained decorator, similar to @property getter/setter pairs.
     * [ ] Test it.
-    
-* [ ] Rather than have specialized script types, like provisioning, move out the
-      APIs to allow mixing and matching freely.
+
+* [ ] Automatic file backups, e.g. for ~/.jiig-aliases.
+    * [ ] Accept "backup discipline" as optional argument.
+    * [ ] Define backup discipline protocol (as a class) for future expansion.
+    * [ ] Implement backup discipline for single backup copy, possibly with
+          option to not overwrite existing same day backup.
+    * [ ] Switch catalog save to use stream.open_input_file() with above backup
+          single backup copy discipline.
+    * [ ] Could also not bother building backup into open_input_file(), and just
+          handle it separately.
 
 # Fixes
 

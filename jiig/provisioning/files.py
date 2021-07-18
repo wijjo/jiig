@@ -8,6 +8,8 @@ from jiig import OPTIONS, Script
 from jiig.util.general import make_list
 from jiig.util.process import shell_quote_path
 
+from .folders import script_parent_folder_creation
+
 
 def script_file_deletion(script: Script,
                          file: str,
@@ -45,6 +47,7 @@ def script_symlink_creation(script: Script,
                             target: str,
                             need_root: bool = False,
                             messages: dict = None,
+                            create_folder: bool = False,
                             ):
     """
     Add symbolic link creation to script.
@@ -54,13 +57,16 @@ def script_symlink_creation(script: Script,
     :param target: target symlink path
     :param need_root: requires root to delete it successfully
     :param messages: output messages (defaults provided)
+    :param create_folder: create parent folder if missing
     """
     if messages is None:
-        as_root = 'as root, ' if need_root else ''
+        as_root = ' (as root)' if need_root else ''
         messages = {
-            'before': f'Creating symbolic link ({as_root}as needed): {source} -> {target}',
+            'before': f'Creating symbolic link{as_root}: {source} -> {target}',
             'skip': f'Symbolic link target "{target}" already exists.',
         }
+    if create_folder:
+        script_parent_folder_creation(script, target, need_root=need_root)
     with script.block(
         predicate=f'[[ ! -e {target} ]]',
         messages=messages,

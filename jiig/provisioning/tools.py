@@ -3,8 +3,10 @@ Scripter for provisioning actions.
 """
 
 import os
+from typing import Union, Sequence
 
 from jiig import Script
+from jiig.util.general import make_list
 
 from .folders import script_folder_creation
 from .files import script_symlink_creation
@@ -232,3 +234,38 @@ def script_user_pyenv_setup(script: Script, enable_betas: bool = False):
             'pyenv global $_version',
             'eval "$(pyenv init --path)"',
         ])
+
+
+def script_install_git_project(script: Script,
+                               repo_url: str,
+                               repo_folder: str,
+                               executables: Union[str, Sequence[str]],
+                               bin_folder: str = None,
+                               flat: bool = False,
+                               ):
+    """
+    Clone a Git repository and hook project assets into the local environment.
+
+    Assumes bin_folder or ~/bin will be in the user path, if present. Executable
+    symlinks are placed in the bin folder to make them available for shell use.
+
+    :param script: script to receive actions
+    :param repo_url: repository URL
+    :param repo_folder: local repository folder
+    :param executables: executable(s) to install as symlinks in bin folder
+    :param bin_folder: target folder for executable symlinks (default: ~/bin)
+    :param flat: omit --recurse-submodules flag if True
+    """
+    script_clone_git_repository(script, repo_url, repo_folder, flat=flat)
+    if not bin_folder:
+        bin_folder = '~/bin'
+    executables = make_list(executables)
+    if executables:
+        create_folder = True
+        for executable in executables:
+            source_path = os.path.join(repo_folder, executable)
+            target_path = os.path.join(bin_folder, os.path.basename(executable))
+            script_symlink_creation(script, source_path, target_path,
+                                    create_folder=create_folder)
+            # Only need to attempt parent folder creation once.
+            create_folder = False

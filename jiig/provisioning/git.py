@@ -55,8 +55,8 @@ def script_clone_git_repository(script: Script,
     with script.block(
         predicate=f'[[ ! -d {quoted_repo_folder} ]]',
         messages={
-            'before': f'Cloning Git repository folder (as needed): {repo_folder}',
-            'skip': f'Local repository folder {repo_folder} exists.',
+            'before': f'Cloning Git repository: {repo_folder}',
+            'skip': f'Local repository {repo_folder} exists.',
         },
     ):
         script.action(f'git clone{option_string} {repo_url} {quoted_repo_folder}')
