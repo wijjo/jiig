@@ -336,10 +336,17 @@ def main(tool: Tool,
             driver.provide_help(driver_root_task, *names, show_hidden=show_hidden)
 
     # Create and initialize root Runtime context.
-    runtime = runtime_class(None,
-                            tool=tool,
-                            help_generator=HelpGenerator(),
-                            data=driver_app_data.data)
+    def _create_runtime() -> Runtime:
+        try:
+            return runtime_class(None,
+                                 tool=tool,
+                                 help_generator=HelpGenerator(),
+                                 data=driver_app_data.data)
+        except Exception as exc:
+            abort(f'Exception while creating runtime class {runtime_class.__name__}',
+                  exc,
+                  exception_traceback_skip=1)
+    runtime = _create_runtime()
 
     log_message('Executing application...', debug=True)
     _execute(runtime, task_stack, driver_app_data.data)

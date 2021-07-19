@@ -48,10 +48,9 @@ class MetaAttrDict(type):
         # Attribute read access with no_defaults=True raises AttributeError for non-existent key.
         if kwargs.get('no_defaults', False):
             def getattr_stub(self, name):
-                try:
-                    return self[name]
-                except KeyError:
+                if name not in self:
                     raise AttributeError(f"Attempt to read missing attribute '{name}' in {mcs_name}.")
+                return self[name]
             setattr(new_class, '__getattr__', getattr_stub)
 
         # Attribute read access otherwise uses get() to return value or None.
