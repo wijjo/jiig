@@ -136,13 +136,14 @@ def _execute(runtime: Runtime, task_stack: List[AssignedTask], data: object):
             }
             # Add task function to callables?
             if isfunction(task.implementation):
-                run_name = f' task "{task.name}" {task.full_name}'
+                run_name = f'task "{task.name}" {task.full_name}'
                 run_function = task.implementation
                 run_calls.append((run_name, run_function, task_field_data))
         # Invoke run callable stack.
         for run_name, run_function, run_kwargs in run_calls:
             # noinspection PyBroadException
             try:
+                log_message(f'Invoking {run_name}...', debug=True)
                 run_function(runtime, **run_kwargs)
             except Exception as exc:
                 abort(f'Exception invoking {run_name}.',
@@ -288,7 +289,6 @@ def main(tool: Tool,
         runtime_class = Runtime
 
     # Add automatic built-in secondary or hidden sub-tasks, if not disabled.
-    have_tasks = bool(tool.assigned_root_task.sub_tasks)
     _add_builtin_tasks(tool)
 
     # Convert the runtime task hierarchy to a driver task hierarchy.
