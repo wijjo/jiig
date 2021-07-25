@@ -284,12 +284,12 @@ class _TemplateExpander:
         # Skipped file paths hard-coded for now to skip the configuration file.
         self.skipped_paths = [TEMPLATE_JSON]
 
-    def expand(self,
-               target_root: Text,
-               sub_folder: Text = None,
-               excludes: Sequence[Text] = None,
-               includes: Sequence[Text] = None,
-               ):
+    def expand_folder(self,
+                      target_root: Text,
+                      sub_folder: Text = None,
+                      excludes: Sequence[Text] = None,
+                      includes: Sequence[Text] = None,
+                      ):
         if os.path.exists(target_root) and not os.path.isdir(target_root):
             abort(f'Target folder path exists, but is not a folder.',
                   target_root)
@@ -304,7 +304,7 @@ class _TemplateExpander:
         failed = False
         for visit_folder, visit_sub_folders, visit_file_names in os.walk(source_folder):
             relative_folder = make_relative_path(visit_folder, source_folder)
-            log_block_begin(2, f'Folder {relative_folder}')
+            input_files: List[Text] = []
             for file_name in visit_file_names:
                 relative_path = os.path.join(relative_folder, file_name)
                 if relative_path in self.skipped_paths:
@@ -319,17 +319,21 @@ class _TemplateExpander:
                     for exclude_pattern in excludes:
                         if not fnmatch(relative_path, exclude_pattern):
                             continue
-                try:
-                    self.expand_file(relative_path, target_root)
-                except _ExpansionError as exc:
-                    log_error(str(exc))
-                    failed = True
-            log_block_end(2)
+                input_files.append(relative_path)
+            if input_files:
+                log_block_begin(2, f'Folder: {relative_folder or "."}')
+                for relative_path in input_files:
+                    try:
+                        self._expand_file(relative_path, target_root)
+                    except _ExpansionError as exc:
+                        log_error(str(exc))
+                        failed = True
+                log_block_end(2)
         log_block_end(1)
         if failed:
             abort('Template expansion failed.')
 
-    def expand_file(self, relative_path: Text, target_root: Text):
+    def _expand_file(self, relative_path: Text, target_root: Text):
 
         expansion_spec = self._get_expansion_spec(relative_path)
 
@@ -444,4 +448,4 @@ def expand_folder(source_root: Text,
     :param symbols: symbols used for template expansion
     """
     expander = _TemplateExpander(source_root, overwrite=overwrite, symbols=symbols)
-    expander.expand(target_root, sub_folder=sub_folder, includes=includes, excludes=excludes)
+    expander.expand_folder(target_root, sub_folder=sub_folder, includes=includes, excludes=excludes)

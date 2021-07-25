@@ -15,6 +15,7 @@ from .options import OPTIONS
 from .process import run
 
 REMOTE_PATH_REGEX = re.compile(r'^([\w\d.@-]+):([\w\d_-~/]+)$')
+GLOB_CHARACTERS_REGEX = re.compile(r'[*?\[\]]')
 
 
 def folder_path(path):
@@ -84,6 +85,16 @@ def delete_file(path: Text, quiet: bool = False):
         if not quiet:
             log_message('Delete file.', path)
         run(['rm', '-f', path])
+
+
+def is_glob_pattern(path: Text) -> bool:
+    """
+    Check if input path looks like a glob pattern (contains * ? [ ]).
+
+    :param path: input path to check for glob characters
+    :return: True if path contains any glob characters
+    """
+    return GLOB_CHARACTERS_REGEX.search(path) is not None
 
 
 def create_folder(path: Text, delete_existing: bool = False, quiet: bool = False):
