@@ -31,7 +31,6 @@ class ActionContextMiscAPI:
                                excludes: Sequence[str] = None,
                                overwrite: bool = False,
                                symbols: dict = None,
-                               add_context_symbols: bool = False,
                                ):
         """
         Expand source template folder or sub-folder to target folder.
@@ -45,24 +44,18 @@ class ActionContextMiscAPI:
         :param includes: optional relative paths, supporting wildcards, for files to include
         :param excludes: optional relative paths, supporting wildcards, for files to exclude
         :param overwrite: force overwriting of existing files if True
-        :param symbols: symbols used for template expansion
-        :param add_context_symbols: add context symbols to template expansion symbols if True
+        :param symbols: additional symbols used for template expansion
         """
         with self.context.context(source_root=source_root,
                                   target_root=target_root,
                                   sub_folder=sub_folder,
                                   includes=includes,
                                   excludes=excludes) as context:
-            expansion_symbols = {}
-            if add_context_symbols:
-                expansion_symbols.update(self.context.s)
-            if symbols:
-                expansion_symbols.update(symbols)
             expand_folder(source_root,
                           target_root,
                           sub_folder=context.s.sub_folder,
                           includes=context.s.includes,
                           excludes=context.s.excludes,
                           overwrite=overwrite,
-                          symbols=expansion_symbols,
+                          symbols=dict(self.context.s, **(symbols or {})),
                           )

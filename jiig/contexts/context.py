@@ -135,16 +135,18 @@ class Context:
                 )
             self.abort(f'Bad expansion key {str(key_error)}.', text)
 
-    def format_path(self, path: str) -> str:
+    def format_path(self, path: str, *sub_paths: str) -> str:
         """
-        Calls format() after fixing slashes, as needed.
+        Calls format() after joining path parts and fixing slashes, as needed.
 
-        :param path: input path to expand
+        :param path: top level path to expand
+        :param sub_paths: sub-paths to expand
         :return: expanded path string
         """
+        full_path = os.path.join(path, *sub_paths) if sub_paths else path
         if os.path.sep != '/':
-            path = path.replace('/', os.path.sep)
-        return self.format(path)
+            full_path = full_path.replace('/', os.path.sep)
+        return self.format(full_path)
 
     def format_blocks(self,
                       *blocks: str,

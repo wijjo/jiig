@@ -11,7 +11,7 @@ from . import delete, description, list, rename, set, show
 @jiig.task(tasks=(delete, description, list, rename, set, show))
 def root(runtime: jiig.Runtime):
     """
-    Alias management tasks.
+    Create and manage task command aliases.
 
     :param runtime: Jiig runtime API.
     """

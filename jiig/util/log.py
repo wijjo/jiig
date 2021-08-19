@@ -295,12 +295,12 @@ class TopicLogger:
         """
         self._logger = Logger(sub_tag=sub_tag)
         self.topic: Text = topic
-        if delayed is None:
-            if parent:
-                delayed = parent.delayed
-            else:
-                delayed = False
-        self.delayed = delayed
+        if delayed is not None:
+            self.delayed = delayed
+        elif parent:
+            self.delayed = parent.delayed
+        else:
+            self.delayed = False
         self.parent: Optional[TopicLogger] = parent
         self.errors: List[Tuple[Any, Sequence, Dict]] = []
         self.warnings: List[Tuple[Any, Sequence, Dict]] = []
