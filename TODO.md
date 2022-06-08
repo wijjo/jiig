@@ -1,5 +1,8 @@
 # Improvements
 
+* [ ] Get rid of provisioning.
+  * [ ] Move missing provisioning functionality to Wizzer.
+
 * [ ] Convert Tool to use registry.
     * [ ] Use registered tool reference in Jiig tool script.
 

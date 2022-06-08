@@ -7,7 +7,7 @@ import os
 import re
 import sys
 from contextlib import contextmanager
-from typing import List, Text, Sequence, Tuple, Dict
+from typing import List, Text, Sequence, Tuple, Dict, Any
 
 from ....util.log import Logger
 from ....util.general import make_list, DefaultValue
@@ -289,7 +289,7 @@ class Implementation(CLIImplementation):
                                   default: DefaultValue = None,
                                   choices: Sequence = None,
                                   ):
-        kwargs = {'dest': name.upper(), 'help': description}
+        kwargs: Dict[str, Any] = {'dest': name.upper(), 'help': description}
         if is_boolean_option:
             kwargs['action'] = 'store_true'
         if default is not None:

@@ -384,25 +384,25 @@ class OutputFile(IO):
         """Detect TTY output device. See IO.isatty()."""
         return self.open_file.isatty()
 
-    def read(self, n: int = ...) -> AnyStr:
+    def read(self, *args, **kwargs) -> AnyStr:
         """Read data from file. See IO.read()."""
-        return self.open_file.read(n=n)
+        return self.open_file.read(*args, **kwargs)
 
     def readable(self) -> bool:
         """Check if file is readable. See IO.readable()."""
         return self.open_file.readable()
 
-    def readline(self, limit: int = ...) -> AnyStr:
+    def readline(self, *args, **kwargs) -> AnyStr:
         """Read line from file. See IO.readline()."""
-        return self.open_file.readline(limit=limit)
+        return self.open_file.readline(*args, **kwargs)
 
-    def readlines(self, hint: int = ...) -> List[AnyStr]:
+    def readlines(self, *args, **kwargs) -> List[AnyStr]:
         """Read lines from file. See IO.readlines()."""
-        return self.open_file.readlines(hint=hint)
+        return self.open_file.readlines(*args, **kwargs)
 
-    def seek(self, offset: int, whence: int = ...) -> int:
+    def seek(self, offset: int, *args, **kwargs) -> int:
         """Seek to position in file. See IO.seek()."""
-        return self.open_file.seek(offset, whence=whence)
+        return self.open_file.seek(offset, *args, **kwargs)
 
     def seekable(self) -> bool:
         """Check if file is seekable. See IO.seekable()."""
@@ -412,9 +412,9 @@ class OutputFile(IO):
         """Report position in file. See IO.tell()."""
         return self.open_file.tell()
 
-    def truncate(self, size: Optional[int] = ...) -> int:
+    def truncate(self, *args, **kwargs) -> int:
         """Truncate file. See IO.truncate()."""
-        return self.open_file.truncate(size=size)
+        return self.open_file.truncate(*args, **kwargs)
 
     def writable(self) -> bool:
         """Check if file is writable. See IO.writable()."""
