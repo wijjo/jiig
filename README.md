@@ -122,12 +122,12 @@ The `tool` sub-command can generate a tool project or basic tool script.
 
 The `task` sub-command can generate a basic task module.
 
-## Documentation amd type inspection
+## Documentation and type inspection
 
 There is no API documentation yet, but all or most significant modules, classes,
 and functions have useful doc strings.
 
-The programming interface is also very well typed. So an IDE like PyCharm or
+The programming interface is also very well-typed. So an IDE like PyCharm or
 VS-Code with appropriate plug-ins can provide a lot of assistance.
 
 ## Aliases

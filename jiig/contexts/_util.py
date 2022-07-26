@@ -27,7 +27,7 @@ from .context import Context
 
 
 def run_context_command(outer_context: Context,
-                        command: Union[str, Sequence],
+                        command_or_commands: Union[str, Sequence],
                         capture: bool = False,
                         unchecked: bool = False,
                         ignore_dry_run: bool = False,
@@ -39,7 +39,7 @@ def run_context_command(outer_context: Context,
     Run a command with support for status messages and dry-run.
 
     :param outer_context: context for running command
-    :param command: command as string or argument list
+    :param command_or_commands: command as string or argument list
     :param capture: capture output if True
     :param unchecked: do not check for failure
     :param ignore_dry_run: execute even if it is a dry run
@@ -49,15 +49,15 @@ def run_context_command(outer_context: Context,
     :return: subprocess run() result
     """
     action_messages = AttrDictReadOnly(messages or {})
-    with outer_context.context(command=command) as context:
+    with outer_context.context(command_string=command_or_commands) as context:
 
         if action_messages.before:
             context.heading(1, action_messages.before)
 
-        context.message('command: {command}')
+        context.message('command: {command_string}')
 
         if OPTIONS.dry_run and not ignore_dry_run:
-            return subprocess.CompletedProcess(command, 0)
+            return subprocess.CompletedProcess(command_or_commands, 0)
 
         if 'shell' not in subprocess_run_kwargs:
             subprocess_run_kwargs['shell'] = True
@@ -66,7 +66,7 @@ def run_context_command(outer_context: Context,
 
         with temporary_working_folder(context.format(working_folder)):
 
-            proc = run_context_sub_process(context, '{command}', **subprocess_run_kwargs)
+            proc = run_context_sub_process(context, command_or_commands, **subprocess_run_kwargs)
 
             if proc.returncode == 0:
                 if action_messages.success:
