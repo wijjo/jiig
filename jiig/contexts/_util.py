@@ -64,7 +64,7 @@ def run_context_command(outer_context: Context,
         if capture:
             subprocess_run_kwargs.update(capture_output=True, encoding='utf-8')
 
-        with temporary_working_folder(working_folder):
+        with temporary_working_folder(context.format(working_folder)):
 
             proc = run_context_sub_process(context, '{command}', **subprocess_run_kwargs)
 
