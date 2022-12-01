@@ -5,6 +5,7 @@ import re
 from os.path import dirname
 from pathlib import Path
 
+
 def handle_negation(file_path, rules):
     matched = False
     for rule in rules:
@@ -14,6 +15,7 @@ def handle_negation(file_path, rules):
             else:
                 matched = True
     return matched
+
 
 def prepare_ignore_patterns(patterns, base_dir, resolve_symlinks=False):
     assert base_dir
@@ -33,6 +35,7 @@ def prepare_ignore_patterns(patterns, base_dir, resolve_symlinks=False):
         # Later rules override earlier rules.
         return lambda file_path: handle_negation(file_path, rules)
 
+
 def parse_gitignore(full_path, base_dir=None, resolve_symlinks=False):
     if base_dir is None:
         base_dir = dirname(full_path)
@@ -42,7 +45,8 @@ def parse_gitignore(full_path, base_dir=None, resolve_symlinks=False):
         for line in ignore_file:
             counter += 1
             line = line.rstrip('\n')
-            rule = rule_from_pattern(line, base_path=Path(base_dir).resolve(),
+            rule = rule_from_pattern(line,
+                                     base_path=Path(base_dir).resolve(),
                                      source=(full_path, counter),
                                      resolve_symlinks=resolve_symlinks)
             if rule:
@@ -53,6 +57,7 @@ def parse_gitignore(full_path, base_dir=None, resolve_symlinks=False):
         # We have negation rules. We can't use a simple "any" to evaluate them.
         # Later rules override earlier rules.
         return lambda file_path: handle_negation(file_path, rules)
+
 
 def rule_from_pattern(pattern, base_path=None, source=None, resolve_symlinks=False):
     """
@@ -111,19 +116,20 @@ def rule_from_pattern(pattern, base_path=None, source=None, resolve_symlinks=Fal
         pattern = pattern[1:]
     # trailing spaces are ignored unless they are escaped with a backslash
     i = len(pattern)-1
-    striptrailingspaces = True
+    strip_trailing_spaces = True
     while i > 1 and pattern[i] == ' ':
         if pattern[i-1] == '\\':
             pattern = pattern[:i-1] + pattern[i:]
             i = i - 1
-            striptrailingspaces = False
+            strip_trailing_spaces = False
         else:
-            if striptrailingspaces:
+            if strip_trailing_spaces:
                 pattern = pattern[:i]
         i = i - 1
     regex = fnmatch_pathname_to_regex(pattern, directory_only)
     if anchored:
         regex = ''.join(['^', regex])
+    # noinspection PyArgumentList
     return IgnoreRule(
         pattern=orig_pattern,
         regex=regex,
@@ -134,6 +140,7 @@ def rule_from_pattern(pattern, base_path=None, source=None, resolve_symlinks=Fal
         source=source,
         resolve_symlinks=resolve_symlinks
     )
+
 
 whitespace_re = re.compile(r'(\\ )+$')
 
@@ -182,7 +189,7 @@ def fnmatch_pathname_to_regex(pattern, directory_only: bool):
     if os.altsep is not None:
         seps.append(re.escape(os.altsep))
     seps_group = '[' + '|'.join(seps) + ']'
-    nonsep = r'[^{}]'.format('|'.join(seps))
+    non_separator = r'[^{}]'.format('|'.join(seps))
 
     res = []
     while i < n:
@@ -197,11 +204,11 @@ def fnmatch_pathname_to_regex(pattern, directory_only: bool):
                         i += 1
                         res.append(''.join([seps_group, '?']))
                 else:
-                    res.append(''.join([nonsep, '*']))
+                    res.append(''.join([non_separator, '*']))
             except IndexError:
-                res.append(''.join([nonsep, '*']))
+                res.append(''.join([non_separator, '*']))
         elif c == '?':
-            res.append(nonsep)
+            res.append(non_separator)
         elif c == '/':
             res.append(seps_group)
         elif c == '[':
