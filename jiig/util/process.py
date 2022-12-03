@@ -20,18 +20,24 @@ Process management utilities.
 """
 
 import os
+import re
 import shlex
 import subprocess
-from typing import Text, List, Dict, Optional
+from pathlib import Path
+from typing import Any
 
 from .log import abort, log_message
 from .options import OPTIONS
 
 # Operators to leave unchanged when quoting shell arguments.
 SHELL_OPERATORS = ['<', '>', '|', '&&', '||', ';']
+# Regular expression for finding characters requiring quoting.
+SHELL_QUOTED_REGEX = re.compile(r'[\s"\\;<>{}()\[\]|&]')
+# Characters that need to be escaped inside a double-quoted string.
+SHELL_ESCAPED_REGEX = re.compile(r'"')
 
 
-def shell_quote_arg(arg: Text) -> Text:
+def shell_quote_arg(arg: str) -> str:
     """
     Quote a normal shell argument, but leave operators unchanged.
 
@@ -41,7 +47,7 @@ def shell_quote_arg(arg: Text) -> Text:
     return arg if arg in SHELL_OPERATORS else shlex.quote(str(arg))
 
 
-def shell_command_string(command: Text, *args) -> Text:
+def shell_command_string(command: str, *args) -> str:
     """
     Format a shell command string with appropriate argument quoting.
 
@@ -52,7 +58,7 @@ def shell_command_string(command: Text, *args) -> Text:
     return ' '.join([shell_quote_arg(str(arg)) for arg in [command] + list(args)])
 
 
-def shell_quote_path(path: str) -> str:
+def shell_quote_path(path: str | Path) -> str:
     """
     Wrap path in double quotes as needed.
 
@@ -61,22 +67,24 @@ def shell_quote_path(path: str) -> str:
     :param path: input path
     :return: possibly-quoted path
     """
-    if path and path[0] != '"' and set(path).intersection(' \t<>!$`*?(){}|;'):
+    path_string = str(path)
+    if (path_string and path_string[0] != '"'
+            and set(path_string).intersection(' \t<>!$`*?(){}|;')):
         return f'"{path}"'
-    return path
+    return path_string
 
 
-def run(cmd_args: List[Text],
+def run(cmd_args: list,
         unchecked: bool = False,
         replace_process: bool = False,
-        working_folder: Text = None,
-        env: Dict = None,
-        host: Text = None,
+        working_folder: str | Path = None,
+        env: dict = None,
+        host: str = None,
         shell: bool = False,
         run_always: bool = False,
         quiet: bool = False,
         capture: bool = False,
-        ) -> Optional[subprocess.CompletedProcess]:
+        ) -> subprocess.CompletedProcess:
     """
     Run a shell command.
 
@@ -95,22 +103,23 @@ def run(cmd_args: List[Text],
     :param run_always: execute even during a dry run if True
     :param quiet: suppress normal messages if True
     :param capture: capture standard output if True
-    :return: CompletedProcess object if the command was executed
+    :return: CompletedProcess object
     """
     if not cmd_args:
         abort('Called run() without a command.')
     if not isinstance(cmd_args, (tuple, list)):
         abort('Called run() with a non-list/tuple.', cmd_args=cmd_args)
+    cmd_strings = [str(arg) for arg in cmd_args]
     if host:
         if shell or env or working_folder:
             abort('Remote run() command, i.e. with "host" specified, may not'
                   ' use "shell", "env", or "working_folder" keywords.',
                   cmd_args=cmd_args)
     # The command string for display or shell execution.
-    cmd_string = shell_command_string(*cmd_args)
+    cmd_string = shell_command_string(*cmd_strings)
     # Adjust remote command to run through SSH.
     if host:
-        cmd_args = ['ssh', host] + cmd_args
+        cmd_strings = ['ssh', host] + cmd_strings
     # Log message about impending command and run options.
     message_data = {}
     if env:
@@ -126,14 +135,15 @@ def run(cmd_args: List[Text],
     log_message('Run command.', cmd_string, **message_data)
     # A dry run can stop here, before taking real action.
     if OPTIONS.dry_run and not run_always:
-        return None
+        return subprocess.CompletedProcess(cmd_strings, 0)
     # Generate the command run environment.
     run_env = dict(os.environ)
     if env:
         run_env.update(env)
     # Set a temporary working folder, if specified.
     if working_folder:
-        if not os.path.isdir(working_folder):
+        working_folder = Path(working_folder)
+        if not working_folder.is_dir():
             abort('Desired working folder does not exist', working_folder)
         restore_folder = os.getcwd()
         os.chdir(working_folder)
@@ -141,7 +151,7 @@ def run(cmd_args: List[Text],
         restore_folder = None
     # Run the command with process replacement.
     if replace_process:
-        os.execlp(cmd_args[0], *cmd_args)
+        os.execlp(cmd_strings[0], *cmd_strings)
     # Or run the command and continue.
     try:
         try:
@@ -153,7 +163,7 @@ def run(cmd_args: List[Text],
             )
             if capture:
                 kwargs['encoding'] = 'utf-8'
-            return subprocess.run(cmd_args, **kwargs)
+            return subprocess.run(cmd_strings, **kwargs)
         except subprocess.CalledProcessError as exc:
             abort('Command failed.', cmd_string, exc)
         except FileNotFoundError as exc:
@@ -163,11 +173,22 @@ def run(cmd_args: List[Text],
             os.chdir(restore_folder)
 
 
-def run_shell(cmd_args: List[Text],
+def run_shell(cmd_args: list,
               unchecked: bool = False,
-              working_folder: Text = None,
               replace_process: bool = False,
-              run_always: bool = False):
+              working_folder: str | Path = None,
+              run_always: bool = False,
+              ) -> subprocess.CompletedProcess:
+    """
+    Run command using shell.
+
+    :param cmd_args: raw argument list
+    :param unchecked: return when an error occurs instead of aborting if True
+    :param replace_process: replace current process if True
+    :param working_folder: folder to change to before running command
+    :param run_always: execute even during a dry run if True
+    :return: CompletedProcess object
+    """
     return run(cmd_args,
                unchecked=unchecked,
                replace_process=replace_process,
@@ -176,13 +197,80 @@ def run_shell(cmd_args: List[Text],
                run_always=run_always)
 
 
-def run_remote(host: Text,
-               cmd_args: List[Text],
+def run_remote(host: str,
+               cmd_args: list,
                unchecked: bool = False,
                replace_process: bool = False,
                run_always: bool = False):
+    """
+    Run command on remote host.
+
+    :param cmd_args: raw argument list
+    :param host: host for remote execution
+    :param unchecked: return when an error occurs instead of aborting if True
+    :param replace_process: replace current process if True
+    :param run_always: execute even during a dry run if True
+    :return: CompletedProcess object
+    """
     return run(cmd_args,
                host=host,
                unchecked=unchecked,
                replace_process=replace_process,
                run_always=run_always)
+
+
+def pipe(command: list) -> list[str]:
+    """
+    Run command and receive output.
+
+    :param command: command to execute as string or list
+    :return: output lines
+    """
+    proc = run(command, capture=True)
+    if not proc.stdout:
+        return []
+    return proc.stdout.strip().split(os.linesep)
+
+
+def escape_line_endings(input_string: str) -> str:
+    return input_string.replace('\n', r'\n').replace('\r', r'\r')
+
+
+def simple_shell_quote(value: Any,
+                       literal: bool = False,
+                       unquoted: bool = False,
+                       ) -> str:
+    """
+    Simplistic shell argument quoting.
+
+    Literals are single-quoted by shlex.quote(). Otherwise double quotes and
+    internal escapes are added as required.
+
+    :param value: value to quote (after converting to a string as needed)
+    :param literal: use single quotes to prevent shell expansion of '$...', etc.
+    :param unquoted: disable quoting if True
+    :return: quoted/escaped text
+    """
+    text = str(value)
+    if unquoted:
+        return text
+    # Literals go in single quotes, which shlex.quote() can handle.
+    if literal:
+        return shlex.quote(escape_line_endings(text))
+    # Nothing to do if nothing requires quoting.
+    if not SHELL_QUOTED_REGEX.search(text):
+        return text
+    # Search for all escaped characters and inject preceding backslashes.
+    parts: list[str] = []
+    pos = 0
+    for found_escaped_character in SHELL_ESCAPED_REGEX.finditer(text):
+        end_pos = found_escaped_character.end()
+        if end_pos - 1 > pos:
+            parts.append(text[pos:end_pos - 1])
+        parts.append('\\')
+        parts.append(text[end_pos - 1])
+        pos = end_pos
+    if pos < len(text):
+        parts.append(text[pos:])
+    final_text = ''.join(parts)
+    return f'"{final_text}"'

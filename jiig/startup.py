@@ -39,10 +39,10 @@ from .registry import CONTEXT_REGISTRY, DRIVER_REGISTRY, HINT_REGISTRY, TASK_REG
     Runtime, RuntimeHelpGenerator, Tool, TaskField, AssignedTask, \
     SUB_TASK_LABEL, TOP_TASK_LABEL, TOP_TASK_DEST_NAME
 from .util.exceptions import format_exception
-from .util.general import plural
 from .util.log import abort, log_error, log_message, set_log_writer
 from .util.options import OPTIONS
 from .util.python import build_virtual_environment, PYTHON_NATIVE_ENVIRONMENT_NAME
+from .util.text import plural
 
 
 def _check_virtual_environment(runner_args: List[Text],

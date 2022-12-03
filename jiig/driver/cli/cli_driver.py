@@ -24,9 +24,9 @@ from typing import Text, Sequence, List, Optional, Type
 
 from ...util.alias_catalog import is_alias_name, open_alias_catalog
 from ...util.log import abort, log_message, ConsoleLogWriter
-from ...util.general import plural
 from ...util.process import shell_command_string
 from ...util.python import import_module_path
+from ...util.text import plural
 
 from ..driver import Driver, IMPLEMENTATION_CLASS_NAME
 from ..driver_options import DriverOptions

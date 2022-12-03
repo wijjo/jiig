@@ -30,11 +30,12 @@ from typing import Text, List, Tuple, Optional, IO, Dict, Type, Any, TypeVar, ge
 
 from .log import abort, log_error, log_message, log_warning
 from .filesystem import delete_folder, short_path
-from .general import plural, DefaultValue
+from .general import DefaultValue
 from .messages import format_message_block
 from .options import OPTIONS
 from .process import run
 from .stream import open_text_source
+from .text import plural
 
 PYTHON_NATIVE_ENVIRONMENT_NAME = 'JIIG_NATIVE_PYTHON'
 

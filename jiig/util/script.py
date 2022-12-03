@@ -23,7 +23,8 @@ import os
 from contextlib import contextmanager
 from typing import List, ContextManager, Union, Sequence
 
-from ..util.general import make_list, trim_text_blocks, AttrDictReadOnly
+from ..util.general import make_list, AttrDictReadOnly
+from ..util.text import trim_text_blocks
 
 
 class Script:

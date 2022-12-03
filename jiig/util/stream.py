@@ -24,9 +24,10 @@ For now these are read-only utilities.
 import json
 import os
 import sys
-from contextlib import contextmanager
+from contextlib import contextmanager, AbstractContextManager
 from dataclasses import dataclass
 from io import StringIO
+from pathlib import Path
 from tempfile import NamedTemporaryFile
 from types import TracebackType
 from typing import Text, IO, Iterator, Any, Dict, Optional, Callable, AnyStr, Iterable, Type, List
@@ -39,6 +40,8 @@ from .options import OPTIONS
 # Used in open_output_file() paths to indicate a temporary file, and also to
 # separate prefix from suffix.
 TEMPORARY_FILE_MARKER = '?'
+
+TEMPORARY_ROOT = '/tmp'
 
 
 # noinspection PyBroadException
@@ -505,3 +508,128 @@ def open_output_file(path: str,
         if not os.path.exists(parent_folder):
             create_folder(parent_folder)
     return OutputFile(open(path, **kwargs), path)
+
+
+@dataclass
+class FileMakerOutputFile:
+    """Data returned by FileMaker.open()."""
+    stream: IO
+    path: Path
+
+    def write(self, s: AnyStr, end_line: bool = False, flush: bool = True):
+        """
+        Convenience wrapper for stream.write().
+
+        :param s: string/bytes to write to output stream
+        :param end_line: add line separator if True
+        :param flush: flush output stream if True
+        """
+        self.stream.write(s)
+        if end_line:
+            self.stream.write(os.linesep)
+        if flush:
+            self.stream.flush()
+
+    def write_lines(self, *lines: AnyStr, flush: bool = False):
+        """
+        Write zero or more lines to output stream with line endings.
+
+        :param lines: lines (strings or bytes) to write to output stream
+        :param flush: flush output stream if True
+        """
+        for line in lines:
+            self.write(line, end_line=True)
+        if flush:
+            self.stream.flush()
+
+
+class FileMaker:
+    """Creates and opens temporary or permanent files."""
+
+    def __init__(self,
+                 base_folder: str | Path = None,
+                 sub_folder: str | Path = None,
+                 prefix: str = None,
+                 suffix: str = None,
+                 encoding: str = None,
+                 temporary: bool = False,
+                 overwrite: bool = False,
+                 ):
+        """
+        Constructor.
+
+        :param base_folder: optional override base folder (default: /tmp)
+        :param sub_folder: optional sub-folder (default: no sub-folder)
+        :param prefix: optional file prefix string
+        :param suffix: optional file suffix string
+        :param encoding: optional text encoding
+        :param temporary: use temporary name and automatically delete if True
+        :param overwrite: overwrite existing file if True, otherwise generate new name
+        """
+        if base_folder:
+            self.folder = Path(base_folder).expanduser()
+        else:
+            self.folder = Path(TEMPORARY_ROOT)
+        if sub_folder:
+            self.folder = self.folder / sub_folder
+            if not self.folder.exists():
+                os.makedirs(self.folder)
+        self.prefix = prefix or ''
+        self.suffix = suffix or ''
+        self.encoding = encoding
+        self.temporary = temporary
+        self.overwrite = overwrite
+
+    def get_path(self, name: str = None, ignore_existing: bool = False) -> Path:
+        """
+        Determine file path.
+
+        Do not use for temporary files.
+
+        :param name: file base name
+        :param ignore_existing: ignore existing file if True, even if self.overwrite is False
+        :return: full file path
+        """
+        name_parts: list[str] = []
+        if self.prefix:
+            name_parts.append(self.prefix)
+        if name:
+            name_parts.append(name)
+        if not name_parts:
+            name_parts.append('file')
+        base_name = '_'.join(name_parts)
+        path = self.folder / f'{base_name}{self.suffix}'
+        if not ignore_existing and not self.overwrite:
+            counter = 0
+            while os.path.exists(path):
+                counter += 1
+                path = os.path.join(self.folder, f'{base_name}_{counter}{self.suffix}')
+        return path
+
+    @contextmanager
+    def open(self, name: str = None) -> AbstractContextManager[FileMakerOutputFile]:
+        """
+        Create and open file as a context manager.
+
+        Close file stream when context `with` block ends.
+
+        :param name: file base name
+        :return: (stream, path) tuple
+        """
+        if self.temporary:
+            prefix_parts = [part for part in [self.prefix, name] if part is not None]
+            full_prefix = f'{"_".join(prefix_parts)}_' if prefix_parts else None
+            with NamedTemporaryFile(mode='w',
+                                    encoding=self.encoding,
+                                    suffix=self.suffix,
+                                    prefix=full_prefix,
+                                    dir=self.folder,
+                                    ) as fp:
+                yield FileMakerOutputFile(fp, Path(fp.name))
+        else:
+            path = self.get_path(name=name)
+            try:
+                with open(path, 'w', encoding='utf-8') as stream:
+                    yield FileMakerOutputFile(stream, path)
+            except (IOError, OSError) as exc:
+                abort(f'Failed to open temporary file: {path}', exception=exc)

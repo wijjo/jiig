@@ -81,6 +81,10 @@ def main():
     if jiig_root_folder not in sys.path:
         sys.path.insert(0, jiig_root_folder)
     args = sys.argv
+    # Intercept special option to display library path.
+    if len(args) > 1 and args[1] == '--show-library-path':
+        print(jiig_root_folder)
+        sys.exit(0)
     if len(args) > 1 and args[1] == '-r':
         is_tool = True
         args = args[1:]

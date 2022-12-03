@@ -186,7 +186,7 @@ def log_error(text: Any, *args, **kwargs):
     log_message(text, *args, **kwargs)
 
 
-def log_heading(level: int, heading: Text):
+def log_heading(heading: Text, level: int = 0):
     """Display, and in the future log, a heading message to delineate blocks."""
     decoration = f'=====' if level <= 1 else f'---'
     if heading:
@@ -202,12 +202,12 @@ def log_block_begin(level: int, heading: Text):
 
     For now it just calls log_heading().
     """
-    log_heading(level, heading)
+    log_heading(heading, level=level)
 
 
 def log_block_end(level: int):
     """Display, and in the future log, a message to delineate block endings."""
-    log_heading(level, '')
+    log_heading('', level=level)
 
 
 class Logger:
@@ -271,7 +271,7 @@ class Logger:
         :param level: heading level, 1-n
         :param heading: heading text
         """
-        log_heading(level, heading)
+        log_heading(heading, level=level)
 
     @staticmethod
     def block_begin(level: int, heading: Text):
@@ -446,3 +446,23 @@ def log_topic(topic: Text, delayed: bool = False) -> Iterator[TopicLogger]:
     topic_logger = TopicLogger(topic, delayed=delayed)
     yield topic_logger
     topic_logger.flush()
+
+
+def display_data(data: Any, heading: str = None):
+    """
+    Display data block.
+
+    :param data: data to display
+    :param heading: optional heading text
+    """
+    sys.stdout.write(os.linesep)
+    if heading:
+        sys.stdout.write('--- ')
+        sys.stdout.write(heading)
+    else:
+        sys.stdout.write('---')
+    sys.stdout.write(os.linesep)
+    sys.stdout.write(str(data))
+    sys.stdout.write(os.linesep)
+    sys.stdout.write('---')
+    sys.stdout.write(os.linesep)

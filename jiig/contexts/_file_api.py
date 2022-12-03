@@ -22,7 +22,8 @@ import shutil
 from typing import Iterator, IO
 
 from ..util.stream import open_input_file
-from ..util.general import trim_text_blocks, plural, AttrDictReadOnly
+from ..util.general import AttrDictReadOnly
+from ..util.text import trim_text_blocks, plural
 
 from .context import Context
 from ._util import run_context_command, ContextOutputFile, open_context_output_file

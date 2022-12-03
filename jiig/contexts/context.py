@@ -26,7 +26,8 @@ from typing import List, Union, Optional, Any
 
 from ..util import OPTIONS
 from ..util.log import log_heading, log_warning, log_error, log_message, abort
-from ..util.general import trim_text_blocks, AttrDictNoDefaults
+from ..util.general import AttrDictNoDefaults
+from ..util.text import trim_text_blocks
 
 
 class Context:
@@ -234,4 +235,4 @@ class Context:
         :param level: heading level, 1-n
         :param message: message to expand and display
         """
-        log_heading(level, self.format(message))
+        log_heading(self.format(message), level=level)

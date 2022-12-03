@@ -29,11 +29,12 @@ from inspect import isfunction, ismodule
 from typing import Text, Dict, List, Optional, Union, cast, Any, Callable, Sequence, Iterator
 from types import ModuleType
 
-from ..util.general import DefaultValue, plural
+from ..util.general import DefaultValue
 from ..util.log import log_warning, log_error, abort
 from ..util.footnotes import NotesList, NotesDict, FootnoteBuilder
 from ..util.python import get_function_fields
 from ..util.repetition import Repetition
+from ..util.text import plural
 
 from ._registry import RegistrationRecord, Registry
 from .context_registry import SelfRegisteringContextBase

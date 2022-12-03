@@ -26,8 +26,7 @@ from typing import Text, Iterator, Optional, Callable, List
 from ..contexts.action import ActionContext
 from ..contexts.context import Context
 from ..util.alias_catalog import AliasCatalog, open_alias_catalog
-from ..util.general import get_client_name
-from ..util.network import resolve_ip_address
+from ..util.network import resolve_ip_address, get_client_name
 
 from .context_registry import SelfRegisteringContextBase
 from .tool import Tool
