@@ -17,17 +17,15 @@
 
 """Registered hints"""
 
-from typing import Text, List, Set
-
 
 class _HintRegistry:
 
-    _supported_task_hints: Set[Text] = set()
-    _used_task_hints: Set[Text] = set()
-    _supported_field_hints: Set[Text] = set()
-    _used_field_hints: Set[Text] = set()
+    _supported_task_hints: set[str] = set()
+    _used_task_hints: set[str] = set()
+    _supported_field_hints: set[str] = set()
+    _used_field_hints: set[str] = set()
 
-    def add_supported_task_hints(self, *names: Text):
+    def add_supported_task_hints(self, *names: str):
         """
         Register supported task hint name(s).
 
@@ -36,7 +34,7 @@ class _HintRegistry:
         for name in names:
             self._supported_task_hints.add(name)
 
-    def add_used_task_hints(self, *names: Text):
+    def add_used_task_hints(self, *names: str):
         """
         Register used task hint name(s).
 
@@ -45,7 +43,7 @@ class _HintRegistry:
         for name in names:
             self._used_task_hints.add(name)
 
-    def get_bad_task_hints(self) -> List[Text]:
+    def get_bad_task_hints(self) -> list[str]:
         """
         Get task hints that are used, but unsupported.
 
@@ -53,7 +51,7 @@ class _HintRegistry:
         """
         return list(sorted(self._used_task_hints.difference(self._supported_task_hints)))
 
-    def add_supported_field_hints(self, *names: Text):
+    def add_supported_field_hints(self, *names: str):
         """
         Register supported field hint name(s).
 
@@ -62,7 +60,7 @@ class _HintRegistry:
         for name in names:
             self._supported_field_hints.add(name)
 
-    def add_used_field_hints(self, *names: Text):
+    def add_used_field_hints(self, *names: str):
         """
         Register used field hint name(s).
 
@@ -71,7 +69,7 @@ class _HintRegistry:
         for name in names:
             self._used_field_hints.add(name)
 
-    def get_bad_field_hints(self) -> List[Text]:
+    def get_bad_field_hints(self) -> list[str]:
         """
         Get field hints that are used, but unsupported.
 

@@ -28,11 +28,11 @@ import json
 import os
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Text, List, Optional, Iterator, Any, Iterable, Dict
+from typing import Optional, Iterator, Any, Iterable
 
 from .log import abort, log_error, log_message, log_warning
 from .process import shell_command_string
-from .stream import read_json_source
+from .stream import read_json_file
 
 
 # JSON schema:
@@ -69,7 +69,7 @@ class _AliasCatalogScrubber:
             self._error('Entire alias map is not a dictionary.')
         self.scrubbed_data = catalog
 
-    def _scrub_tool_data(self, tool_name: Text, tool_data: Any) -> Optional[Dict]:
+    def _scrub_tool_data(self, tool_name: str, tool_data: Any) -> Optional[dict]:
         scrubbed_tool_data = {}
         if isinstance(tool_data, dict):
             for alias_name in sorted(tool_data.keys()):
@@ -80,7 +80,7 @@ class _AliasCatalogScrubber:
             self._error(f'Alias tool "{tool_name}" data is not a dictionary.')
         return scrubbed_tool_data or None
 
-    def _scrub_alias_data(self, alias_name: Text, alias_data: Any) -> Optional[Dict]:
+    def _scrub_alias_data(self, alias_name: str, alias_data: Any) -> Optional[dict]:
         scrubbed_alias_data = {}
         if isinstance(alias_data, dict):
             command = alias_data.get('command')
@@ -95,7 +95,7 @@ class _AliasCatalogScrubber:
             self._error(f'Alias "{alias_name}" data is not a dictionary.')
         return scrubbed_alias_data or None
 
-    def _error(self, message: Text):
+    def _error(self, message: str):
         if not self.quiet:
             log_error(message)
         self.errors += 1
@@ -105,35 +105,35 @@ class _AliasCatalogScrubber:
 class Alias:
     """Returned alias data."""
     # The name is the long/fully-expanded name.
-    name: Text
-    description: Text
-    command: List[Text]
-    _short_name: Text = None
+    name: str
+    description: str
+    command: list[str]
+    _short_name: str = None
 
     @property
-    def command_string(self) -> Text:
+    def command_string(self) -> str:
         return shell_command_string(*self.command)
 
     @property
-    def short_name(self) -> Text:
+    def short_name(self) -> str:
         if self._short_name is None:
             self._short_name = shrink_alias_name(self.name)
         return self._short_name
 
     @property
-    def label(self) -> Text:
+    def label(self) -> str:
         return os.path.basename(self.name)
 
     @property
-    def path(self) -> Optional[Text]:
+    def path(self) -> Optional[str]:
         return os.path.dirname(self.name) or None
 
     @property
-    def short_path(self) -> Optional[Text]:
+    def short_path(self) -> Optional[str]:
         return os.path.dirname(self.short_name) or None
 
 
-def is_alias_name(name: Text) -> bool:
+def is_alias_name(name: str) -> bool:
     """
     Check if name is an alias.
 
@@ -143,7 +143,7 @@ def is_alias_name(name: Text) -> bool:
     return name[0] in (os.path.sep, '.', '~')
 
 
-def expand_alias_name(short_name: Text, checked: bool = False) -> Optional[Text]:
+def expand_alias_name(short_name: str, checked: bool = False) -> Optional[str]:
     """
     Expand scoped alias name.
 
@@ -156,7 +156,7 @@ def expand_alias_name(short_name: Text, checked: bool = False) -> Optional[Text]
     :return: expanded name or None if it isn't a valid alias name
     :raise ValueError: if the alias name is bad
     """
-    def _error(text: Text):
+    def _error(text: str):
         if checked:
             abort(text)
         else:
@@ -183,7 +183,7 @@ def expand_alias_name(short_name: Text, checked: bool = False) -> Optional[Text]
     return os.path.join(os.path.realpath(os.getcwd()), short_name[1:])
 
 
-def shrink_alias_name(long_name: Text) -> Text:
+def shrink_alias_name(long_name: str) -> str:
     """
     Shrink paths using '.', '..', or '~', whenever possible.
 
@@ -217,7 +217,7 @@ class AliasCatalog:
     flushing of changes to an aliases file.
     """
 
-    def __init__(self, tool_name: Text, catalog_path: Text):
+    def __init__(self, tool_name: str, catalog_path: str):
         self.tool_name = tool_name
         self.catalog_path = catalog_path
         self.catalog = {}
@@ -242,7 +242,7 @@ class AliasCatalog:
             self._sort_catalog()
         return self._iterate_aliases()
 
-    def get_alias(self, alias_name: Text) -> Optional[Alias]:
+    def get_alias(self, alias_name: str) -> Optional[Alias]:
         """
         Get alias by name.
 
@@ -265,7 +265,7 @@ class AliasCatalog:
         self.disable_saving = False
         self.modified = False
         if os.path.exists(self.catalog_path):
-            raw_catalog = read_json_source(file=self.catalog_path, check=True)
+            raw_catalog = read_json_file(self.catalog_path)
             scrubber = _AliasCatalogScrubber(raw_catalog)
             self.catalog = scrubber.scrubbed_data
             if scrubber.errors > 0:
@@ -288,9 +288,9 @@ class AliasCatalog:
             abort(f'Failed to write aliases file "{self.catalog_path}".', exc)
 
     def create_alias(self,
-                     alias_name: Text,
-                     command: Iterable[Text],
-                     description: Text = None):
+                     alias_name: str,
+                     command: Iterable[str],
+                     description: str = None):
         """
         Create a new alias.
 
@@ -316,9 +316,9 @@ class AliasCatalog:
         self.modified = True
 
     def update_alias(self,
-                     alias_name: Text,
-                     command: Iterable[Text] = None,
-                     description: Text = None):
+                     alias_name: str,
+                     command: Iterable[str] = None,
+                     description: str = None):
         """
         Update an existing alias.
 
@@ -348,7 +348,7 @@ class AliasCatalog:
         log_message(f'Alias "{alias_name}" updated.')
         self.modified = True
 
-    def delete_alias(self, alias_name: Text):
+    def delete_alias(self, alias_name: str):
         """
         Delete an alias by name after expanding any preceding path.
 
@@ -364,7 +364,7 @@ class AliasCatalog:
         log_message(f'Alias "{alias_name}" deleted.')
         self.modified = True
 
-    def rename_alias(self, alias_name: Text, alias_name_new: Text):
+    def rename_alias(self, alias_name: str, alias_name_new: str):
         """
         Rename an alias.
 
@@ -390,7 +390,7 @@ class AliasCatalog:
         self.sorted = False
         self.modified = True
 
-    def _iterate_aliases(self, tool_name: Text = None) -> Iterator[Alias]:
+    def _iterate_aliases(self, tool_name: str = None) -> Iterator[Alias]:
         """
         Get all locations/aliases for current or specified tool.
 
@@ -428,8 +428,8 @@ class AliasCatalog:
 
 
 @contextmanager
-def open_alias_catalog(tool_name: Text,
-                       catalog_path: Text = None,
+def open_alias_catalog(tool_name: str,
+                       catalog_path: str = None,
                        ) -> Iterator[AliasCatalog]:
     """
     Opens an alias catalog.

@@ -26,7 +26,7 @@ either throw an exception or provide an informative return value.
 """
 
 from dataclasses import dataclass
-from typing import Any, Text, List, Optional, Tuple, Sequence, Callable, Union, Dict
+from typing import Any, Sequence, Callable
 
 
 class MetaAttrDict(type):
@@ -115,7 +115,7 @@ class DefaultValue:
     value: Any
 
 
-def make_list(value: Any, strings: bool = False, allow_none: bool = False) -> Optional[List]:
+def make_list(value: Any, strings: bool = False, allow_none: bool = False) -> list | None:
     """
     Coerce a sequence or non-sequence to a list.
 
@@ -124,7 +124,7 @@ def make_list(value: Any, strings: bool = False, allow_none: bool = False) -> Op
     :param allow_none: return None if value is None if True, otherwise empty list
     :return: resulting list or None if value is None
     """
-    def _fix(items: List) -> List:
+    def _fix(items: list) -> list:
         if not strings:
             return items
         return [str(item) for item in items]
@@ -137,7 +137,7 @@ def make_list(value: Any, strings: bool = False, allow_none: bool = False) -> Op
     return _fix([value])
 
 
-def make_tuple(value: Any, strings: bool = False, allow_none: bool = False) -> Optional[Tuple]:
+def make_tuple(value: Any, strings: bool = False, allow_none: bool = False) -> tuple | None:
     """
     Coerce a sequence or non-sequence to a tuple.
 
@@ -146,7 +146,7 @@ def make_tuple(value: Any, strings: bool = False, allow_none: bool = False) -> O
     :param allow_none: return None if value is None if True, otherwise empty list
     :return: resulting tuple or None if value is None
     """
-    def _fix(items: Tuple) -> Tuple:
+    def _fix(items: tuple) -> tuple:
         if not strings:
             return items
         return tuple(str(item) for item in items)
@@ -159,7 +159,7 @@ def make_tuple(value: Any, strings: bool = False, allow_none: bool = False) -> O
     return _fix(tuple([value]))
 
 
-def make_string(item: Optional[Any]) -> str:
+def make_string(item: Any | None) -> str:
     """
     Coerce any value to a string with None becoming an empty string.
 
@@ -176,8 +176,8 @@ HUMAN_DECIMAL_UNITS = ['KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
 
 
 def human_byte_count(byte_count: float,
-                     unit_format: Optional[Text],
-                     ) -> Tuple[float, Text]:
+                     unit_format: str | None,
+                     ) -> tuple[float, str]:
     """
     Adjust raw byte count to add appropriate unit.
 
@@ -213,9 +213,9 @@ def human_byte_count(byte_count: float,
 
 
 def format_human_byte_count(byte_count: int,
-                            unit_format: Text = None,
+                            unit_format: str = None,
                             decimal_places: int = 1
-                            ) -> Text:
+                            ) -> str:
     """
     Format byte count for human consumption using unit abbreviations.
 
@@ -236,7 +236,7 @@ def format_human_byte_count(byte_count: int,
 def binary_search(sequence: Sequence,
                   value: Any,
                   key: Callable[[Any], Any] = None,
-                  ) -> Optional[Any]:
+                  ) -> Any | None:
     """
     Perform binary search on ordered sequence.
 
@@ -270,7 +270,7 @@ def binary_search(sequence: Sequence,
 
 
 def filter_dict(function: Callable[[Any, Any], bool],
-                input_data: Union[Dict, Sequence[Tuple[Any, Any]]],
+                input_data: dict | Sequence[tuple[Any, Any]],
                 ) -> dict:
     """
     Apply filter function to a dictionary or pair sequence.

@@ -21,7 +21,7 @@ Scripter script.
 
 import os
 from contextlib import contextmanager
-from typing import List, ContextManager, Union, Sequence
+from typing import ContextManager, Sequence
 
 from ..util.general import make_list, AttrDictReadOnly
 from ..util.text import trim_text_blocks
@@ -35,7 +35,7 @@ class Script:
     def __init__(self,
                  unchecked: bool = False,
                  run_by_root: bool = False,
-                 blocks: List[str] = None,
+                 blocks: list[str] = None,
                  ):
         """
         Construct script.
@@ -46,7 +46,7 @@ class Script:
         """
         self.unchecked = unchecked
         self.run_by_root = run_by_root
-        self.blocks: List[str] = blocks if blocks is not None else []
+        self.blocks: list[str] = blocks if blocks is not None else []
         self.indent_level = 0
 
     def _add(self, *blocks: str, double_spaced: bool = False):
@@ -104,7 +104,7 @@ class Script:
         return f'"{escaped}"'
 
     def action(self,
-               command_string_or_sequence: Union[str, Sequence],
+               command_string_or_sequence: str | Sequence,
                messages: dict = None,
                ):
         """

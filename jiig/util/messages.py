@@ -20,13 +20,13 @@ Message formatting utilities.
 """
 
 import os
-from typing import Text, Any, Iterator
+from typing import Any, Iterator
 
 from .exceptions import format_exception
 from .options import OPTIONS
 
 
-def format_message_lines(text: Any, *args, **kwargs) -> Iterator[Text]:
+def format_message_lines(text: Any, *args, **kwargs) -> Iterator[str]:
     """
     Generate message line(s) and indented lines for relevant keyword data.
 
@@ -47,7 +47,7 @@ def format_message_lines(text: Any, *args, **kwargs) -> Iterator[Text]:
     sub_tag = kwargs.pop('sub_tag', None)
     string_file_name = kwargs.pop('string_file_name', None)
 
-    def _generate_exception_lines(exc: Exception) -> Iterator[Text]:
+    def _generate_exception_lines(exc: Exception) -> Iterator[str]:
         exc_lines = format_exception(exc).split(os.linesep)
         if exc_lines:
             exc_text = f'exception: {exc_lines[0]}'
@@ -93,7 +93,7 @@ def format_message_lines(text: Any, *args, **kwargs) -> Iterator[Text]:
             yield f'{full_tag}: {line}'
 
 
-def format_message_block(message: Any, *args, **kwargs) -> Text:
+def format_message_block(message: Any, *args, **kwargs) -> str:
     """
     Format multi-line message text with positional and keyword arguments.
 

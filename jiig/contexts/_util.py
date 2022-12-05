@@ -16,7 +16,8 @@
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
 import subprocess
-from typing import Union, Sequence, Optional, Iterable, IO
+from pathlib import Path
+from typing import Sequence, Optional, Iterable, IO
 
 from ..util import OPTIONS
 from ..util.filesystem import temporary_working_folder
@@ -27,7 +28,7 @@ from .context import Context
 
 
 def run_context_command(outer_context: Context,
-                        command_or_commands: Union[str, Sequence],
+                        command_or_commands: str | Sequence,
                         capture: bool = False,
                         unchecked: bool = False,
                         ignore_dry_run: bool = False,
@@ -84,7 +85,7 @@ def run_context_command(outer_context: Context,
 
 
 def run_context_sub_process(context: Context,
-                            command_or_commands: Union[str, Sequence[str]],
+                            command_or_commands: str | Sequence[str],
                             **subprocess_run_kwargs,
                             ) -> subprocess.CompletedProcess:
     if isinstance(command_or_commands, (list, tuple)):
@@ -108,7 +109,7 @@ class ContextOutputFile(OutputFile):
     - writelines_expanded(): write lines to file with symbolic expansion
     """
 
-    def __init__(self, open_file: IO, context: Context, path: Optional[str]):
+    def __init__(self, open_file: IO, context: Context, path: Optional[Path]):
         """
         Context output file constructor.
 
@@ -151,4 +152,6 @@ def open_context_output_file(context: Context,
                                             binary=binary,
                                             keep_temporary=keep_temporary,
                                             create_parent_folder=True)
-        return ContextOutputFile(opened_file_data.open_file, context, opened_file_data.path)
+        return ContextOutputFile(opened_file_data.open_file,
+                                 context,
+                                 opened_file_data.path)

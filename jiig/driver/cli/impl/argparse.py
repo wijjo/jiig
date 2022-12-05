@@ -24,7 +24,7 @@ import os
 import re
 import sys
 from contextlib import contextmanager
-from typing import List, Text, Sequence, Tuple, Dict, Any
+from typing import Sequence, Any
 
 from ....util.log import Logger
 from ....util.general import make_list, DefaultValue
@@ -50,8 +50,8 @@ class _ArgumentParser(argparse.ArgumentParser):
     see_help_message = '(see tool help or documentation for more information)'
 
     def __init__(self,
-                 prog: Text = None,
-                 description: Text = None,
+                 prog: str = None,
+                 description: str = None,
                  add_help: bool = False,
                  ):
         self._command_names = []
@@ -138,7 +138,7 @@ class _ArgumentParser(argparse.ArgumentParser):
                          args: Sequence = None,
                          namespace: argparse.Namespace = None,
                          raise_exceptions: bool = False
-                         ) -> Tuple[argparse.Namespace, List[Text]]:
+                         ) -> tuple[argparse.Namespace, list[str]]:
         """
         Overridden for logging and exception handling.
 
@@ -157,7 +157,7 @@ class _ArgumentParser(argparse.ArgumentParser):
         else:
             return super().parse_known_args(args=args, namespace=namespace)
 
-    def error(self, message: Text):
+    def error(self, message: str):
         """
         Error handling.
 
@@ -208,10 +208,10 @@ class Implementation(CLIImplementation):
 
     def __init__(self):
         super().__init__()
-        self.parsers: Dict[Text, argparse.ArgumentParser] = {}
+        self.parsers: dict[str, argparse.ArgumentParser] = {}
 
     def on_pre_parse(self,
-                     command_line_arguments: Sequence[Text],
+                     command_line_arguments: Sequence[str],
                      parse_options: CLIOptions,
                      ) -> CLIPreliminaryResults:
         """
@@ -235,9 +235,9 @@ class Implementation(CLIImplementation):
         return CLIPreliminaryResults(data, trailing_arguments)
 
     def on_parse(self,
-                 command_line_arguments: Sequence[Text],
-                 name: Text,
-                 description: Text,
+                 command_line_arguments: Sequence[str],
+                 name: str,
+                 description: str,
                  root_command: CLICommand,
                  parse_options: CLIOptions,
                  ) -> CLIResults:
@@ -276,7 +276,7 @@ class Implementation(CLIImplementation):
             args, trailing_args = parser.parse_known_args(command_line_arguments)
         else:
             args = parser.parse_args(command_line_arguments)
-            trailing_args: List[Text] = []
+            trailing_args: list[str] = []
 
         # Determine the active command names.
         command_dest_preamble = self.top_task_dest_name + DEST_NAME_SEPARATOR
@@ -297,16 +297,16 @@ class Implementation(CLIImplementation):
     @classmethod
     def _add_option_or_positional(cls,
                                   parser: argparse.ArgumentParser,
-                                  command_name: Text,
-                                  name: Text,
-                                  description: Text,
-                                  flags: Sequence[Text] = None,
+                                  command_name: str,
+                                  name: str,
+                                  description: str,
+                                  flags: Sequence[str] = None,
                                   is_boolean_option: bool = False,
                                   repeat: Repetition = None,
                                   default: DefaultValue = None,
                                   choices: Sequence = None,
                                   ):
-        kwargs: Dict[str, Any] = {'dest': name.upper(), 'help': description}
+        kwargs: dict[str, Any] = {'dest': name.upper(), 'help': description}
         if is_boolean_option:
             kwargs['action'] = 'store_true'
         if default is not None:
@@ -338,7 +338,7 @@ class Implementation(CLIImplementation):
     @classmethod
     def _prepare_fields(cls,
                         command: CLICommand,
-                        command_name: Text,
+                        command_name: str,
                         parser: argparse.ArgumentParser,
                         ):
         for option in command.options:
@@ -364,8 +364,8 @@ class Implementation(CLIImplementation):
     def _prepare_recursive(cls,
                            command: CLICommand,
                            parser: argparse.ArgumentParser,
-                           parent_dest_name: Text,
-                           command_names: List[Text] = None,
+                           parent_dest_name: str,
+                           command_names: list[str] = None,
                            ):
         if command_names is None:
             command_names = []

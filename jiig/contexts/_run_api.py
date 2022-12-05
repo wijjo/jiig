@@ -18,7 +18,7 @@
 
 import os
 import subprocess
-from typing import Sequence, Union, Tuple, Optional, List
+from typing import Sequence, Optional
 
 from ..util import OPTIONS
 from ..util.general import AttrDictReadOnly
@@ -45,7 +45,7 @@ class ActionContextRunAPI:
         self.context = context
 
     def command(self,
-                command: Union[str, Sequence],
+                command: str | Sequence,
                 capture: bool = False,
                 unchecked: bool = False,
                 ignore_dry_run: bool = False,
@@ -74,7 +74,7 @@ class ActionContextRunAPI:
                                    working_folder=working_folder,
                                    **subprocess_run_kwargs)
 
-    def pipe(self, raw_command: Union[str, List]) -> str:
+    def pipe(self, raw_command: str | list) -> str:
         """
         Run command and capture output.
 
@@ -84,7 +84,7 @@ class ActionContextRunAPI:
         proc = self.command(raw_command, capture=True)
         return proc.stdout.strip()
 
-    def pipe_lines(self, raw_command: Union[str, List]) -> List[str]:
+    def pipe_lines(self, raw_command: str | list) -> list[str]:
         """
         Run command and capture output as a list of lines.
 
@@ -94,7 +94,7 @@ class ActionContextRunAPI:
         return self.pipe(raw_command).split(os.linesep)
 
     def sub_process(self,
-                    command_or_commands: Union[str, Sequence[str]],
+                    command_or_commands: str | Sequence[str],
                     **subprocess_run_kwargs,
                     ) -> subprocess.CompletedProcess:
         """
@@ -110,7 +110,7 @@ class ActionContextRunAPI:
                        host: Optional[str],
                        user: Optional[str],
                        host_string: Optional[str],
-                       ) -> Tuple[str, str]:
+                       ) -> tuple[str, str]:
         if host_string:
             user_host = host_string.split('@', maxsplit=1)
             if len(user_host) == 2:
@@ -119,7 +119,7 @@ class ActionContextRunAPI:
         return host, user
 
     def script(self,
-               script_text_or_object: Union[str, Sequence[str], Script],
+               script_text_or_object: str | Sequence[str] | Script,
                script_path: str = None,
                host: str = None,
                user: str = None,
@@ -214,7 +214,7 @@ class ActionContextRunAPI:
                     return _script_finish(run_context, proc, unchecked, action_messages)
 
     def script_code(self,
-                    script_text_or_object: Union[str, Sequence[str], Script],
+                    script_text_or_object: str | Sequence[str] | Script,
                     host: str = None,
                     user: str = None,
                     host_string: str = None,
@@ -295,7 +295,7 @@ def _get_script_preamble():
     return SCRIPT_PREAMBLE % ('x' if OPTIONS.debug else '')
 
 
-def _get_script_body(script_text_or_object: Union[str, Sequence[str], Script],
+def _get_script_body(script_text_or_object: str | Sequence[str] | Script,
                      quoted: bool = False,
                      ) -> str:
     if isinstance(script_text_or_object, Script):

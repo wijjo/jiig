@@ -17,7 +17,7 @@
 
 """CLI Base implementation class."""
 
-from typing import Sequence, Text
+from typing import Sequence
 
 from .cli_command import CLICommand
 from .cli_types import CLIOptions, CLIPreliminaryResults, CLIResults
@@ -35,7 +35,7 @@ class CLIImplementation:
         self.top_task_dest_name = 'command'
 
     def on_pre_parse(self,
-                     command_line_arguments: Sequence[Text],
+                     command_line_arguments: Sequence[str],
                      options: CLIOptions,
                      ) -> CLIPreliminaryResults:
         """
@@ -48,9 +48,9 @@ class CLIImplementation:
         raise NotImplementedError
 
     def on_parse(self,
-                 command_line_arguments: Sequence[Text],
-                 name: Text,
-                 description: Text,
+                 command_line_arguments: Sequence[str],
+                 name: str,
+                 description: str,
                  root_command: CLICommand,
                  options: CLIOptions,
                  ) -> CLIResults:

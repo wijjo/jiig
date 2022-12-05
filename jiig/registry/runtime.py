@@ -21,7 +21,7 @@ Runner provides data and an API to task call-back functions..
 
 import os
 from contextlib import contextmanager
-from typing import Text, Iterator, Optional, Callable, List
+from typing import Iterator, Callable
 
 from ..contexts.action import ActionContext
 from ..contexts.context import Context
@@ -34,7 +34,7 @@ from .tool import Tool
 
 class RuntimeHelpGenerator:
     """Abstract base class implemented by a driver to generate on-demand help output."""
-    def generate_help(self, *names: Text, show_hidden: bool = False):
+    def generate_help(self, *names: str, show_hidden: bool = False):
         """
         Provide help output.
 
@@ -58,7 +58,7 @@ class Runtime(ActionContext, SelfRegisteringContextBase):
     """
 
     def __init__(self,
-                 parent: Optional[Context],
+                 parent: Context | None,
                  tool: Tool,
                  help_generator: RuntimeHelpGenerator,
                  data: object,
@@ -79,7 +79,7 @@ class Runtime(ActionContext, SelfRegisteringContextBase):
         self.tool = tool
         self.help_generator = help_generator
         self.data = data
-        self.when_done_callables: List[Callable] = []
+        self.when_done_callables: list[Callable] = []
         super().__init__(
             parent,
             aliases_path=tool.aliases_path,
@@ -113,7 +113,7 @@ class Runtime(ActionContext, SelfRegisteringContextBase):
         with open_alias_catalog(self.tool.tool_name, self.tool.aliases_path) as catalog:
             yield catalog
 
-    def provide_help(self, *names: Text, show_hidden: bool = False):
+    def provide_help(self, *names: str, show_hidden: bool = False):
         """
         Provide help output.
 

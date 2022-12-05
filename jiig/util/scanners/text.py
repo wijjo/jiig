@@ -32,10 +32,10 @@ also call next_line() to skip any other handlers for the current line.
 """
 
 import re
-from typing import List, Union, Callable, Text, IO, Dict, Any, Iterator, cast
-from urllib.request import Request
+from pathlib import Path
+from typing import Callable, IO, Any, Iterator, cast
 
-from ..stream import open_text_source
+from ..stream import open_text_stream
 
 
 class NextLine(Exception):
@@ -51,34 +51,23 @@ class SubScannerBase:
 class ScannerBase:
     """Base class for text, HTML, etc. scanners."""
 
-    scanners: Dict[Any, List[SubScannerBase]] = None
+    scanners: dict[Any, list[SubScannerBase]] = None
 
     def __init__(self, state: Any = None):
         self._state = state
 
     def scan(self,
-             *,
-             text: Text = None,
-             file: Text = None,
-             stream: IO = None,
-             url: Text = None,
-             request: Request = None,
-             timeout: int = None):
+             path_or_stream: str | Path | IO,
+             ):
         """
         Scan a block of text from a string or stream.
 
-        See utility.open_text() for parameter descriptions.
+        I/O exceptions may be raised.
 
-        Input-specific I/O exceptions may be raised.
+        :param path_or_stream: input file path or stream
         """
         self.begin()
-        with open_text_source(text=text,
-                              file=file,
-                              stream=stream,
-                              url=url,
-                              request=request,
-                              timeout=timeout,
-                              check=True) as text_stream:
+        with open_text_stream(path_or_stream) as text_stream:
             try:
                 self.scan_text(text_stream)
             except StopIteration:
@@ -121,8 +110,8 @@ class ScannerBase:
 
 class TextLineScanner(SubScannerBase):
     def __init__(self,
-                 text_pattern: Text,
-                 flags: Union[int, re.RegexFlag],
+                 text_pattern: str,
+                 flags: int | re.RegexFlag,
                  function: Callable):
         self.pattern = re.compile(text_pattern, flags)
         super().__init__(function)
@@ -133,8 +122,8 @@ class TScanner(ScannerBase):
 
     @classmethod
     def match(cls,
-              pattern: Text = None,
-              flags: Union[int, re.RegexFlag] = 0,
+              pattern: str = None,
+              flags: int | re.RegexFlag = 0,
               state: Any = None):
         if cls.scanners is None:
             cls.scanners = {}

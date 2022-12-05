@@ -23,7 +23,7 @@ import base64
 import binascii
 import os
 from time import mktime
-from typing import Text, Any, Optional, Union, List
+from typing import Any
 
 from .registry import ArgumentAdapter
 from .util.date_time import parse_date_time, parse_time_interval, apply_date_time_delta_string
@@ -71,8 +71,8 @@ def choices(*valid_values: Any) -> ArgumentAdapter:
     return _choices_inner
 
 
-def num_limit(minimum: Optional[float],
-              maximum: Optional[float],
+def num_limit(minimum: float | None,
+              maximum: float | None,
               ) -> ArgumentAdapter:
     """
     Adapter factory for an input int/float number checked against limits.
@@ -175,7 +175,7 @@ def to_age(value: str) -> float:
     return mktime(apply_date_time_delta_string(value, negative=True))
 
 
-def to_bool(value: Union[str, bool]) -> bool:
+def to_bool(value: str | bool) -> bool:
     """
     Convert yes/no/true/false string to bool.
 
@@ -194,7 +194,7 @@ def to_bool(value: Union[str, bool]) -> bool:
     raise ValueError(f'bad boolean string "{value}"')
 
 
-def to_comma_list(value: str) -> List[Text]:
+def to_comma_list(value: str) -> list[str]:
     """
     Adapter for comma-separated string to list conversion.
 

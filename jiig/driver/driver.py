@@ -17,7 +17,7 @@
 
 """Base driver class."""
 
-from typing import Text, Sequence, List
+from typing import Sequence
 
 from ..registry import SelfRegisteringDriverBase
 from ..util.log import LogWriter
@@ -31,12 +31,12 @@ IMPLEMENTATION_CLASS_NAME = 'Implementation'
 
 class Driver(SelfRegisteringDriverBase, skip_registration=True):
     """Jiig driver base class."""
-    supported_task_hints: List[Text] = []
-    supported_field_hints: List[Text] = []
+    supported_task_hints: list[str] = []
+    supported_field_hints: list[str] = []
 
     def __init__(self,
-                 name: Text,
-                 description: Text,
+                 name: str,
+                 description: str,
                  options: DriverOptions = None,
                  ):
         """
@@ -49,11 +49,11 @@ class Driver(SelfRegisteringDriverBase, skip_registration=True):
         self.name = name
         self.description = description
         self.options = options or DriverOptions()
-        self.enabled_global_options: List[Text] = []
+        self.enabled_global_options: list[str] = []
         self.phase = 'construction'
 
     def initialize_driver(self,
-                          command_line_arguments: Sequence[Text],
+                          command_line_arguments: Sequence[str],
                           ) -> DriverInitializationData:
         """
         Driver initialization.
@@ -65,7 +65,7 @@ class Driver(SelfRegisteringDriverBase, skip_registration=True):
         return self.on_initialize_driver(command_line_arguments)
 
     def on_initialize_driver(self,
-                             command_line_arguments: Sequence[Text],
+                             command_line_arguments: Sequence[str],
                              ) -> DriverInitializationData:
         """
         Required driver initialization call-back.
@@ -104,7 +104,7 @@ class Driver(SelfRegisteringDriverBase, skip_registration=True):
 
     def provide_help(self,
                      root_task: DriverTask,
-                     *names: Text,
+                     *names: str,
                      show_hidden: bool = False):
         """
         Provide help output.
@@ -117,7 +117,7 @@ class Driver(SelfRegisteringDriverBase, skip_registration=True):
 
     def on_provide_help(self,
                         root_task: DriverTask,
-                        names: List[Text],
+                        names: list[str],
                         show_hidden: bool):
         """
         Required override to provide help output.

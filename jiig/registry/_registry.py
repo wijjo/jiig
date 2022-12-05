@@ -19,17 +19,17 @@
 import sys
 from importlib import import_module
 from inspect import ismodule, isfunction
-from typing import Dict, Type, Union, Text, Optional, Callable
+from typing import Type, Callable
 from types import ModuleType
 
 from ..util.log import abort, log_error
 
 # Reference to registered class, module name, loaded module, or function.
-RegisteredReference = Union[Type, Text, ModuleType, Callable]
-RegisteredImplementation = Union[Type, Callable]
+RegisteredReference = Type | str | ModuleType | Callable
+RegisteredImplementation = Type | Callable
 
 
-def full_implementation_name(implementation: RegisteredImplementation) -> Text:
+def full_implementation_name(implementation: RegisteredImplementation) -> str:
     """
     Full name as <module>.<name>.
 
@@ -69,7 +69,7 @@ class RegistrationRecord:
         return self._implementation
 
     @property
-    def full_name(self) -> Text:
+    def full_name(self) -> str:
         """
         Full name as <module>.<name>.
 
@@ -86,15 +86,15 @@ class Registry:
     class or a function.
     """
 
-    def __init__(self, name: Text):
+    def __init__(self, name: str):
         """
         Registry constructor.
 
         :param name: registry name
         """
         self.name = name
-        self.by_id: Dict[int, RegistrationRecord] = {}
-        self.by_module_id: Dict[int, RegistrationRecord] = {}
+        self.by_id: dict[int, RegistrationRecord] = {}
+        self.by_module_id: dict[int, RegistrationRecord] = {}
 
     def register(self, registration: RegistrationRecord):
         """
@@ -108,7 +108,7 @@ class Registry:
     def resolve(self,
                 reference: RegisteredReference,
                 required: bool = False,
-                ) -> Optional[RegistrationRecord]:
+                ) -> RegistrationRecord | None:
         """
         Resolve reference to registration record (if possible).
 

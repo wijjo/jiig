@@ -20,7 +20,7 @@ Loading and merging parameters from one or more Python init files.
 """
 
 import os
-from typing import Text, Any, Dict, Optional, Union, List, Tuple
+from typing import Any, Optional
 
 from .log import abort
 from .filesystem import temporary_working_folder
@@ -39,7 +39,7 @@ class ParamPayload:
 class Param:
     """Generic parameter type."""
 
-    def __init__(self, name: Text, default: Any = NoDefault):
+    def __init__(self, name: str, default: Any = NoDefault):
         """
         Param base class constructor.
 
@@ -49,7 +49,7 @@ class Param:
         self.name = name
         self.default = default
 
-    def error(self, message: Text):
+    def error(self, message: str):
         """
         Fatal parameter loading error.
 
@@ -85,11 +85,11 @@ class ParamString(Param):
     """Parameter with a text string."""
 
     def __init__(self,
-                 name: Text,
+                 name: str,
                  default: Any = NoDefault):
         super().__init__(name, default=default)
 
-    def merge_payload_value(self, payload: ParamPayload, value: Text):
+    def merge_payload_value(self, payload: ParamPayload, value: str):
         if isinstance(value, str):
             payload.value = value
         else:
@@ -100,7 +100,7 @@ class ParamBoolean(Param):
     """Parameter with a boolean value."""
 
     def __init__(self,
-                 name: Text,
+                 name: str,
                  default: Any = NoDefault):
         super().__init__(name, default=default)
 
@@ -115,7 +115,7 @@ class ParamInteger(Param):
     """Parameter with an integer value."""
 
     def __init__(self,
-                 name: Text,
+                 name: str,
                  default: Any = NoDefault):
         super().__init__(name, default=default)
 
@@ -128,10 +128,10 @@ class ParamInteger(Param):
 
 class ParamFolder(ParamString):
 
-    def __init__(self, name: Text, default: Text = None):
+    def __init__(self, name: str, default: str = None):
         super().__init__(name, default=default)
 
-    def merge_payload_value(self, payload: ParamPayload, value: Text):
+    def merge_payload_value(self, payload: ParamPayload, value: str):
         super().merge_payload_value(payload, value)
         payload.value = os.path.abspath(payload.value)
 
@@ -140,16 +140,16 @@ class ParamDict(Param):
     """Parameter with generic dictionary."""
 
     def __init__(self,
-                 name: Text,
-                 default: Optional[Union[Dict, NoDefault]] = NoDefault):
+                 name: str,
+                 default: Optional[dict | NoDefault] = NoDefault):
         super().__init__(name, default=default or {})
 
-    def dict_of(self, value: Dict) -> Dict:
+    def dict_of(self, value: dict) -> dict:
         if isinstance(value, dict):
             return value
         self.error('Value is not a dictionary.')
 
-    def merge_payload_value(self, payload: ParamPayload, value: Dict):
+    def merge_payload_value(self, payload: ParamPayload, value: dict):
         if payload.value is None:
             payload.value = {}
         payload.value.update(self.dict_of(value))
@@ -159,9 +159,9 @@ class ParamList(Param):
     """Parameter with generic list."""
 
     def __init__(self,
-                 name: Text,
+                 name: str,
                  unique: bool = False,
-                 default: Optional[Union[List, Tuple, Text, NoDefault]] = NoDefault):
+                 default: Optional[list | tuple | str | NoDefault] = NoDefault):
         if unique:
             self.unique_values = set()
         else:
@@ -170,7 +170,7 @@ class ParamList(Param):
             default = []
         super().__init__(name, default=default)
 
-    def list_of(self, value: Union[List, Text]) -> list:
+    def list_of(self, value: list | str) -> list:
         if isinstance(value, list):
             return value
         if isinstance(value, tuple):
@@ -179,7 +179,7 @@ class ParamList(Param):
             return [value]
         self.error(f'Value not a list.')
 
-    def merge_payload_value(self, payload: ParamPayload, value: Union[List, Text]):
+    def merge_payload_value(self, payload: ParamPayload, value: list | str):
         if payload.value is None:
             payload.value = []
         list_value = self.list_of(value)
@@ -198,11 +198,11 @@ class ParamFolderList(ParamList):
     """Parameter with list of absolute folder paths."""
 
     def __init__(self,
-                 name: Text,
-                 default: Optional[Union[List, Tuple, Text, NoDefault]] = NoDefault):
+                 name: str,
+                 default: Optional[list | tuple | str | NoDefault] = NoDefault):
         super().__init__(name, default=default)
 
-    def merge_payload_value(self, payload: ParamPayload, value: Union[List, Text]):
+    def merge_payload_value(self, payload: ParamPayload, value: list | str):
         super().merge_payload_value(
             payload,
             [os.path.abspath(path) for path in self.list_of(value)])
@@ -212,11 +212,11 @@ class ParamFolderDict(ParamDict):
     """Parameter with dictionary mapping names to absolute folder paths."""
 
     def __init__(self,
-                 name: Text,
-                 default: Optional[Union[Dict[Text, Text], NoDefault]] = NoDefault):
+                 name: str,
+                 default: Optional[dict[str, str] | NoDefault] = NoDefault):
         super().__init__(name, default=default)
 
-    def merge_payload_value(self, payload: ParamPayload, value: Dict[Text, Text]):
+    def merge_payload_value(self, payload: ParamPayload, value: dict[str, str]):
         super().merge_payload_value(
             payload,
             {name: os.path.abspath(path) for name, path in self.dict_of(value).items()})
@@ -224,16 +224,16 @@ class ParamFolderDict(ParamDict):
 
 class ParamData(dict):
     """Parameter data dictionary with attribute read access."""
-    def __getattr__(self, name: Text) -> Any:
+    def __getattr__(self, name: str) -> Any:
         return self.get(name)
 
 
 class ParamLoader:
     """Accumulates parameter data from one or more init files."""
 
-    def __init__(self, param_types: List[Param]):
-        self._params: Dict[Text, Param] = {}
-        self._payloads: Dict[Text, ParamPayload] = {}
+    def __init__(self, param_types: list[Param]):
+        self._params: dict[str, Param] = {}
+        self._payloads: dict[str, ParamPayload] = {}
         for param_type in param_types:
             self._params[param_type.name] = param_type
             self._payloads[param_type.name] = ParamPayload()
@@ -246,7 +246,7 @@ class ParamLoader:
         """
         return ParamData({name: payload.value for name, payload in self._payloads.items()})
 
-    def load_file(self, path: Text):
+    def load_file(self, path: str):
         """
         Load parameter data from an init file in a specified folder.
 

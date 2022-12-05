@@ -19,7 +19,7 @@
 Alias list task.
 """
 
-from typing import Text, Iterable, Iterator
+from typing import Iterable, Iterator
 
 import jiig
 from jiig.util.alias_catalog import Alias
@@ -55,7 +55,7 @@ def list_(
 
 def _format_aliases(aliases: Iterable[Alias],
                     long_names=False,
-                    ) -> Iterator[Text]:
+                    ) -> Iterator[str]:
     # Keep alias labels grouped and sorted by path within the group.
     raw_rows = sorted([
         (iter_alias.name if long_names else iter_alias.short_name,

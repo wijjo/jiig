@@ -20,7 +20,6 @@ import json
 import os
 import re
 from dataclasses import dataclass
-from typing import Tuple, Optional
 from urllib.error import URLError
 from urllib.request import urlopen, Request
 
@@ -59,7 +58,7 @@ def curl(url: str) -> CurlResponse:
         abort('cURL failed', url, exception=exc)
 
 
-def format_host_string(host: str = None, user: str = None) -> Optional[str]:
+def format_host_string(host: str = None, user: str = None) -> str | None:
     if not host:
         return None
     if not user:
@@ -67,7 +66,7 @@ def format_host_string(host: str = None, user: str = None) -> Optional[str]:
     return f'{user}@{host}' if user else host
 
 
-def split_host_string(host_string: str) -> Tuple[str, str]:
+def split_host_string(host_string: str) -> tuple[str, str]:
     """
     Split host string into host/user pair.
 
@@ -95,42 +94,65 @@ def full_host_string(host_string: str) -> str:
     return f'{user}@{host}'
 
 
-def download_text(url: str, headers: dict = None) -> str:
+def download_text(url_or_request: str | Request,
+                  headers: dict = None,
+                  timeout: float = None,
+                  unchecked: bool = False,
+                  ) -> str:
     """
     Download text from URL.
 
     Aborts on any failure.
 
-    :param url: target URL
-    :param headers: optional headers
+    :param url_or_request: target URL or Request object
+    :param headers: optional HTML headers
+    :param timeout: timeout in seconds
+    :param unchecked: pass along exceptions if True, otherwise abort
     :return: downloaded text
     """
     try:
         kwargs = {}
         if headers:
             kwargs['headers'] = headers
-        request = Request(url, **kwargs)
-        response = urlopen(request)
+        if isinstance(url_or_request, Request):
+            request = url_or_request
+            if headers:
+                request.headers.update(headers)
+        else:
+            request = Request(url_or_request, **kwargs)
+        response = urlopen(request, timeout=timeout)
         raw_data = response.read()
         if isinstance(raw_data, str):
             return raw_data.rstrip()
         return raw_data.decode('utf-8').rstrip()
     except URLError as exc:
-        abort(f'Failed to download URL: {url}', exc)
+        if not unchecked:
+            abort(f'Failed to download URL: {url_or_request}', exc)
+        raise
 
 
-def download_json(url: str, headers: dict = None) -> JSONDict:
+def download_json(url_or_request: str | Request,
+                  headers: dict = None,
+                  timeout: float = None,
+                  ) -> JSONDict:
     """
     Download JSON data from URL.
 
-    :param url:
+    :param url_or_request: target URL or Request object
     :param headers: optional headers
+    :param timeout: timeout in seconds
     :return: downloaded and decoded JSON data
     """
     try:
-        return JSONDict(json.loads(download_text(url, headers=headers)))
+        return JSONDict(
+            json.loads(
+                download_text(url_or_request,
+                              headers=headers,
+                              timeout=timeout),
+            ),
+        )
     except json.JSONDecodeError as exc:
-        abort(f'Failed to parse JSON data from URL: {url}', exc)
+        abort(f'Failed to parse JSON data from URL: {url_or_request}', exc)
 
 
 def get_client_name() -> str:
@@ -156,7 +178,7 @@ def ssh_key_works(host: str) -> bool:
                unchecked=True).returncode == 0
 
 
-def resolve_ip_address(host: str, checked: bool = False) -> Optional[str]:
+def resolve_ip_address(host: str, checked: bool = False) -> str | None:
     """
     Resolve IP address for host.
 

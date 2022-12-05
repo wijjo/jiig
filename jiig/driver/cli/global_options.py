@@ -20,21 +20,21 @@ Supported global CLI options.
 """
 
 from dataclasses import dataclass
-from typing import List, Sequence, Text
+from typing import Sequence
 
 
 @dataclass
 class GlobalOption:
     name: str
-    flags: Sequence[Text]
+    flags: Sequence[str]
     description: str
 
     @property
-    def dest(self) -> Text:
+    def dest(self) -> str:
         return self.name.upper()
 
 
-GLOBAL_OPTIONS: List[GlobalOption] = [
+GLOBAL_OPTIONS: list[GlobalOption] = [
     GlobalOption('debug', ['--debug'], 'enable debug mode for additional diagnostics'),
     GlobalOption('dry_run', ['--dry-run'], 'display actions without executing them (dry run)'),
     GlobalOption('verbose', ['-v', '--verbose'], 'display additional (verbose) messages'),

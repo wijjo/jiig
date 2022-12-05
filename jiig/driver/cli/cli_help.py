@@ -19,7 +19,7 @@
 
 import os
 from dataclasses import dataclass, field
-from typing import Text, Sequence, List, Optional
+from typing import Sequence
 
 from ...util.log import abort
 from ...util.footnotes import NotesDict, NotesList
@@ -35,16 +35,16 @@ from .global_options import GLOBAL_OPTIONS
 
 @dataclass
 class CLIHelpProviderOptions:
-    top_task_label: Text = 'task'
-    sub_task_label: Text = 'sub-task'
-    supported_global_options: List[Text] = field(default_factory=list)
+    top_task_label: str = 'task'
+    sub_task_label: str = 'sub-task'
+    supported_global_options: list[str] = field(default_factory=list)
 
 
 class CLIHelpProvider(HelpProvider):
 
     def __init__(self,
-                 tool_name: Text,
-                 tool_description: Text,
+                 tool_name: str,
+                 tool_description: str,
                  root_task: DriverTask,
                  hint_registry: CLIHintRegistry,
                  options: CLIHelpProviderOptions = None,
@@ -55,7 +55,7 @@ class CLIHelpProvider(HelpProvider):
         self.hint_registry = hint_registry
         self.options = options or CLIHelpProviderOptions()
 
-    def format_help(self, *names: Text, show_hidden: bool = False) -> Text:
+    def format_help(self, *names: str, show_hidden: bool = False) -> str:
         """
         Format help.
 
@@ -70,7 +70,7 @@ class CLIHelpProvider(HelpProvider):
         else:
             return self.format_tool_help(show_hidden=show_hidden)
 
-    def format_tool_help(self, show_hidden: bool = False) -> Text:
+    def format_tool_help(self, show_hidden: bool = False) -> str:
         """
         Use HelpFormatter to format tool help text.
 
@@ -87,7 +87,7 @@ class CLIHelpProvider(HelpProvider):
                                  show_hidden,
                                  )
 
-    def format_task_help(self, names: Sequence[Text], show_hidden: bool = False) -> Text:
+    def format_task_help(self, names: Sequence[str], show_hidden: bool = False) -> str:
         """
         Populate HelpFormatter with task help data and format help text.
 
@@ -114,16 +114,16 @@ class CLIHelpProvider(HelpProvider):
                                  )
 
     def _format_help(self,
-                     tool_name: Text,
-                     names: Sequence[Text],
-                     description: Text,
-                     fields: List[DriverField],
-                     sub_tasks: List[DriverTask],
+                     tool_name: str,
+                     names: Sequence[str],
+                     description: str,
+                     fields: list[DriverField],
+                     sub_tasks: list[DriverTask],
                      notes: NotesList,
                      footnotes_list: Sequence[NotesDict],
-                     task_label: Text,
+                     task_label: str,
                      show_hidden: bool,
-                     ) -> Text:
+                     ) -> str:
 
         formatter = HelpFormatter(tool_name, names, description, task_label)
 
@@ -199,7 +199,7 @@ class CLIHelpProvider(HelpProvider):
 
         return formatter.format_help(receives_trailing_arguments=task_receives_trailing)
 
-    def _resolve_task_stack(self, names: Sequence[Text]) -> Optional[List[DriverTask]]:
+    def _resolve_task_stack(self, names: Sequence[str]) -> list[DriverTask] | None:
         try:
             return self.root_task.resolve_task_stack(names)
         except ValueError as exc:

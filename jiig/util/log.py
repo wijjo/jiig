@@ -21,13 +21,13 @@ import os
 import sys
 import traceback
 from contextlib import contextmanager
-from typing import Any, Text, Set, Iterator, List, Sequence, Dict, Tuple, Optional
+from typing import Any, Iterator, Sequence, Optional
 
 from .options import OPTIONS
 from .exceptions import get_exception_stack
 from .messages import format_message_lines
 
-MESSAGES_ISSUED_ONCE: Set[Text] = set()
+MESSAGES_ISSUED_ONCE: set[str] = set()
 LINES_WRITTEN = 0
 
 
@@ -137,7 +137,7 @@ def log_message(text: Any, *args, **kwargs):
                 skip_non_source_frames=skip_non_source_frames,
                 string_file_name=string_file_name)
             if exc_stack.items:
-                lines: List[Text] = []
+                lines: list[str] = []
                 if exc_stack.package_path:
                     note = f'(limited to frame: {exc_stack.package_path})'
                     for item in exc_stack.items:
@@ -186,7 +186,7 @@ def log_error(text: Any, *args, **kwargs):
     log_message(text, *args, **kwargs)
 
 
-def log_heading(heading: Text, level: int = 0):
+def log_heading(heading: str, level: int = 0):
     """Display, and in the future log, a heading message to delineate blocks."""
     decoration = f'=====' if level <= 1 else f'---'
     if heading:
@@ -196,7 +196,7 @@ def log_heading(heading: Text, level: int = 0):
     _LOG_WRITER.write_line(line, extra_space=True)
 
 
-def log_block_begin(level: int, heading: Text):
+def log_block_begin(level: int, heading: str):
     """
     Display, and in the future log, a heading message to delineate blocks.
 
@@ -213,7 +213,7 @@ def log_block_end(level: int):
 class Logger:
     """A pre-configured logger, e.g. to add a sub-tag to every output line."""
 
-    def __init__(self, sub_tag: Text = None):
+    def __init__(self, sub_tag: str = None):
         """
         Logger constructor.
 
@@ -264,7 +264,7 @@ class Logger:
         abort(text, *args, **kwargs, sub_tag=self.sub_tag)
 
     @staticmethod
-    def heading(level: int, heading: Text):
+    def heading(level: int, heading: str):
         """
         Display, and in the future log, a heading message to delineate blocks.
 
@@ -274,7 +274,7 @@ class Logger:
         log_heading(heading, level=level)
 
     @staticmethod
-    def block_begin(level: int, heading: Text):
+    def block_begin(level: int, heading: str):
         """
         Display, and in the future log, a heading message to delineate blocks.
 
@@ -298,10 +298,10 @@ class Logger:
 class TopicLogger:
     """Topic logger provided by log_topic()."""
     def __init__(self,
-                 topic: Text,
+                 topic: str,
                  delayed: bool = None,
                  parent: 'TopicLogger' = None,
-                 sub_tag: Text = None):
+                 sub_tag: str = None):
         """
         Construct a topic or sub-topic.
 
@@ -311,7 +311,7 @@ class TopicLogger:
         :param sub_tag: optional sub-tag to add to tagged lines
         """
         self._logger = Logger(sub_tag=sub_tag)
-        self.topic: Text = topic
+        self.topic: str = topic
         if delayed is not None:
             self.delayed = delayed
         elif parent:
@@ -319,9 +319,9 @@ class TopicLogger:
         else:
             self.delayed = False
         self.parent: Optional[TopicLogger] = parent
-        self.errors: List[Tuple[Any, Sequence, Dict]] = []
-        self.warnings: List[Tuple[Any, Sequence, Dict]] = []
-        self.messages: List[Tuple[Any, Sequence, Dict]] = []
+        self.errors: list[tuple[Any, Sequence, dict]] = []
+        self.warnings: list[tuple[Any, Sequence, dict]] = []
+        self.messages: list[tuple[Any, Sequence, dict]] = []
         self.heading_level = 1
         topic = self
         while topic.parent is not None:
@@ -382,7 +382,7 @@ class TopicLogger:
 
     @contextmanager
     def sub_topic(self,
-                  topic: Text,
+                  topic: str,
                   delayed: bool = None,
                   ) -> Iterator['TopicLogger']:
         """
@@ -396,7 +396,7 @@ class TopicLogger:
         yield sub_topic_logger
         sub_topic_logger.flush()
 
-    def get_counts(self) -> Tuple[int, int, int]:
+    def get_counts(self) -> tuple[int, int, int]:
         """
         Get current error/warning/message counts.
 
@@ -432,7 +432,7 @@ class TopicLogger:
 
 
 @contextmanager
-def log_topic(topic: Text, delayed: bool = False) -> Iterator[TopicLogger]:
+def log_topic(topic: str, delayed: bool = False) -> Iterator[TopicLogger]:
     """
     Provide a context manager to start a topic.
 

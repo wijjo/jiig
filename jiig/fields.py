@@ -19,7 +19,7 @@
 Task field declaration functions.
 """
 
-from typing import Text, Union, List, Type, Collection
+from typing import Type, Collection
 
 from .adapters import to_timestamp, to_interval, to_age, to_comma_list, \
     to_int, to_float, to_bool, path_is_folder, path_to_absolute, path_exists, path_is_file
@@ -27,12 +27,12 @@ from .registry import Field
 from .util.repetition import RepeatSpec
 
 # Returned types need to handle List[...] when repeat is specified.
-FIELD_TEXT_TYPE = Type[Union[Text, List[Text]]]
-FIELD_BOOL_TYPE = Type[Union[bool, List[bool]]]
-FIELD_INT_TYPE = Type[Union[int, List[int]]]
-FIELD_FLOAT_TYPE = Type[Union[float, List[float]]]
-FIELD_NUMBER_TYPE = Type[Union[Union[int, float], List[Union[int, float]]]]
-FIELD_TEXT_LIST_TYPE = Type[Union[List[Text], List[List[Text]]]]
+FIELD_TEXT_TYPE = Type[str | list[str]]
+FIELD_BOOL_TYPE = Type[bool | list[bool]]
+FIELD_INT_TYPE = Type[int | list[int]]
+FIELD_FLOAT_TYPE = Type[float | list[float]]
+FIELD_NUMBER_TYPE = Type[int | float | list[int | float]]
+FIELD_TEXT_LIST_TYPE = Type[list[str] | list[list[str]]]
 
 
 def integer(repeat: RepeatSpec = None,
@@ -58,14 +58,14 @@ def number(repeat: RepeatSpec = None,
     :param choices: optional permitted values
     :return: field specification
     """
-    return Field.wrap(Union[float, int],
+    return Field.wrap(float | int,
                       adapters=[to_float],
                       repeat=repeat,
                       choices=choices)
 
 
 def text(repeat: RepeatSpec = None,
-         choices: Collection[Text] = None,
+         choices: Collection[str] = None,
          ) -> FIELD_TEXT_TYPE:
     """
     Declare a text field.
@@ -74,7 +74,7 @@ def text(repeat: RepeatSpec = None,
     :param choices: optional permitted values
     :return: field specification
     """
-    return Field.wrap(Text, repeat=repeat, choices=choices)
+    return Field.wrap(str, repeat=repeat, choices=choices)
 
 
 def boolean(repeat: RepeatSpec = None) -> FIELD_BOOL_TYPE:
@@ -100,7 +100,7 @@ def filesystem_folder(absolute_path: bool = False,
     adapters_list = [path_is_folder]
     if absolute_path:
         adapters_list.append(path_to_absolute)
-    return Field.wrap(Text, adapters=adapters_list, repeat=repeat)
+    return Field.wrap(str, adapters=adapters_list, repeat=repeat)
 
 
 def filesystem_file(absolute_path: bool = False,
@@ -116,7 +116,7 @@ def filesystem_file(absolute_path: bool = False,
     adapters_list = [path_is_file]
     if absolute_path:
         adapters_list.append(path_to_absolute)
-    return Field.wrap(Text, adapters=adapters_list, repeat=repeat)
+    return Field.wrap(str, adapters=adapters_list, repeat=repeat)
 
 
 def filesystem_object(absolute_path: bool = False,
@@ -136,7 +136,7 @@ def filesystem_object(absolute_path: bool = False,
         adapters_list.append(path_to_absolute)
     if exists:
         adapters_list.append(path_exists)
-    return Field.wrap(Text, adapters=adapters_list, repeat=repeat)
+    return Field.wrap(str, adapters=adapters_list, repeat=repeat)
 
 
 def age(repeat: RepeatSpec = None,
@@ -182,4 +182,4 @@ def comma_list(repeat: RepeatSpec = None) -> FIELD_TEXT_LIST_TYPE:
     :param repeat: optional repetition as count or minimum/maximum pair
     :return: field specification
     """
-    return Field.wrap(List[Text], adapters=[to_comma_list], repeat=repeat)
+    return Field.wrap(list[str], adapters=[to_comma_list], repeat=repeat)

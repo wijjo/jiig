@@ -17,7 +17,7 @@
 
 import time
 import unittest
-from typing import Text, Sequence, Tuple, Optional
+from typing import Sequence
 
 from jiig.util.date_time import apply_date_time_delta_string, parse_date_time
 
@@ -32,7 +32,7 @@ class TestTimeDelta(unittest.TestCase):
 
     @staticmethod
     def assertApplyDelta(tt_start: Sequence,
-                         delta: Text,
+                         delta: str,
                          tt_expect: Sequence,
                          negative: bool = False
                          ):
@@ -83,32 +83,32 @@ class TestTimeDelta(unittest.TestCase):
 class TestParseDateTime(unittest.TestCase):
 
     @staticmethod
-    def assertGoodDate(sin: Text, te: Tuple):
+    def assertGoodDate(sin: str, te: tuple):
         tr = parse_date_time(sin)[:6]
         te = (te[0], te[1], te[2], 0, 0, 0)
         if tr != te:
             raise AssertionError(f'Parsed date mismatch: input={sin} result={tr} expect={te}')
 
     @staticmethod
-    def assertGoodTime(sin: Text, te: Tuple):
+    def assertGoodTime(sin: str, te: tuple):
         tr = parse_date_time(sin)[:6]
         te = (CUR_TS.tm_year, CUR_TS.tm_mon, CUR_TS.tm_mday, te[0], te[1], te[2])
         if tr != te:
             raise AssertionError(f'Parsed time mismatch: input={sin} result={tr} expect={te}')
 
     @staticmethod
-    def assertGoodDateTime(sin: Text, te: Tuple):
+    def assertGoodDateTime(sin: str, te: tuple):
         tr = parse_date_time(sin)[:6]
         if tr != te:
             raise AssertionError(f'Parsed date-time mismatch: input={sin} result={tr} expect={te}')
 
     @staticmethod
-    def assertEmpty(sin: Optional[Text]):
+    def assertEmpty(sin: str | None):
         if parse_date_time(sin) is not None:
             raise AssertionError(f'Parsed empty error: input={sin}')
 
     @staticmethod
-    def assertBad(sin: Text):
+    def assertBad(sin: str):
         if parse_date_time(sin, quiet=True) is not None:
             raise AssertionError(f'Parsed bad error: input={sin}')
 

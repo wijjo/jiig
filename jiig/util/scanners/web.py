@@ -35,7 +35,7 @@ limited to the elements below the element where the state changed. States
 automatically clear when the state start element end tag is reached.
 
     @WScanner.match(tag='h1', style_class='headline', text=r'^.*Breaking.*$', state='in_body')
-    def handle_headline(stack: List[Element]):
+    def handle_headline(stack: list[Element]):
         ...
 
 ### @match() keyword arguments
@@ -70,12 +70,12 @@ https://docs.python.org/3.8/library/re.html#regular-expression-syntax
 - Support regular expression options, like `re.IGNORECASE`.
 - Support plain text scanning without regular expressions.
 """
-
+import os
 import re
 from urllib.request import Request
-from typing import List, Callable, Text, IO, Dict, Any, Set, Optional, Hashable
+from typing import Callable, Any, Optional, Hashable
 
-from ..stream import open_text_source
+from ..network import download_text
 
 
 class NoStateCls:
@@ -88,8 +88,8 @@ NoState = NoStateCls()
 class ElementScanner:
 
     def __init__(self,
-                 tag: Text,
-                 style_classes: Set[Text],
+                 tag: str,
+                 style_classes: set[str],
                  text_pattern: re.Pattern,
                  function: Callable):
         self.tag = tag
@@ -101,16 +101,16 @@ class ElementScanner:
 class WScanner:
     """Base class for awk-like web HTML scanners."""
 
-    scanners: Dict[Any, List[ElementScanner]] = None
+    scanners: dict[Any, list[ElementScanner]] = None
 
     def __init__(self):
         self._state = None
 
     @classmethod
     def match(cls,
-              tag: Text = None,
-              style_class: Text = None,
-              text: Text = None,
+              tag: str = None,
+              style_class: str = None,
+              text: str = None,
               state: Any = None):
         """
         Decorator for methods that participate in HTML scanning and extraction.
@@ -134,7 +134,7 @@ class WScanner:
 
         return _inner
 
-    def _call_line_handlers(self, line: Text, state: Optional[Any]) -> bool:
+    def _call_line_handlers(self, line: str, state: Optional[Any]) -> bool:
         for matcher, handler in self.scanners.get(state, []):
             match = matcher.match(line)
             if match:
@@ -143,45 +143,34 @@ class WScanner:
         return False
 
     def scan(self,
-             *,
-             text: Text = None,
-             file: Text = None,
-             stream: IO = None,
-             url: Text = None,
-             request: Request = None,
-             timeout: int = None,
-             state: Any = NoState):
+             url_or_request: str | Request,
+             headers: dict = None,
+             timeout: float = None,
+             state: Any = NoState,
+             ):
         """
         Scan an HTML string, file, stream, or URL.
 
-        :param text: HTML input string
-        :param file: HTML file path
-        :param stream: HTML input stream
-        :param url: HTML input URL for downloading HTML
-        :param request: HTML input Request object for downloading HTML
+        :param url_or_request: HTML input URL or Request object
+        :param headers: optional HTML headers
         :param timeout: timeout in seconds when downloading URL or Request
         :param state: next state value
+        :return: self for chaining
         """
-        with open_text_source(text=text,
-                              file=file,
-                              stream=stream,
-                              url=url,
-                              request=request,
-                              timeout=timeout,
-                              check=True) as html_stream:
-            if state is not NoState:
-                self.set_state(state)
-            self.begin()
-            try:
-                for line in html_stream.readlines():
-                    for matcher, handler in self.scanners.get(self._state, []):
-                        match = matcher.match(line)
-                        if match:
-                            handler(self, match)
-            except StopIteration:
-                pass
-            # Make it chainable for one-liners.
-            return self
+        text = download_text(url_or_request, headers=headers, timeout=timeout)
+        if state is not NoState:
+            self.set_state(state)
+        self.begin()
+        try:
+            for line in text.split(os.linesep):
+                for matcher, handler in self.scanners.get(self._state, []):
+                    match = matcher.match(line)
+                    if match:
+                        handler(self, match)
+        except StopIteration:
+            pass
+        # Make it chainable for one-liners.
+        return self
 
     def end_scan(self):
         raise StopIteration

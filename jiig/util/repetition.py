@@ -18,21 +18,20 @@
 """Repetition specification and data class."""
 
 from dataclasses import dataclass
-from typing import Optional, Tuple, Union
 
 from .log import log_error
 
 # Raw repetition specification type.
-RepeatSpec = Union[int, Tuple[Optional[int], Optional[int]]]
+RepeatSpec = int | tuple[int | None, int | None]
 
 
 @dataclass
 class Repetition:
-    minimum: Optional[int]
-    maximum: Optional[int]
+    minimum: int | None
+    maximum: int | None
 
     @classmethod
-    def from_spec(cls, spec: Optional[RepeatSpec]) -> Optional['Repetition']:
+    def from_spec(cls, spec: RepeatSpec | None) -> 'Repetition':
         """
         Convert raw repeat specification to a Repeat object.
 
@@ -42,7 +41,7 @@ class Repetition:
         :return: Repeat object or None for bad or missing input data
         """
         if spec is None:
-            return None
+            return cls(None, None)
         if isinstance(spec, int):
             if spec > 0:
                 return cls(spec, spec)
@@ -61,4 +60,4 @@ class Repetition:
                   '- None for non-repeating field.',
                   '- A single integer for a specific required quantity.',
                   '- A tuple pair to express a range, with None meaning zero or infinity.')
-        return None
+        return cls(None, None)

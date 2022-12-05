@@ -30,10 +30,9 @@ Otherwise mode 2 is in effect.
 
 import os
 import sys
-from typing import List
 
 
-def jiig_main(jiig_root_folder: str, runner_args: List[str], cli_args: List[str]):
+def jiig_main(jiig_root_folder: str, runner_args: list[str], cli_args: list[str]):
     import jiig
     jiig.main(
         jiig.Tool(
@@ -57,7 +56,7 @@ def jiig_main(jiig_root_folder: str, runner_args: List[str], cli_args: List[str]
     )
 
 
-def tool_main(runner_args: List[str], cli_args: List[str]):
+def tool_main(runner_args: list[str], cli_args: list[str]):
     import jiig
     jiig.main(jiig.Tool.from_script(runner_args[1]),
               runner_args=runner_args,

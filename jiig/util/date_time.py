@@ -20,7 +20,7 @@
 import datetime
 import time
 from dataclasses import dataclass
-from typing import Optional, Text, Dict
+from typing import Optional
 
 from .log import log_error, log_warning
 
@@ -40,9 +40,9 @@ class DateTimeDelta:
     seconds: int
 
 
-def parse_date_time_delta(delta_string: Optional[Text],
+def parse_date_time_delta(delta_string: Optional[str],
                           negative: bool = False,
-                          default_letter: Text = None,
+                          default_letter: str = None,
                           date_only: bool = False,
                           time_only: bool = False,
                           ) -> DateTimeDelta:
@@ -97,7 +97,7 @@ def parse_date_time_delta(delta_string: Optional[Text],
     else:
         default_letter = 's'
     # Get values by period letter.
-    values: Dict[Text, int] = {}
+    values: dict[str, int] = {}
     if delta_string:
         for part in delta_string.split(','):
             if part:
@@ -130,10 +130,10 @@ def parse_date_time_delta(delta_string: Optional[Text],
                          seconds=values.get('S', 0) * multiplier)
 
 
-def apply_date_time_delta_string(delta_string: Optional[Text],
+def apply_date_time_delta_string(delta_string: Optional[str],
                                  negative: bool = False,
                                  start_time: time.struct_time = None,
-                                 default_letter: Text = None,
+                                 default_letter: str = None,
                                  date_only: bool = False,
                                  time_only: bool = False,
                                  ) -> time.struct_time:
@@ -187,7 +187,7 @@ def apply_date_time_delta(delta: DateTimeDelta,
     return result_datetime.timetuple()
 
 
-def parse_date_time(date_time_string: Optional[Text],
+def parse_date_time(date_time_string: Optional[str],
                     quiet: bool = False,
                     ) -> Optional[time.struct_time]:
     """
@@ -251,7 +251,7 @@ def parse_date_time(date_time_string: Optional[Text],
     return datetime.datetime.combine(parsed_date, parsed_time).timetuple()
 
 
-def parse_time_interval(interval_string: Optional[Text]) -> Optional[int]:
+def parse_time_interval(interval_string: Optional[str]) -> Optional[int]:
     """
     Parse time interval with same syntax as parse_date_time_delta() accepts.
 

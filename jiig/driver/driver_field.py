@@ -17,7 +17,7 @@
 
 """Driver field data."""
 
-from typing import Text, Any, Sequence
+from typing import Any, Sequence
 
 from ..util.general import DefaultValue
 from ..util.repetition import Repetition
@@ -26,8 +26,8 @@ from ..util.repetition import Repetition
 class DriverField:
     """Field data fed to driver."""
     def __init__(self,
-                 name: Text,
-                 description: Text,
+                 name: str,
+                 description: str,
                  element_type: Any,
                  repeat: Repetition = None,
                  default: DefaultValue = None,

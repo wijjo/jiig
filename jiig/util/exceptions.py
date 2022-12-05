@@ -23,16 +23,17 @@ import os
 import sys
 import traceback
 from dataclasses import dataclass
-from typing import Text, List, Optional
+from pathlib import Path
+from typing import Optional
 
 
 @dataclass
 class Package:
-    name: Text
-    folder: Text
+    name: str
+    folder: Path
 
 
-def package_for_path(path: Text) -> Package:
+def package_for_path(path: str | Path) -> Package:
     """
     Provide a package name based on a path.
 
@@ -41,11 +42,13 @@ def package_for_path(path: Text) -> Package:
     :param path: path to convert to a package
     :return: package data based on path
     """
-    folder = path if os.path.isdir(path) else os.path.dirname(path)
-    names: List[Text] = []
-    while os.path.exists(os.path.join(folder, '__init__.py')):
-        names.insert(0, os.path.basename(folder))
-        new_folder = os.path.dirname(folder)
+    if not isinstance(path, Path):
+        path = Path(path)
+    folder = path if path.is_dir() else path.parent
+    names: list[str] = []
+    while (folder / '__init__.py').exists():
+        names.insert(0, folder.name)
+        new_folder = folder.parent
         if new_folder == folder:
             break
         folder = new_folder
@@ -54,21 +57,21 @@ def package_for_path(path: Text) -> Package:
 
 @dataclass
 class ExceptionStackItem:
-    path: Text
+    path: str
     line: int
-    text: Text
-    scope: Text
+    text: str
+    scope: str
 
     @property
-    def location_string(self) -> Text:
+    def location_string(self) -> str:
         scope = '' if self.scope == '<module>' else f'[{self.scope}]'
         return f'{self.path}.{self.line}{scope}'
 
 
 @dataclass
 class ExceptionStack:
-    items: List[ExceptionStackItem]
-    package_path: Optional[Text]
+    items: list[ExceptionStackItem]
+    package_path: Optional[str]
 
 
 def get_exception_stack(skip_external_frames: bool = False,
@@ -132,15 +135,14 @@ def get_exception_stack(skip_external_frames: bool = False,
                 if item_package.name != package.name:
                     stack_items = stack_items[:item_idx]
                     break
-    return ExceptionStack(stack_items,
-                          package.folder if package is not None else None)
+    return ExceptionStack(stack_items, str(package.folder) if package else None)
 
 
 def format_exception(exc: Exception,
-                     label: Text = None,
+                     label: str = None,
                      skip_frame_count: int = 0,
                      show_exception_location: bool = False,
-                     ) -> Text:
+                     ) -> str:
     """
     Format exception text.
 

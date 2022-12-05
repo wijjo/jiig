@@ -24,203 +24,82 @@ For now these are read-only utilities.
 import json
 import os
 import sys
-from contextlib import contextmanager, AbstractContextManager
-from dataclasses import dataclass
+from contextlib import contextmanager
 from io import StringIO
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from types import TracebackType
-from typing import Text, IO, Iterator, Any, Dict, Optional, Callable, AnyStr, Iterable, Type, List
-from urllib.request import urlopen, Request
+from typing import IO, Iterator, Any, AnyStr, Optional, Callable, Iterable, Type
 
-from .log import abort, log_error
-from .filesystem import get_folder_stack, create_folder
+from .log import abort
+from .filesystem import create_folder
 from .options import OPTIONS
 
 # Used in open_output_file() paths to indicate a temporary file, and also to
 # separate prefix from suffix.
 TEMPORARY_FILE_MARKER = '?'
-
 TEMPORARY_ROOT = '/tmp'
 
 
-# noinspection PyBroadException
-@dataclass
-class _OpenTextResults:
-    stream: IO
-    source_name: Text
-
-
 @contextmanager
-def _open_text(*,
-               text: Text = None,
-               file: Text = None,
-               stream: IO = None,
-               url: Text = None,
-               request: Request = None,
-               timeout: int = None,
-               check: bool = False
-               ) -> Iterator[_OpenTextResults]:
-    if len([arg for arg in (text, file, stream, url, request)
-            if arg is not None]) != 1:
-        # In this case we want a call stack from a real exception.
-        raise RuntimeError(f'Exactly one of the following keywords is required:'
-                           f' text, file, stream, url, or request')
-    type_string = None
-    try:
-        if text is not None:
-            text_value = str(text)
-            type_string = f'text[{len(text_value)}]'
-            yield _OpenTextResults(StringIO(text_value), type_string)
-        elif file is not None:
-            type_string = f'file["{file}"]'
-            with open(file, encoding='utf-8') as file_stream:
-                yield _OpenTextResults(file_stream, type_string)
-        elif stream is not None:
-            type_string = 'stream'
-            yield _OpenTextResults(stream, type_string)
-        elif url is not None:
-            type_string = 'stream'
-            with urlopen(url, timeout=timeout) as url_stream:
-                yield _OpenTextResults(url_stream, type_string)
-        elif request is not None:
-            type_string = str(request)
-            with urlopen(url, timeout=timeout) as request_stream:
-                yield _OpenTextResults(request_stream, type_string)
-    except Exception as exc:
-        if check:
-            abort(f'Failed to open {type_string} in open_text().', exc)
-        raise
-
-
-@contextmanager
-def open_text_source(*,
-                     text: Text = None,
-                     file: Text = None,
-                     stream: IO = None,
-                     url: Text = None,
-                     request: Request = None,
-                     timeout: int = None,
-                     check: bool = False
+def open_text_stream(path_or_stream: str | Path | IO,
+                     unchecked: bool = False
                      ) -> Iterator[IO]:
     """
-    Open a text source stream for reading.
+    Open a text file or stream for reading.
 
-    It may be a string, file path, stream, URL, or Request object.
+    A stream is just returned as is.
 
-    :param text: input string
-    :param file: file path
-    :param stream: input stream
-    :param url: input URL for downloading
-    :param request: input Request object for downloading
-    :param timeout: timeout in seconds when downloading URL or Request
-    :param check: abort cleanly if True, instead of passing along exceptions
+    :param path_or_stream: text file path or stream
+    :param unchecked: pass along exceptions if True, otherwise abort
     :return: a yielded stream to use in a `with` block for proper closing
-
-    Generates a RuntimeError if one and only one input keyword is not specified.
-
-    Depending on the input type, various kinds of I/O exceptions are possible
-    (if checked is False).
     """
-    with _open_text(text=text,
-                    file=file,
-                    stream=stream,
-                    url=url,
-                    request=request,
-                    timeout=timeout,
-                    check=check
-                    ) as output_data:
-        yield output_data.stream
+    if isinstance(path_or_stream, IO):
+        yield path_or_stream
+    else:
+        try:
+            with open(path_or_stream, encoding='utf-8') as file_stream:
+                yield file_stream
+        except (IOError, OSError) as exc:
+            if not unchecked:
+                abort(f'Failed to open text file: {path_or_stream}', exc)
+            raise
 
 
-def read_json_source(*,
-                     text: Text = None,
-                     file: Text = None,
-                     stream: IO = None,
-                     url: Text = None,
-                     request: Request = None,
-                     timeout: int = None,
-                     check: bool = False
-                     ) -> Any:
+def read_text_file(path_or_stream: str | Path | IO,
+                   unchecked: bool = False
+                   ) -> str:
+    """
+    Read text from a text stream, given a string, file path, stream, URL, or Request object.
+
+    :param path_or_stream: text file path or stream
+    :param unchecked: pass along exceptions if True, otherwise abort
+    :return: text read from source
+    """
+    with open_text_stream(path_or_stream, unchecked=unchecked) as file_stream:
+        try:
+            return file_stream.read()
+        except IOError as exc:
+            if not unchecked:
+                abort(f'Failed to read text from {path_or_stream}.', exc)
+
+
+def read_json_file(path: str | Path,
+                   unchecked: bool = False
+                   ) -> Any:
     """
     Read JSON from a text stream, given a string, file path, stream, URL, or Request object.
 
-    :param text: input string
-    :param file: file path
-    :param stream: input stream
-    :param url: input URL for downloading
-    :param request: input Request object for downloading
-    :param timeout: timeout in seconds when downloading URL or Request
-    :param check: abort cleanly if True, instead of passing along exceptions
+    :param path: file path
+    :param unchecked: pass along exceptions if True, otherwise abort
     :return: JSON data
     """
-    with _open_text(text=text,
-                    file=file,
-                    stream=stream,
-                    url=url,
-                    request=request,
-                    timeout=timeout,
-                    check=check) as output_data:
+    with open_text_stream(path, unchecked=unchecked) as file_stream:
         try:
-            return json.load(output_data.stream)
-        except json.JSONDecodeError as exc:
-            if check:
-                abort(f'Failed to load JSON from {output_data.source_name}.', exc)
-
-
-def load_json_file_stack(file_name: Text, folder: Text = None) -> Dict:
-    """
-    Load JSON data from file in folder and containing folders.
-
-    JSON data in each discovered file must be wrapped in a dictionary.
-
-    Traversal is top-down so that data from the closest file takes precedence
-    over (and overwrites) data from files that are farther up the stack.
-
-    List elements with common names in multiple files are concatenated.
-
-    Dictionary elements with common names in multiple files are merged.
-
-    Scalar value elements keep only the named value from the closest file.
-
-    :param file_name: file name to look for in each folder of the stack
-    :param folder: bottom folder of the search stack, defaults to working folder
-    :return: merged data dictionary
-    """
-    folder_stack = get_folder_stack(os.path.abspath(folder) if folder else os.getcwd())
-    data = {}
-    for stack_folder in folder_stack:
-        path = os.path.join(stack_folder, file_name)
-        if not os.path.isfile(path):
-            continue
-        try:
-            with open(path) as config_file:
-                config_data = json.load(config_file)
-                if not isinstance(config_data, dict):
-                    log_error(f'JSON file "{path}" is not a dictionary.')
-                    continue
-                for key, value in config_data.items():
-                    if key in data:
-                        if isinstance(value, list):
-                            if isinstance(data[key], list):
-                                data[key].extend(value)
-                            else:
-                                log_error(f'Ignoring non-list value'
-                                          f' for "{key}" in "{path}".')
-                        elif isinstance(value, dict):
-                            if isinstance(data[key], dict):
-                                data[key].update(value)
-                            else:
-                                log_error(f'Ignoring non-dictionary value'
-                                          f' for "{key}" in "{path}".')
-                        else:
-                            data[key] = value
-                    else:
-                        data[key] = value
-        except Exception as exc:
-            log_error(f'Failed to load JSON file "{path}".',
-                      exception=exc)
-    return data
+            return json.load(file_stream)
+        except (json.JSONDecodeError, IOError) as exc:
+            if not unchecked:
+                abort(f'Failed to read JSON data from {path}.', exc)
 
 
 class OutputRedirector:
@@ -233,7 +112,7 @@ class OutputRedirector:
     """
 
     def __init__(self,
-                 line_filter: Callable[[Text, bool], Optional[Text]] = None,
+                 line_filter: Callable[[str, bool], Optional[str]] = None,
                  auto_flush: bool = False,
                  ):
         """
@@ -248,12 +127,12 @@ class OutputRedirector:
         self._stderr_save: Optional[IO] = None
         self._stdout_stream: Optional[IO] = None
         self._stderr_stream: Optional[IO] = None
-        self._stdout_text: Optional[Text] = None
-        self._stderr_text: Optional[Text] = None
+        self._stdout_text: Optional[str] = None
+        self._stderr_text: Optional[str] = None
         self._auto_flush = auto_flush
 
     @property
-    def stdout_text(self) -> Text:
+    def stdout_text(self) -> str:
         """
         Property that provides captured stdout text.
 
@@ -263,7 +142,7 @@ class OutputRedirector:
         return self._stdout_text
 
     @property
-    def stderr_text(self) -> Text:
+    def stderr_text(self) -> str:
         """
         Property that provides captured stderr text.
 
@@ -378,7 +257,7 @@ class OutputFile(IO):
     Generally not used directly. It is returned by stream.open_output_file().
     """
 
-    def __init__(self, open_file: IO, path: Optional[str]):
+    def __init__(self, open_file: IO, path: Optional[str | Path]):
         """
         Output file constructor.
 
@@ -387,6 +266,8 @@ class OutputFile(IO):
         """
         self.open_file = open_file
         self.path = path
+        if not isinstance(self.path, Path):
+            self.path = Path(self.path)
 
     def close(self):
         """Close the file"""
@@ -416,7 +297,7 @@ class OutputFile(IO):
         """Read line from file. See IO.readline()."""
         return self.open_file.readline(*args, **kwargs)
 
-    def readlines(self, *args, **kwargs) -> List[AnyStr]:
+    def readlines(self, *args, **kwargs) -> list[AnyStr]:
         """Read lines from file. See IO.readlines()."""
         return self.open_file.readlines(*args, **kwargs)
 
@@ -469,7 +350,7 @@ class OutputFile(IO):
         return self.open_file.__exit__(t, value, traceback)
 
 
-def open_output_file(path: str,
+def open_output_file(path_spec: str | Path,
                      binary: bool = False,
                      keep_temporary: bool = False,
                      create_parent_folder: bool = False,
@@ -479,7 +360,7 @@ def open_output_file(path: str,
 
     I/O exceptions are fully the caller's responsibility.
 
-    :param path: file path, possibly including a '?' marker to create a temporary file
+    :param path_spec: file path, possibly including a '?' marker to create a temporary file
     :param binary: open the file in binary mode (defaults to utf-8 text)
     :param keep_temporary: do not delete temporary file if True
     :param create_parent_folder: create parent folder as needed if True
@@ -488,148 +369,25 @@ def open_output_file(path: str,
     kwargs = {'mode': 'w'}
     if not binary:
         kwargs['encoding'] = 'utf-8'
-    temporary_path_parts = path.split(TEMPORARY_FILE_MARKER, maxsplit=1)
+    path_spec_string = str(path_spec)
+    path_object = Path(path_spec)
+    temporary_path_parts = path_spec_string.split(TEMPORARY_FILE_MARKER, maxsplit=1)
     if len(temporary_path_parts) == 2:
         prefix, suffix = temporary_path_parts
         if prefix:
             kwargs['prefix'] = prefix
         if suffix:
             kwargs['suffix'] = suffix
-        dir_path = os.path.dirname(path)
+        dir_path = path_object.parent
         if dir_path:
-            kwargs['dir'] = dir_path
+            kwargs['dir'] = str(dir_path)
         kwargs['delete'] = not (keep_temporary or OPTIONS.debug)
         temp_file = NamedTemporaryFile(**kwargs)
         # Temporary file.
         return OutputFile(temp_file, temp_file.name)
     # Permanent file.
     if create_parent_folder:
-        parent_folder = os.path.dirname(path)
+        parent_folder = path_object.parent
         if not os.path.exists(parent_folder):
             create_folder(parent_folder)
-    return OutputFile(open(path, **kwargs), path)
-
-
-@dataclass
-class FileMakerOutputFile:
-    """Data returned by FileMaker.open()."""
-    stream: IO
-    path: Path
-
-    def write(self, s: AnyStr, end_line: bool = False, flush: bool = True):
-        """
-        Convenience wrapper for stream.write().
-
-        :param s: string/bytes to write to output stream
-        :param end_line: add line separator if True
-        :param flush: flush output stream if True
-        """
-        self.stream.write(s)
-        if end_line:
-            self.stream.write(os.linesep)
-        if flush:
-            self.stream.flush()
-
-    def write_lines(self, *lines: AnyStr, flush: bool = False):
-        """
-        Write zero or more lines to output stream with line endings.
-
-        :param lines: lines (strings or bytes) to write to output stream
-        :param flush: flush output stream if True
-        """
-        for line in lines:
-            self.write(line, end_line=True)
-        if flush:
-            self.stream.flush()
-
-
-class FileMaker:
-    """Creates and opens temporary or permanent files."""
-
-    def __init__(self,
-                 base_folder: str | Path = None,
-                 sub_folder: str | Path = None,
-                 prefix: str = None,
-                 suffix: str = None,
-                 encoding: str = None,
-                 temporary: bool = False,
-                 overwrite: bool = False,
-                 ):
-        """
-        Constructor.
-
-        :param base_folder: optional override base folder (default: /tmp)
-        :param sub_folder: optional sub-folder (default: no sub-folder)
-        :param prefix: optional file prefix string
-        :param suffix: optional file suffix string
-        :param encoding: optional text encoding
-        :param temporary: use temporary name and automatically delete if True
-        :param overwrite: overwrite existing file if True, otherwise generate new name
-        """
-        if base_folder:
-            self.folder = Path(base_folder).expanduser()
-        else:
-            self.folder = Path(TEMPORARY_ROOT)
-        if sub_folder:
-            self.folder = self.folder / sub_folder
-            if not self.folder.exists():
-                os.makedirs(self.folder)
-        self.prefix = prefix or ''
-        self.suffix = suffix or ''
-        self.encoding = encoding
-        self.temporary = temporary
-        self.overwrite = overwrite
-
-    def get_path(self, name: str = None, ignore_existing: bool = False) -> Path:
-        """
-        Determine file path.
-
-        Do not use for temporary files.
-
-        :param name: file base name
-        :param ignore_existing: ignore existing file if True, even if self.overwrite is False
-        :return: full file path
-        """
-        name_parts: list[str] = []
-        if self.prefix:
-            name_parts.append(self.prefix)
-        if name:
-            name_parts.append(name)
-        if not name_parts:
-            name_parts.append('file')
-        base_name = '_'.join(name_parts)
-        path = self.folder / f'{base_name}{self.suffix}'
-        if not ignore_existing and not self.overwrite:
-            counter = 0
-            while os.path.exists(path):
-                counter += 1
-                path = os.path.join(self.folder, f'{base_name}_{counter}{self.suffix}')
-        return path
-
-    @contextmanager
-    def open(self, name: str = None) -> AbstractContextManager[FileMakerOutputFile]:
-        """
-        Create and open file as a context manager.
-
-        Close file stream when context `with` block ends.
-
-        :param name: file base name
-        :return: (stream, path) tuple
-        """
-        if self.temporary:
-            prefix_parts = [part for part in [self.prefix, name] if part is not None]
-            full_prefix = f'{"_".join(prefix_parts)}_' if prefix_parts else None
-            with NamedTemporaryFile(mode='w',
-                                    encoding=self.encoding,
-                                    suffix=self.suffix,
-                                    prefix=full_prefix,
-                                    dir=self.folder,
-                                    ) as fp:
-                yield FileMakerOutputFile(fp, Path(fp.name))
-        else:
-            path = self.get_path(name=name)
-            try:
-                with open(path, 'w', encoding='utf-8') as stream:
-                    yield FileMakerOutputFile(stream, path)
-            except (IOError, OSError) as exc:
-                abort(f'Failed to open temporary file: {path}', exception=exc)
+    return OutputFile(open(path_object, **kwargs), path_object)

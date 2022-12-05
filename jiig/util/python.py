@@ -24,9 +24,10 @@ import os
 import sys
 import traceback
 from dataclasses import fields, is_dataclass, MISSING
+from pathlib import Path
 from inspect import isclass, isfunction, signature
 from types import ModuleType
-from typing import Text, List, Tuple, Optional, IO, Dict, Type, Any, TypeVar, get_type_hints, get_args, Callable
+from typing import Optional, Type, Any, TypeVar, get_type_hints, get_args, Callable, IO
 
 from .log import abort, log_error, log_message, log_warning
 from .filesystem import delete_folder, short_path
@@ -34,13 +35,13 @@ from .general import DefaultValue
 from .messages import format_message_block
 from .options import OPTIONS
 from .process import run
-from .stream import open_text_source
+from .stream import open_text_stream
 from .text import plural
 
 PYTHON_NATIVE_ENVIRONMENT_NAME = 'JIIG_NATIVE_PYTHON'
 
 
-def format_call_string(call_name: Text, *args, **kwargs) -> Text:
+def format_call_string(call_name: str, *args, **kwargs) -> str:
     returned = kwargs.pop('returned', None)
     parts = []
     if args:
@@ -55,7 +56,7 @@ def format_call_string(call_name: Text, *args, **kwargs) -> Text:
     return f'{call_name}({arg_body}){return_string}'
 
 
-def module_path_to_name(path: Text) -> Text:
+def module_path_to_name(path: str) -> str:
     """
     Convert module path to name.
 
@@ -73,7 +74,7 @@ def module_path_to_name(path: Text) -> Text:
     return '.'.join(names)
 
 
-def import_module_path(module_path: Text, module_name: Text = None) -> ModuleType:
+def import_module_path(module_path: str, module_name: str = None) -> ModuleType:
     """
     Dynamically import a module by name and path.
 
@@ -92,10 +93,10 @@ def import_module_path(module_path: Text, module_name: Text = None) -> ModuleTyp
     return module
 
 
-def import_modules_from_folder(folder: Text,
-                               package_name: Text = None,
+def import_modules_from_folder(folder: str,
+                               package_name: str = None,
                                retry: bool = False,
-                               ) -> List[Text]:
+                               ) -> list[str]:
     """
     Dynamically and recursively import modules from a folder.
 
@@ -106,8 +107,8 @@ def import_modules_from_folder(folder: Text,
     """
     # Stage 1 - gather the list of module paths and names to import.
     log_message(f'import_modules_from_folder({package_name}, {folder})', debug=True)
-    to_import: List[Tuple[Text, Text]] = []
-    imported: List[Text] = []
+    to_import: list[tuple[str, str]] = []
+    imported: list[str] = []
     for walk_folder, _walk_sub_folders, walk_file_names in os.walk(folder):
         if os.path.basename(walk_folder).startswith('_'):
             continue
@@ -126,9 +127,9 @@ def import_modules_from_folder(folder: Text,
                 to_import.append((module_name, module_path))
     # Stage 2 - attempt the imports and handle errors, optionally with retries.
     retry_count: Optional[int] = None
-    exceptions: List[Tuple[Text, Text, Exception]] = []
+    exceptions: list[tuple[str, str, Exception]] = []
     while to_import:
-        to_retry: List[Tuple[Text, Text]] = []
+        to_retry: list[tuple[str, str]] = []
         for module_name, module_path in to_import:
             try:
                 import_module_path(module_name, module_path)
@@ -162,32 +163,34 @@ def import_modules_from_folder(folder: Text,
     return imported
 
 
-def execute_source(*,
-                   text: Text = None,
-                   file: Text = None,
-                   stream: IO = None,
-                   symbols: Dict = None) -> Dict:
-    """Execute python source code text, file, or stream"""
+def execute_source(path_or_stream: str | Path | IO,
+                   symbols: dict = None,
+                   unchecked: bool = False,
+                   ) -> dict:
+    """
+    Execute python source file.
+
+    :param path_or_stream: source file path or stream
+    :param symbols: optional symbol dictionary for exec()
+    :param unchecked: pass along exceptions if True, otherwise abort
+    :return: post-exec() symbols
+    """
     exec_symbols = symbols or {}
-    with open_text_source(text=text, file=file, stream=stream, check=True) as text_stream:
+    with open_text_stream(path_or_stream, unchecked=unchecked) as text_stream:
         # noinspection PyBroadException
         try:
             exec(text_stream.read(), exec_symbols)
             return exec_symbols
         except Exception:
-            if text:
-                source = '(text)'
-            elif file:
-                source = short_path(file)
-            elif stream:
-                source = '(stream)'
-            traceback.print_exc()
-            abort(f'Unable to execute Python script: {source}')
-            sys.exit(1)
+            if not unchecked:
+                traceback.print_exc()
+                abort(f'Unable to execute Python script: {path_or_stream}')
+                sys.exit(1)
+            raise
 
 
-def build_virtual_environment(venv_folder: Text,
-                              packages: List = None,
+def build_virtual_environment(venv_folder: str,
+                              packages: list = None,
                               rebuild: bool = False,
                               quiet: bool = False):
     pip_path = os.path.join(venv_folder, 'bin', 'pip')
@@ -216,8 +219,8 @@ def build_virtual_environment(venv_folder: Text,
         run([pip_path, 'install'] + packages)
 
 
-def install_missing_virtual_environment_packages(venv_folder: Text,
-                                                 packages: List[Text],
+def install_missing_virtual_environment_packages(venv_folder: str,
+                                                 packages: list[str],
                                                  quiet: bool = False):
     if not packages:
         return
@@ -238,7 +241,7 @@ def install_missing_virtual_environment_packages(venv_folder: Text,
     run(pip_args)
 
 
-def update_virtual_environment(venv_folder: Text, packages: List = None):
+def update_virtual_environment(venv_folder: str, packages: list = None):
     pip_path = os.path.join(venv_folder, 'bin', 'pip')
     venv_short_path = short_path(venv_folder, is_folder=True)
     if not os.path.isdir(venv_folder) or not os.path.isfile(pip_path):
@@ -254,14 +257,14 @@ def update_virtual_environment(venv_folder: Text, packages: List = None):
 T_dataclass = TypeVar('T_dataclass')
 
 
-def symbols_to_dataclass(symbols: Dict,
+def symbols_to_dataclass(symbols: dict,
                          dc_type: Type[T_dataclass],
                          from_uppercase: bool = False,
-                         required: List[Text] = None,
-                         optional: List[Text] = None,
-                         protected: List[Text] = None,
-                         overflow: Text = None,
-                         defaults: Dict = None,
+                         required: list[str] = None,
+                         optional: list[str] = None,
+                         protected: list[str] = None,
+                         overflow: str = None,
+                         defaults: dict = None,
                          ) -> T_dataclass:
     """
     Populate dataclass from symbols.
@@ -285,7 +288,7 @@ def symbols_to_dataclass(symbols: Dict,
     if not isclass(dc_type) or not is_dataclass(dc_type):
         raise AttributeError(f'module_to_dataclass() target is not a dataclass.')
 
-    def _is_wanted(item_name: Text, item_value: Any) -> bool:
+    def _is_wanted(item_name: str, item_value: Any) -> bool:
         if item_name.startswith('_'):
             return False
         if isfunction(item_value):
@@ -338,7 +341,7 @@ def symbols_to_dataclass(symbols: Dict,
         output_symbols[name] = input_symbols[name]
 
     # Handle unknown keys as overflow or warnings, based on overflow option.
-    unknown_keys: List[Text] = []
+    unknown_keys: list[str] = []
     for name in set(input_symbols.keys()).difference(valid_names):
         if overflow:
             if from_uppercase:
@@ -358,9 +361,9 @@ def symbols_to_dataclass(symbols: Dict,
 
 def module_to_dataclass(module: object,
                         dc_type: Type[T_dataclass],
-                        required: List[Text] = None,
-                        protected: List[Text] = None,
-                        overflow: Text = None,
+                        required: list[str] = None,
+                        protected: list[str] = None,
+                        overflow: str = None,
                         ) -> object:
     """
     Populate dataclass from module globals.
@@ -386,7 +389,7 @@ def module_to_dataclass(module: object,
                                 overflow=overflow)
 
 
-def load_configuration_script(script_path: Text, **default_symbols) -> Dict:
+def load_configuration_script(script_path: str, **default_symbols) -> dict:
     """
     Load a Python syntax configuration script.
 
@@ -408,7 +411,7 @@ def load_configuration_script(script_path: Text, **default_symbols) -> Dict:
 
 class ExtractedField:
     """Annotation and default for dataclass or function-extracted field."""
-    def __init__(self, name: Text, hint: Any, default: DefaultValue = None):
+    def __init__(self, name: str, hint: Any, default: DefaultValue = None):
         """
         ExtractedField constructor.
 
@@ -433,8 +436,8 @@ class ExtractedField:
 class ExtractedFields:
     """Fields and defaults extracted from dataclass or function signature."""
     def __init__(self):
-        self.fields: List[ExtractedField] = []
-        self.errors: List[Text] = []
+        self.fields: list[ExtractedField] = []
+        self.errors: list[str] = []
 
 
 def get_dataclass_fields(dataclass_class: Type) -> ExtractedFields:
@@ -444,7 +447,7 @@ def get_dataclass_fields(dataclass_class: Type) -> ExtractedFields:
     :param dataclass_class: dataclass to probe
     :return: Fields object with annotations and defaults by field name, plus error messages
     """
-    fields_by_name: Dict[Text, ExtractedField] = {}
+    fields_by_name: dict[str, ExtractedField] = {}
     task_fields = ExtractedFields()
     # Pass 1 - extract type hints.
     for name, type_hint in get_type_hints(dataclass_class, include_extras=True).items():
@@ -470,7 +473,7 @@ def get_function_fields(function: Callable) -> ExtractedFields:
     """
     function_signature = signature(function)
     parameters = function_signature.parameters
-    errors: List[Text] = []
+    errors: list[str] = []
     task_fields = ExtractedFields()
     for idx, parameter_pair in enumerate(parameters.items()):
         name, parameter = parameter_pair

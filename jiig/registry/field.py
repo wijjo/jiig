@@ -21,7 +21,7 @@ Field specification.
 Fields are not themselves registered, but are incorporated into registered tasks.
 """
 
-from typing import Any, Text, Collection, Callable, Annotated
+from typing import Any, Collection, Callable, Annotated
 
 from ..util.general import make_list
 from ..util.repetition import RepeatSpec, Repetition
@@ -34,7 +34,7 @@ class Field:
 
     def __init__(self,
                  element_type: Any,
-                 description: Text = None,
+                 description: str = None,
                  field_type: Any = None,
                  adapters: Collection[ArgumentAdapter] = None,
                  repeat: RepeatSpec = None,
@@ -60,7 +60,7 @@ class Field:
     @classmethod
     def wrap(cls,
              element_type: Any,
-             description: Text = None,
+             description: str = None,
              field_type: Any = None,
              adapters: Collection[ArgumentAdapter] = None,
              repeat: RepeatSpec = None,

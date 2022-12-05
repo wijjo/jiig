@@ -17,8 +17,6 @@
 
 """CLI hints."""
 
-from typing import Text, List, Dict, Optional, Union
-
 from ...util.general import make_list
 from ...util.log import log_error
 
@@ -36,30 +34,30 @@ _UNINITIALIZED = _Uninitialized()
 
 class CLITaskHintRegistrar:
 
-    def __init__(self, registry: 'CLIHintRegistry', full_name: Text):
+    def __init__(self, registry: 'CLIHintRegistry', full_name: str):
         self.registry = registry
         self.full_name = full_name
-        self._trailing_field: Union[_Uninitialized, Optional[Text]] = _UNINITIALIZED
-        self._options_by_field: Union[_Uninitialized, Dict[Text, List[Text]]] = _UNINITIALIZED
+        self._trailing_field: _Uninitialized | str | None = _UNINITIALIZED
+        self._options_by_field: _Uninitialized | dict[str, list[str]] = _UNINITIALIZED
 
-    def sub_registrar(self, sub_task_name: Text) -> 'CLITaskHintRegistrar':
+    def sub_registrar(self, sub_task_name: str) -> 'CLITaskHintRegistrar':
         if not self.full_name:
             return self.__class__(self.registry, sub_task_name)
         return self.__class__(self.registry, '.'.join([self.full_name, sub_task_name]))
 
     @property
-    def trailing_field(self) -> Optional[Text]:
+    def trailing_field(self) -> str | None:
         if self._trailing_field is _UNINITIALIZED:
             self._trailing_field = self.registry.trailing_by_task.get(self.full_name)
         return self._trailing_field
 
     @property
-    def options_by_field(self) -> Dict[Text, List[Text]]:
+    def options_by_field(self) -> dict[str, list[str]]:
         if self._options_by_field is _UNINITIALIZED:
             self._options_by_field = self.registry.options_by_task.get(self.full_name, {})
         return self._options_by_field
 
-    def set_hints(self, hints: Optional[Dict]):
+    def set_hints(self, hints: dict | None):
         if not hints:
             return
         root_hints = hints.get(CLI_HINT_ROOT_NAME)
@@ -88,9 +86,9 @@ class CLITaskHintRegistrar:
 class CLIHintRegistry:
 
     def __init__(self):
-        self.trailing_by_task: Dict[Text, Text] = {}
-        self.options_by_task: Dict[Text, Dict[Text, List[Text]]] = {}
+        self.trailing_by_task: dict[str, str] = {}
+        self.options_by_task: dict[str, dict[str, list[str]]] = {}
 
-    def registrar(self, *names: Text) -> CLITaskHintRegistrar:
+    def registrar(self, *names: str) -> CLITaskHintRegistrar:
         full_name = '.'.join(names)
         return CLITaskHintRegistrar(self, full_name)

@@ -20,14 +20,14 @@ import shlex
 import subprocess
 import sys
 from dataclasses import dataclass
-from typing import Text, Optional, List, Callable, Any, NoReturn, Dict
+from typing import Optional, Callable, Any, NoReturn
 
 import PySimpleGUI as Gui
 
 
 @dataclass
 class ActionButtonSpec:
-    name: Text
+    name: str
     default: bool
 
 
@@ -37,38 +37,38 @@ HandlerFunction = Callable[['AdminPanel', Any], NoReturn]
 # noinspection PyUnresolvedReferences
 class AdminPanel:
 
-    def __init__(self, title: Text = None):
+    def __init__(self, title: str = None):
         self.title = title or 'Administration Panel'
-        self.heading: Optional[Text] = None
+        self.heading: Optional[str] = None
         self.need_root = False
         self.bind_escape_key = False
-        self.log_path: Optional[Text] = None
-        self.actions: List[Text] = []
-        self.default_action: Optional[Text] = None
+        self.log_path: Optional[str] = None
+        self.actions: list[str] = []
+        self.default_action: Optional[str] = None
         self.debug = False
         self.dry_run = False
         self.window: Optional[Gui.Window] = None
-        self.password: Optional[Text] = None
-        self.handlers: Dict[Text, HandlerFunction] = {}
+        self.password: Optional[str] = None
+        self.handlers: dict[str, HandlerFunction] = {}
 
     def set_need_root(self, value: bool = False):
         self.need_root = value
 
     def add_action(self,
-                   name: Text,
+                   name: str,
                    handler: Callable[['AdminPanel', Any], NoReturn] = None):
         action_name = f'{name[0].upper()}{name[1:].lower()}'
         self.actions.append(action_name)
         if handler:
             self.add_handler(name, handler)
 
-    def set_default_action(self, default_action: Optional[Text]):
+    def set_default_action(self, default_action: Optional[str]):
         self.default_action = default_action
 
-    def set_heading(self, heading: Text):
+    def set_heading(self, heading: str):
         self.heading = heading
 
-    def set_log_path(self, log_path: Text):
+    def set_log_path(self, log_path: str):
         self.log_path = log_path
 
     def set_debug(self, value: bool = False):
@@ -80,10 +80,10 @@ class AdminPanel:
     def set_bind_escape_key(self, value: bool = False):
         self.bind_escape_key = value
 
-    def add_handler(self, name: Text, function: HandlerFunction):
+    def add_handler(self, name: str, function: HandlerFunction):
         self.handlers[name] = function
 
-    def make_layout(self) -> List:
+    def make_layout(self) -> list:
         layout = []
         if self.heading:
             layout.append([Gui.Text(self.heading)])
@@ -111,7 +111,7 @@ class AdminPanel:
         layout.append(buttons)
         return layout
 
-    def log(self, message: Text, error=False, debug=False, status=False):
+    def log(self, message: str, error=False, debug=False, status=False):
         preamble = '[E] ' if error else ''
         if error:
             for message_line in message.split(os.linesep):
@@ -126,7 +126,7 @@ class AdminPanel:
         if status:
             self.add_status(message, error=error)
 
-    def add_status(self, message: Text, error=False):
+    def add_status(self, message: str, error=False):
         preamble = '[E] ' if error else ''
         for message_line in message.split(os.linesep):
             self.window['status'].update(f'{preamble}{message_line}{os.linesep}',
@@ -136,7 +136,7 @@ class AdminPanel:
     def clear_status(self):
         self.window['status'].update('')
 
-    def run(self, *cmd_args, root=False, ignore_dry_run=False) -> Text:
+    def run(self, *cmd_args, root=False, ignore_dry_run=False) -> str:
         if root and self.password is None:
             raise RuntimeError('Unable to run command as root without a password.')
         cmd_args = (['sudo', '-S'] if root else []) + list(cmd_args)
@@ -159,7 +159,7 @@ class AdminPanel:
             raise RuntimeError(f'Failed ({proc.returncode}): {cmd_str}')
         return proc.stdout
 
-    def handle_event(self, event: Text, values=None):
+    def handle_event(self, event: str, values=None):
         if event in self.handlers:
             self.handlers[event](self, values)
 

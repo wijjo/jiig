@@ -27,7 +27,7 @@ either throw an exception or provide an informative return value.
 
 import os
 from textwrap import wrap
-from typing import Iterable, Any, Text, Iterator, List, Optional, Sequence
+from typing import Any, Iterable, Iterator, Sequence
 
 from .general import make_list
 from .log import abort, display_data
@@ -35,11 +35,11 @@ from .options import OPTIONS
 
 
 def format_table(*rows: Iterable[Any],
-                 headers: Iterable[Text] = None,
-                 formats: Iterable[Text] = None,
+                 headers: Iterable[str] = None,
+                 formats: Iterable[str] = None,
                  display_empty: bool = False,
                  max_width: int = None
-                 ) -> Iterator[Text]:
+                 ) -> Iterator[str]:
     """
     Generate tabular output from input rows with optional headings.
 
@@ -51,10 +51,10 @@ def format_table(*rows: Iterable[Any],
                       last column as needed
     :return: formatted line generator
     """
-    widths: List[int] = []
+    widths: list[int] = []
     format_list = list(formats) if formats is not None else []
 
-    def _get_strings(columns: Iterable[Any], padded: bool = False) -> Iterator[Text]:
+    def _get_strings(columns: Iterable[Any], padded: bool = False) -> Iterator[str]:
         num_columns = 0
         for column_idx, column in enumerate(columns):
             if len(format_list) > column_idx:
@@ -83,7 +83,7 @@ def format_table(*rows: Iterable[Any],
 
     # Calculate wrapping width for last column.
     # Disable wrapping if it doesn't fit well.
-    last_width: Optional[int] = None
+    last_width: int | None = None
     if max_width is not None:
         left_columns_width = sum(widths[:-1])
         left_separators_width = len(OPTIONS.column_separator) * (len(widths) - 1)
@@ -116,7 +116,7 @@ def format_table(*rows: Iterable[Any],
                             column_strings = [''] * len(widths)
 
 
-def plural(noun: Text, countable: Any):
+def plural(noun: str, countable: Any):
     """
     Simplistic text pluralization.
 
@@ -146,10 +146,10 @@ def plural(noun: Text, countable: Any):
     return noun
 
 
-def fit_text(text: Text,
+def fit_text(text: str,
              width: int,
-             placeholder: Text = '...',
-             pad: Text = None,
+             placeholder: str = '...',
+             pad: str = None,
              front: bool = False,
              ):
     """
@@ -181,11 +181,11 @@ def fit_text(text: Text,
 
 class BlockSplitter:
     def __init__(self, *blocks: str, indent: int = None, double_spaced: bool = False):
-        self.lines: List[str] = []
+        self.lines: list[str] = []
         self.indent = indent
         self.double_spaced = double_spaced
-        self.found_indent: Optional[int] = None
-        self._trimmed_lines: Optional[List[str]] = None
+        self.found_indent: int | None = None
+        self._trimmed_lines: list[str] | None = None
         for block in blocks:
             self.add_block(block)
 
@@ -210,7 +210,7 @@ class BlockSplitter:
                     self.found_indent = indent
 
     @property
-    def trimmed_lines(self) -> List[str]:
+    def trimmed_lines(self) -> list[str]:
         indent = ' ' * self.indent if self.indent else ''
         if self._trimmed_lines is None:
             if self.found_indent:
@@ -224,7 +224,7 @@ def trim_text_blocks(*blocks: str,
                      indent: int = None,
                      keep_indent: bool = False,
                      double_spaced: bool = False,
-                     ) -> List[str]:
+                     ) -> list[str]:
     splitter = BlockSplitter(*blocks, indent=indent, double_spaced=double_spaced)
     if keep_indent:
         return splitter.lines
@@ -279,7 +279,7 @@ def expand_value(value: Any, symbols: dict) -> str:
         return ' '.join([expand_value(element, symbols) for element in value])
     if not isinstance(value, str):
         return str(value)
-    output_string: Optional[str] = None
+    output_string: str | None = None
     bad_names: list[str] = []
     # The loop allows all unresolved symbols to be discovered.
     while output_string is None:
@@ -317,7 +317,7 @@ def format_block_lines(*blocks: str | Sequence,
     :return: reformatted lines (not blocks)
     """
     lines: list[str] = []
-    minimum_leading_spaces: Optional[int] = None
+    minimum_leading_spaces: int | None = None
     for block_text_or_sequence in blocks:
         if lines and double_spaced:
             lines.append('')

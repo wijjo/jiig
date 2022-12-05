@@ -19,12 +19,12 @@
 Driver registry.
 """
 import sys
-from typing import Union, Type, Text, Optional
+from typing import Type
 from types import ModuleType
 
 from ._registry import RegistrationRecord, Registry
 
-DriverReference = Union[Type['SelfRegisteringDriverBase'], Text, ModuleType]
+DriverReference = Type['SelfRegisteringDriverBase'] | str | ModuleType
 DriverImplementation = Type['SelfRegisteringContextBase']
 
 
@@ -71,7 +71,7 @@ class DriverRegistry(Registry):
     def resolve(self,
                 reference: DriverReference,
                 required: bool = False,
-                ) -> Optional[DriverRegistrationRecord]:
+                ) -> DriverRegistrationRecord | None:
         """
         Resolve reference to registration record (if possible).
 

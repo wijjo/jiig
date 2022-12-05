@@ -17,7 +17,7 @@
 
 """CLI Parser command class."""
 
-from typing import Text, List, Sequence
+from typing import Sequence
 
 from ...util.general import DefaultValue
 from ...util.repetition import Repetition
@@ -28,7 +28,7 @@ from .cli_types import CLIPositional, CLIOption
 class CLICommand:
     """Object/API for building a parser command."""
 
-    def __init__(self, name: Text, description: Text, visibility: int):
+    def __init__(self, name: str, description: str, visibility: int):
         """
         Command constructor.
 
@@ -39,11 +39,11 @@ class CLICommand:
         self.name = name
         self.description = description
         self.visibility = visibility
-        self.positionals: List[CLIPositional] = []
-        self.options: List[CLIOption] = []
-        self.sub_commands: List[CLICommand] = []
+        self.positionals: list[CLIPositional] = []
+        self.options: list[CLIOption] = []
+        self.sub_commands: list[CLICommand] = []
 
-    def add_sub_command(self, name: Text, description: Text, visibility: int) -> 'CLICommand':
+    def add_sub_command(self, name: str, description: str, visibility: int) -> 'CLICommand':
         """
         Add a sub-command.
 
@@ -57,8 +57,8 @@ class CLICommand:
         return sub_command
 
     def add_positional(self,
-                       name: Text,
-                       description: Text,
+                       name: str,
+                       description: str,
                        repeat: Repetition = None,
                        default: DefaultValue = None,
                        choices: Sequence = None,
@@ -82,9 +82,9 @@ class CLICommand:
         return positional
 
     def add_option(self,
-                   name: Text,
-                   description: Text,
-                   flags: Sequence[Text],
+                   name: str,
+                   description: str,
+                   flags: Sequence[str],
                    is_boolean: bool = False,
                    repeat: Repetition = None,
                    default: DefaultValue = None,

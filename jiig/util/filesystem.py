@@ -22,7 +22,8 @@ import re
 import stat
 from contextlib import contextmanager
 from glob import glob
-from typing import Text, List, Optional, Iterator, Any
+from pathlib import Path
+from typing import Optional, Iterator, Any
 
 from thirdparty.gitignore_parser import gitignore_parser
 
@@ -41,11 +42,11 @@ def folder_path(path):
     return path
 
 
-def is_remote_path(path: Text) -> bool:
+def is_remote_path(path: str) -> bool:
     return bool(REMOTE_PATH_REGEX.match(path))
 
 
-def search_folder_stack_for_file(folder: Text, name: Text) -> Optional[Text]:
+def search_folder_stack_for_file(folder: str, name: str) -> Optional[str]:
     """
     Look up folder stack for a specific file or folder name.
 
@@ -88,7 +89,7 @@ def short_path(path, is_folder=None, real_path=False, is_local=False):
     return path
 
 
-def delete_folder(path: Text, quiet: bool = False):
+def delete_folder(path: str, quiet: bool = False):
     path = short_path(path, is_folder=True)
     if os.path.exists(path):
         if not quiet:
@@ -96,7 +97,7 @@ def delete_folder(path: Text, quiet: bool = False):
         run(['rm', '-rf', path])
 
 
-def delete_file(path: Text, quiet: bool = False):
+def delete_file(path: str, quiet: bool = False):
     path = short_path(path)
     if os.path.exists(path):
         if not quiet:
@@ -104,7 +105,7 @@ def delete_file(path: Text, quiet: bool = False):
         run(['rm', '-f', path])
 
 
-def is_glob_pattern(path: Text) -> bool:
+def is_glob_pattern(path: str) -> bool:
     """
     Check if input path looks like a glob pattern (contains * ? [ ]).
 
@@ -114,7 +115,17 @@ def is_glob_pattern(path: Text) -> bool:
     return GLOB_CHARACTERS_REGEX.search(path) is not None
 
 
-def create_folder(path: Text, delete_existing: bool = False, quiet: bool = False):
+def create_folder(path: str | Path,
+                  delete_existing: bool = False,
+                  quiet: bool = False,
+                  ):
+    """
+    Create folder.
+
+    :param path: folder path
+    :param delete_existing: delete existing folder if True
+    :param quiet: suppress messages if True
+    """
     path = short_path(path, is_folder=True)
     if delete_existing:
         delete_folder(path, quiet=quiet)
@@ -126,36 +137,36 @@ def create_folder(path: Text, delete_existing: bool = False, quiet: bool = False
         abort('Path is not a folder', path)
 
 
-def check_file_exists(path: Text):
+def check_file_exists(path: str):
     if not os.path.exists(path):
         abort('File does not exist.', path)
     if not os.path.isfile(path):
         abort('Path is not a file.', path)
 
 
-def check_folder_exists(path: Text):
+def check_folder_exists(path: str):
     if not os.path.exists(path):
         abort('Folder does not exist.', path)
     if not os.path.isdir(path):
         abort('Path is not a folder.', path)
 
 
-def check_file_not_exists(path: Text):
+def check_file_not_exists(path: str):
     if os.path.exists(path):
         if os.path.isdir(path):
             abort('File path already exists as a folder.', path)
         abort('File already exists.', path)
 
 
-def check_folder_not_exists(path: Text):
+def check_folder_not_exists(path: str):
     if os.path.exists(path):
         if not os.path.isdir(path):
             abort('Folder path already exists as a file.', path)
         abort('Folder already exists.', path)
 
 
-def copy_folder(src_path: Text,
-                dst_path: Text,
+def copy_folder(src_path: str,
+                dst_path: str,
                 merge: bool = False,
                 quiet: bool = False):
     src_folder_path = short_path(src_path, is_folder=True)
@@ -175,16 +186,16 @@ def copy_folder(src_path: Text,
         run(['cp', '-a', src_folder_path, dst_folder_path])
 
 
-def copy_file(src_path: Text,
-              dst_path: Text,
+def copy_file(src_path: str,
+              dst_path: str,
               overwrite: bool = False,
               quiet: bool = False):
     """Copy a file to a fully-specified file path, not a folder."""
     _copy_or_move_file(src_path, dst_path, move=False, overwrite=overwrite, quiet=quiet)
 
 
-def copy_files(src_glob: Text,
-               dst_path: Text,
+def copy_files(src_glob: str,
+               dst_path: str,
                allow_empty: bool = False,
                quiet: bool = False):
     src_paths = glob(src_glob)
@@ -199,16 +210,16 @@ def copy_files(src_glob: Text,
         run(['cp', short_path(src_path), short_path(dst_path, is_folder=True)])
 
 
-def move_file(src_path: Text,
-              dst_path: Text,
+def move_file(src_path: str,
+              dst_path: str,
               overwrite: bool = False,
               quiet: bool = False):
     """Move a file to a fully-specified file path, not a folder."""
     _copy_or_move_file(src_path, dst_path, move=True, overwrite=overwrite, quiet=quiet)
 
 
-def _copy_or_move_file(src_path: Text,
-                       dst_path: Text,
+def _copy_or_move_file(src_path: str,
+                       dst_path: str,
                        move: bool = False,
                        overwrite: bool = False,
                        quiet: bool = False):
@@ -233,8 +244,8 @@ def _copy_or_move_file(src_path: Text,
         run(['cp', '-af', src_path_short, dst_path_short])
 
 
-def move_folder(src_path: Text,
-                dst_path: Text,
+def move_folder(src_path: str,
+                dst_path: str,
                 overwrite: bool = False,
                 quiet: bool = False):
     """Move a folder to a fully-specified folder path, not a parent folder."""
@@ -253,9 +264,9 @@ def move_folder(src_path: Text,
     run(['mv', '-f', src_path_short, dst_path_short])
 
 
-def sync_folders(src_folder: Text,
-                 dst_folder: Text,
-                 exclude: List = None,
+def sync_folders(src_folder: str,
+                 dst_folder: str,
+                 exclude: list = None,
                  check_contents: bool = False,
                  show_files: bool = False,
                  quiet: bool = False):
@@ -285,7 +296,7 @@ def sync_folders(src_folder: Text,
 
 
 @contextmanager
-def temporary_working_folder(folder: Optional[Text], quiet: bool = False):
+def temporary_working_folder(folder: Optional[str], quiet: bool = False):
     """
     Change work folder and restore when done.
 
@@ -302,7 +313,7 @@ def temporary_working_folder(folder: Optional[Text], quiet: bool = False):
         os.chdir(restore_folder)
 
 
-def get_folder_stack(folder: Text) -> List[Text]:
+def get_folder_stack(folder: str) -> list[str]:
     """
     Get a list of folders from top-most down to the one provided.
 
@@ -321,7 +332,7 @@ def get_folder_stack(folder: Text) -> List[Text]:
     return list(reversed(folders))
 
 
-def resolve_paths_abs(root: Text, folders: Optional[List[Text]]) -> Iterator[Text]:
+def resolve_paths_abs(root: str, folders: Optional[list[str]]) -> Iterator[str]:
     """Generate folder sequence with absolute paths."""
     if folders:
         for folder in folders:
@@ -332,29 +343,29 @@ def resolve_paths_abs(root: Text, folders: Optional[List[Text]]) -> Iterator[Tex
 
 
 class FileFilter:
-    def __init__(self, source_folder: Text):
+    def __init__(self, source_folder: str):
         self.source_folder = source_folder
 
-    def accept(self, path: Text) -> bool:
+    def accept(self, path: str) -> bool:
         raise NotImplementedError
 
 
 class ExcludesFilter(FileFilter):
-    def __init__(self, source_folder: Text, excludes: List[Text]):
+    def __init__(self, source_folder: str, excludes: list[str]):
         if excludes:
             self.matcher = gitignore_parser.prepare_ignore_patterns(excludes, source_folder)
         else:
             self.matcher = None
         super().__init__(source_folder)
 
-    def accept(self, path: Text) -> bool:
+    def accept(self, path: str) -> bool:
         if not self.matcher:
             return True
         return not self.matcher(path)
 
 
 class GitignoreFilter(FileFilter):
-    def __init__(self,  source_folder: Text):
+    def __init__(self,  source_folder: str):
         super().__init__(source_folder)
         gitignore_path = os.path.join(self.source_folder, '.gitignore')
         if os.path.isfile(gitignore_path):
@@ -362,13 +373,13 @@ class GitignoreFilter(FileFilter):
         else:
             self.matcher = None
 
-    def accept(self, path: Text) -> bool:
+    def accept(self, path: str) -> bool:
         if not self.matcher:
             return True
         return not self.matcher(path)
 
 
-def iterate_files(source_folder: Text) -> Iterator[Text]:
+def iterate_files(source_folder: str) -> Iterator[str]:
     discard_length = len(source_folder)
     if not source_folder.endswith(os.path.sep):
         discard_length += 1
@@ -378,7 +389,7 @@ def iterate_files(source_folder: Text) -> Iterator[Text]:
             yield os.path.join(relative_dir_name, file_name)
 
 
-def iterate_git_pending(source_folder: Text) -> Iterator[Text]:
+def iterate_git_pending(source_folder: str) -> Iterator[str]:
     with temporary_working_folder(source_folder, quiet=True):
         git_proc = run(['git', 'status', '-s', '-uno'],
                        capture=True, run_always=True, quiet=True)
@@ -388,15 +399,15 @@ def iterate_git_pending(source_folder: Text) -> Iterator[Text]:
                 yield path
 
 
-def iterate_filtered_files(source_folder: Text,
-                           excludes: List[Text] = None,
+def iterate_filtered_files(source_folder: str,
+                           excludes: list[str] = None,
                            pending: bool = False,
                            gitignore: bool = False):
     if pending:
         file_iterator_function = iterate_git_pending
     else:
         file_iterator_function = iterate_files
-    file_filters: List[FileFilter] = []
+    file_filters: list[FileFilter] = []
     if excludes:
         file_filters.append(ExcludesFilter(source_folder, excludes))
     if gitignore:
@@ -406,7 +417,7 @@ def iterate_filtered_files(source_folder: Text,
             yield path
 
 
-def find_system_program(name: Text) -> Optional[Text]:
+def find_system_program(name: str) -> Optional[str]:
     """
     Search system PATH for named program.
 
@@ -420,7 +431,7 @@ def find_system_program(name: Text) -> Optional[Text]:
     return None
 
 
-def choose_program_alternative(*programs: Any, required: bool = False) -> Optional[List]:
+def choose_program_alternative(*programs: Any, required: bool = False) -> Optional[list]:
     """
     Search system PATH for one or more alternative programs, optionally with arguments.
 
@@ -437,7 +448,7 @@ def choose_program_alternative(*programs: Any, required: bool = False) -> Option
     return None
 
 
-def make_relative_path(path: Text, start: Text = None) -> Text:
+def make_relative_path(path: str, start: str = None) -> str:
     """
     Construct a relative path.
 

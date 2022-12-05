@@ -20,7 +20,7 @@
 import os
 from dataclasses import dataclass
 from inspect import isclass
-from typing import Text, Sequence, List, Optional, Type
+from typing import Sequence, Type
 
 from ...util.alias_catalog import is_alias_name, open_alias_catalog
 from ...util.log import abort, log_message, ConsoleLogWriter
@@ -49,9 +49,9 @@ class CLIInitializationData(DriverInitializationData):
 @dataclass
 class CLIApplicationData(DriverApplicationData):
     # Command names.
-    names: List[Text]
+    names: list[str]
     # Trailing arguments, if requested, following any options.
-    trailing_arguments: Optional[List[Text]]
+    trailing_arguments: list[str] | None
 
 
 class CLIDriver(Driver):
@@ -60,11 +60,11 @@ class CLIDriver(Driver):
 
     Note that this driver is stateful, and assumes a particular calling sequence.
     """
-    supported_task_hints: List[Text] = [CLI_HINT_ROOT_NAME]
+    supported_task_hints: list[str] = [CLI_HINT_ROOT_NAME]
 
     def __init__(self,
-                 name: Text,
-                 description: Text,
+                 name: str,
+                 description: str,
                  options: DriverOptions = None,
                  ):
         """
@@ -80,7 +80,7 @@ class CLIDriver(Driver):
         self.hint_registry = CLIHintRegistry()
 
     def on_initialize_driver(self,
-                             command_line_arguments: Sequence[Text],
+                             command_line_arguments: Sequence[str],
                              ) -> CLIInitializationData:
         """
         Driver initialization.
@@ -104,7 +104,7 @@ class CLIDriver(Driver):
                              global_options=self._get_supported_global_options())
         pre_parse_results = cli_implementation.on_pre_parse(command_line_arguments, options)
         # Scrape up enabled global option names from parse result data attributes.
-        self.enabled_global_options: List[Text] = [
+        self.enabled_global_options: list[str] = [
             option.name for option in GLOBAL_OPTIONS
             if getattr(pre_parse_results.data, option.dest, False)
         ]
@@ -113,7 +113,7 @@ class CLIDriver(Driver):
             self.name, pre_parse_results.trailing_arguments)
         return CLIInitializationData(expanded_arguments, cli_implementation)
 
-    def _get_supported_global_options(self) -> List[CLIOption]:
+    def _get_supported_global_options(self) -> list[CLIOption]:
         return [CLIOption(option.name, option.description, option.flags, is_boolean=True)
                 for option in GLOBAL_OPTIONS
                 if option.name in self.options.supported_global_options]
@@ -150,7 +150,7 @@ class CLIDriver(Driver):
                 setattr(parse_results.data, global_option.dest, False)
 
         # Resolve the task stack. Handle an application with no commands.
-        task_stack: List[DriverTask] = []
+        task_stack: list[DriverTask] = []
         if parse_results.names:
             try:
                 task_stack = root_task.resolve_task_stack(parse_results.names)
@@ -181,7 +181,7 @@ class CLIDriver(Driver):
 
     def on_provide_help(self,
                         root_task: DriverTask,
-                        names: List[Text],
+                        names: list[str],
                         show_hidden: bool):
         """
         Required override to provide help output.
@@ -267,10 +267,10 @@ class _CLITaskBuilder:
             self._add_task_fields_and_subcommands(sub_registrar, sub_command, sub_task)
 
 
-def _expand_alias_as_needed(tool_name: Text, trailing_arguments: List[Text]) -> List[Text]:
+def _expand_alias_as_needed(tool_name: str, trailing_arguments: list[str]) -> list[str]:
     # Build the final arguments list, expanding an alias as required.
     if not trailing_arguments:
-        final_arguments: List[Text] = []
+        final_arguments: list[str] = []
     elif not is_alias_name(trailing_arguments[0]):
         final_arguments = trailing_arguments
     else:

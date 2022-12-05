@@ -21,7 +21,7 @@ import os
 from dataclasses import dataclass
 from shutil import get_terminal_size
 from textwrap import wrap
-from typing import Text, List, Optional, Iterator, Dict, Sequence, Any
+from typing import Iterator, Sequence, Any
 
 from .footnotes import FootnoteBuilder, NotesList, NotesDict
 from .general import DefaultValue, make_list
@@ -29,16 +29,16 @@ from .repetition import Repetition
 
 
 class Footnote:
-    def __init__(self, text: Text):
+    def __init__(self, text: str):
         self.text = text.strip()
-        self.option_flags: List[Text] = []
-        self.argument_dests: List[Text] = []
+        self.option_flags: list[str] = []
+        self.argument_dests: list[str] = []
 
 
 @dataclass
 class HelpCommandData:
-    name: Text
-    help_text: Text
+    name: str
+    help_text: str
     is_secondary: bool = False
     is_hidden: bool = False
     has_sub_commands: bool = False
@@ -47,9 +47,9 @@ class HelpCommandData:
 
 @dataclass
 class HelpOption:
-    name: Text
-    description: Text = None
-    flags: List[Text] = None
+    name: str
+    description: str = None
+    flags: list[str] = None
     repeat: Repetition = None
     default: DefaultValue = None
     choices: Sequence = None
@@ -61,8 +61,8 @@ class HelpOption:
 
 @dataclass
 class HelpArgument:
-    name: Text
-    description: Text = None
+    name: str
+    description: str = None
     repeat: Repetition = None
     default: DefaultValue = None
     choices: Sequence = None
@@ -78,8 +78,8 @@ HELP_LEFT_COLUMN_MAX_WIDTH = 20
 
 @dataclass
 class _HelpLabeledListItem:
-    label: Text
-    text: Text
+    label: str
+    text: str
 
 
 class _HelpLabeledListFormatter:
@@ -92,19 +92,19 @@ class _HelpLabeledListFormatter:
                  ):
         self.label_max_width = label_max_width
         self.line_max_width = line_max_width
-        self.items: List[_HelpLabeledListItem] = []
-        self.headings: Dict[int, Optional[Text]] = {}
+        self.items: list[_HelpLabeledListItem] = []
+        self.headings: dict[int, str | None] = {}
         self.label_max_length = 0
 
-    def start_block(self, heading: Optional[Text] = None):
+    def start_block(self, heading: str | None = None):
         self.headings[len(self.items)] = heading
 
-    def add_pair(self, label: Text, comment: Text):
+    def add_pair(self, label: str, comment: str):
         if len(label) > self.label_max_length:
             self.label_max_length = len(label)
         self.items.append(_HelpLabeledListItem(label, comment))
 
-    def format_lines(self) -> Iterator[Text]:
+    def format_lines(self) -> Iterator[str]:
         label_width = min(self.label_max_length, self.label_max_width)
         text_width = self.line_max_width - label_width - 2
         line_format = '%s{:%d}  {}' % (' ' * HELP_TABLE_INDENT_SIZE, label_width)
@@ -137,9 +137,9 @@ class _HelpLabeledListFormatter:
 
 class _HelpBlockFormatter:
     def __init__(self):
-        self.chunks: List[Text] = []
+        self.chunks: list[str] = []
 
-    def add_blocks(self, *chunks_to_add: Optional[Text]):
+    def add_blocks(self, *chunks_to_add: str | None):
         for chunk in chunks_to_add:
             chunk = chunk.strip() if chunk else None
             if chunk:
@@ -147,17 +147,17 @@ class _HelpBlockFormatter:
                     self.chunks.append('')
                 self.chunks.append(chunk)
 
-    def format_help(self) -> Text:
+    def format_help(self) -> str:
         return os.linesep.join(self.chunks)
 
 
 class HelpFormatter:
 
     def __init__(self,
-                 program_name: Text,
-                 command_names: Sequence[Text],
-                 description: Text,
-                 sub_commands_label: Text,
+                 program_name: str,
+                 command_names: Sequence[str],
+                 description: str,
+                 sub_commands_label: str,
                  ):
         """
         Help formatter constructor.
@@ -171,16 +171,16 @@ class HelpFormatter:
         self.command_names = command_names
         self.description = description or '(no description)'
         self.sub_commands_label = sub_commands_label
-        self.primary_commands: List[HelpCommandData] = []
-        self.secondary_commands: List[HelpCommandData] = []
-        self.options: List[HelpOption] = []
-        self.arguments: List[HelpArgument] = []
+        self.primary_commands: list[HelpCommandData] = []
+        self.secondary_commands: list[HelpCommandData] = []
+        self.options: list[HelpOption] = []
+        self.arguments: list[HelpArgument] = []
         self.notes: NotesList = []
         self.footnote_builder = FootnoteBuilder()
 
     def add_command(self,
-                    name: Text,
-                    help_text: Text,
+                    name: str,
+                    help_text: str,
                     is_secondary: bool = False,
                     is_hidden: bool = False,
                     has_sub_commands: bool = False,
@@ -209,8 +209,8 @@ class HelpFormatter:
 
     def add_option(self,
                    flags: Any,
-                   name: Text,
-                   description: Text = None,
+                   name: str,
+                   description: str = None,
                    repeat: Repetition = None,
                    default: DefaultValue = None,
                    choices: Sequence = None,
@@ -237,8 +237,8 @@ class HelpFormatter:
                        is_boolean=is_boolean))
 
     def add_argument(self,
-                     name: Text,
-                     description: Text = None,
+                     name: str,
+                     description: str = None,
                      repeat: Repetition = None,
                      default: DefaultValue = None,
                      choices: Sequence = None,
@@ -259,7 +259,7 @@ class HelpFormatter:
                          default=default,
                          choices=choices))
 
-    def add_note(self, note_text: Text):
+    def add_note(self, note_text: str):
         """
         Add a note.
 
@@ -276,12 +276,12 @@ class HelpFormatter:
         self.footnote_builder.add_footnotes(footnotes)
 
     def _format_usage(self,
-                      program_name: Text,
-                      options: List[HelpOption],
-                      arguments: List[HelpArgument],
+                      program_name: str,
+                      options: list[HelpOption],
+                      arguments: list[HelpArgument],
                       command_trailing_arguments: bool,
-                      ) -> Iterator[Text]:
-        parts: List[Text] = ['Usage:', program_name]
+                      ) -> Iterator[str]:
+        parts: list[str] = ['Usage:', program_name]
         parts.extend(self.command_names)
         if options:
             parts.append('[OPTION ...]')
@@ -307,7 +307,7 @@ class HelpFormatter:
             parts.extend([self.sub_commands_label, '...'])
         yield ' '.join(parts)
 
-    def _format_help_text(self, help_text: Optional[Text]) -> Text:
+    def _format_help_text(self, help_text: str | None) -> str:
         help_text = help_text.strip() if help_text else ''
         if not help_text:
             return '(no help available)'
@@ -317,12 +317,12 @@ class HelpFormatter:
         output_text = f'{os.linesep}{os.linesep}'.join(paragraphs)
         return output_text
 
-    def _format_description(self) -> Iterator[Text]:
+    def _format_description(self) -> Iterator[str]:
         yield self._format_help_text(self.description)
 
     def _format_table_commands(self,
                                two_column_formatter: _HelpLabeledListFormatter,
-                               ) -> Iterator[Text]:
+                               ) -> Iterator[str]:
         def _add_command(command_data: HelpCommandData):
             if command_data.has_sub_commands:
                 name = f'{command_data.name} ...'
@@ -346,8 +346,8 @@ class HelpFormatter:
 
     def _format_table_positionals(self,
                                   two_column_formatter: _HelpLabeledListFormatter,
-                                  arguments: List[HelpArgument],
-                                  ) -> Iterator[Text]:
+                                  arguments: list[HelpArgument],
+                                  ) -> Iterator[str]:
         if arguments:
             two_column_formatter.start_block(heading='ARGUMENT')
             for argument in arguments:
@@ -357,8 +357,8 @@ class HelpFormatter:
 
     def _format_table_options(self,
                               two_column_formatter: _HelpLabeledListFormatter,
-                              options: List[HelpOption],
-                              ) -> Iterator[Text]:
+                              options: list[HelpOption],
+                              ) -> Iterator[str]:
         if options:
             two_column_formatter.start_block(heading='OPTION')
             for option in options:
@@ -372,8 +372,8 @@ class HelpFormatter:
                         self._format_help_text(option.description))
         yield two_column_formatter.format_block()
 
-    def _format_epilog(self, max_width: int) -> Text:
-        def _format_text(text_block: Optional[Text]) -> Text:
+    def _format_epilog(self, max_width: int) -> str:
+        def _format_text(text_block: str | None) -> str:
             if text_block is None:
                 return ''
             return os.linesep.join(wrap(text_block, width=max_width))
@@ -384,7 +384,7 @@ class HelpFormatter:
             yield _format_text(footnote_text)
 
     @staticmethod
-    def _flag_key(flag: Text):
+    def _flag_key(flag: str):
         # Option flags are sorted by label text, with the additional logic of
         # equal uppercase letters following lowercase and long options following
         # equal short labels.
@@ -407,7 +407,7 @@ class HelpFormatter:
 
     def format_help(self,
                     receives_trailing_arguments: bool = False,
-                    ) -> Text:
+                    ) -> str:
         # Sort options by (lowercase, original case) tuples so that
         # uppercase always precedes equal but lowercase version. Simply
         # sorting on lowercase keys would not guarantee that result.
@@ -440,7 +440,7 @@ class HelpFormatter:
 class HelpProvider:
     """Abstract base class for a provider of formatted help text."""
 
-    def format_help(self, *names: Text, show_hidden: bool = False) -> Text:
+    def format_help(self, *names: str, show_hidden: bool = False) -> str:
         """
         Format help.
 

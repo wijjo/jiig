@@ -22,7 +22,7 @@ Context for text expansion and external command execution environment.
 import os
 import sys
 from pprint import pformat
-from typing import List, Union, Optional, Any
+from typing import Optional, Any
 
 from ..util import OPTIONS
 from ..util.log import log_heading, log_warning, log_error, log_message, abort
@@ -126,7 +126,7 @@ class Context:
         self.s.update(kwargs)
         return self
 
-    def format(self, text: Optional[Union[str, list, tuple]]) -> Optional[Union[str, List[str]]]:
+    def format(self, text: Optional[str | list | tuple]) -> Optional[str | list[str]]:
         """
         Format text with context symbol expansion.
 

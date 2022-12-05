@@ -20,7 +20,7 @@
 import os
 import sys
 from dataclasses import dataclass, field
-from typing import Text, List, Dict, Any, cast, Optional
+from typing import Any, cast
 
 from ..driver import CLIDriver
 from ..util.alias_catalog import DEFAULT_ALIASES_PATH
@@ -90,10 +90,10 @@ class Tool:
 
     # === Required members.
 
-    tool_name: Text
+    tool_name: str
     """Tool name."""
 
-    tool_root_folder: Text
+    tool_root_folder: str
     """Tool base (root) folder."""
 
     root_task: TaskReference
@@ -104,76 +104,76 @@ class Tool:
     driver: DriverReference = DEFAULT_DRIVER
     """Driver class reference."""
 
-    driver_variant: Text = DEFAULT_DRIVER_VARIANT
+    driver_variant: str = DEFAULT_DRIVER_VARIANT
     """Driver variant name."""
 
-    jiig_root_folder: Text = None
+    jiig_root_folder: str = None
     """Jiig base (root) folder."""
 
-    jiig_library_folder: Text = None
+    jiig_library_folder: str = None
     """Jiig library base folder."""
 
-    aliases_path: Text = DEFAULT_ALIASES_PATH
+    aliases_path: str = DEFAULT_ALIASES_PATH
     """Path to aliases file."""
 
-    author: Text = DEFAULT_AUTHOR
+    author: str = DEFAULT_AUTHOR
     """Tool author name."""
 
-    build_folder: Text = DEFAULT_BUILD_FOLDER
+    build_folder: str = DEFAULT_BUILD_FOLDER
     """Build output folder, if applicable."""
 
-    copyright: Text = DEFAULT_COPYRIGHT
+    copyright: str = DEFAULT_COPYRIGHT
     """Tool copyright."""
 
-    description: Text = DEFAULT_TOOL_DESCRIPTION
+    description: str = DEFAULT_TOOL_DESCRIPTION
     """Tool description."""
 
-    doc_api_packages: List[Text] = field(default_factory=list)
+    doc_api_packages: list[str] = field(default_factory=list)
     """Package names for producing API documentation."""
 
-    doc_api_packages_excluded: List[Text] = field(default_factory=list)
+    doc_api_packages_excluded: list[str] = field(default_factory=list)
     """Package names to exclude from API documentation."""
 
-    doc_folder: Text = DEFAULT_DOC_FOLDER
+    doc_folder: str = DEFAULT_DOC_FOLDER
     """Documentation output folder, e.g. for Pdoc3 documentation."""
 
-    library_folders: List[Text] = field(default_factory=list)
+    library_folders: list[str] = field(default_factory=list)
     """Library folders to add to Python import path."""
 
     tool_options: ToolOptions = field(default_factory=ToolOptions)
     """Various boolean behavior options."""
 
-    parser_implementation: Text = None
+    parser_implementation: str = None
     """Parser implementation."""
 
-    pip_packages: List[Text] = field(default_factory=list)
+    pip_packages: list[str] = field(default_factory=list)
     """Packages needed by virtual environment, if enabled."""
 
-    project_name: Text = None
+    project_name: str = None
     """Project name for documentation, defaults to capitalized tool name."""
 
-    sub_task_label: Text = SUB_TASK_LABEL
+    sub_task_label: str = SUB_TASK_LABEL
     """Name used to label sub-task types."""
 
-    test_folder: Text = DEFAULT_TEST_FOLDER
+    test_folder: str = DEFAULT_TEST_FOLDER
     """Test folder path for loading unit tests."""
 
-    top_task_label: Text = TOP_TASK_LABEL
+    top_task_label: str = TOP_TASK_LABEL
     """Name used to label the top level task type."""
 
-    venv_folder: Text = None
+    venv_folder: str = None
     """Virtual environment root folder - JIIG_VENV_ROOT/<tool> is used if None."""
 
-    version: Text = '(unknown version)'
+    version: str = '(unknown version)'
     """Tool version identifier."""
 
-    extra_symbols: Dict[Text, Any] = field(default_factory=dict)
+    extra_symbols: dict[str, Any] = field(default_factory=dict)
     """Imported symbols that from_symbols() could not assign."""
 
     runtime: ContextReference = None
     """Custom runtime context module or class reference (Runtime subclass)."""
 
-    _assigned_root_task: Optional[AssignedTask] = None
+    _assigned_root_task: AssignedTask | None = None
     """Populated on demand by resolving the root task reference."""
 
     def __post_init__(self):
@@ -193,7 +193,7 @@ class Tool:
             self.venv_folder = os.path.join(os.path.expanduser(JIIG_VENV_ROOT), self.tool_name)
 
     @classmethod
-    def from_symbols(cls, symbols: Dict, **defaults) -> 'Tool':
+    def from_symbols(cls, symbols: dict, **defaults) -> 'Tool':
         """
         Convert symbols to tool object.
 
@@ -233,7 +233,7 @@ class Tool:
             abort(str(symbol_exc))
 
     @classmethod
-    def from_script(cls, script_path: Text) -> 'Tool':
+    def from_script(cls, script_path: str) -> 'Tool':
         """
         Convert tool script to object.
 
@@ -263,7 +263,7 @@ class Tool:
     @classmethod
     def from_module(cls,
                     tool_module: object,
-                    defaults: Dict = None,
+                    defaults: dict = None,
                     ) -> 'Tool':
         """
         Convert tool module to object.
@@ -289,7 +289,7 @@ class Tool:
         return self._assigned_root_task
 
     @property
-    def venv_interpreter(self) -> Text:
+    def venv_interpreter(self) -> str:
         """
         Virtual environment Python interpreter path.
 

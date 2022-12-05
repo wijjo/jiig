@@ -32,7 +32,7 @@ Write-only modules return no data.
 import os
 import sys
 from inspect import isfunction
-from typing import List, Text, Callable, Tuple, Dict
+from typing import Callable
 
 from .driver import DriverOptions, DriverTask
 from .registry import CONTEXT_REGISTRY, DRIVER_REGISTRY, HINT_REGISTRY, TASK_REGISTRY, \
@@ -45,8 +45,8 @@ from .util.python import build_virtual_environment, PYTHON_NATIVE_ENVIRONMENT_NA
 from .util.text import plural
 
 
-def _check_virtual_environment(runner_args: List[Text],
-                               cli_args: List[Text],
+def _check_virtual_environment(runner_args: list[str],
+                               cli_args: list[str],
                                tool: Tool):
     # Check if virtual environment needs to be activated.
     if not tool.venv_needed:
@@ -84,7 +84,7 @@ class _ArgumentDataPreparer:
     def __init__(self, raw_data: object):
         self.raw_data = raw_data
         self.prepared_data = {}
-        self.errors: List[Text] = []
+        self.errors: list[str] = []
 
     def prepare_argument_data(self, assigned_task: AssignedTask):
         # Convert raw argument data to prepared data.
@@ -128,7 +128,7 @@ class _ArgumentDataPreparer:
                         self.errors.append(f'{arg_name}: {str(exc)}')
 
 
-def _execute(runtime: Runtime, task_stack: List[AssignedTask], data: object):
+def _execute(runtime: Runtime, task_stack: list[AssignedTask], data: object):
     # Prepare argument data using raw data and task option/argument definitions.
     data_preparer = _ArgumentDataPreparer(data)
     for task in task_stack:
@@ -142,7 +142,7 @@ def _execute(runtime: Runtime, task_stack: List[AssignedTask], data: object):
         # added, are invoked in reverse, inner to outer order. The string is the
         # name used for errors. The dict is for keyword call arguments (task
         # functions only).
-        run_calls: List[Tuple[Text, Callable, Dict]] = []
+        run_calls: list[tuple[str, Callable, dict]] = []
         for task in task_stack:
             # Extract the data needed to populate task dataclass fields.
             # noinspection PyDataclass
@@ -190,8 +190,8 @@ def _execute(runtime: Runtime, task_stack: List[AssignedTask], data: object):
 
 
 def _populate_driver_task(driver_task: DriverTask,
-                          fields: List[TaskField],
-                          sub_tasks: List[AssignedTask],
+                          fields: list[TaskField],
+                          sub_tasks: list[AssignedTask],
                           ):
     for task_field in fields:
         driver_task.add_field(name=task_field.name,
@@ -214,7 +214,7 @@ def _add_builtin_tasks(tool: Tool):
     visibility = 2 if tool.tool_options.hide_builtin_tasks else 1
     root_task_names = set((sub_task.name for sub_task in tool.assigned_root_task.sub_tasks))
 
-    def _add_if_needed(name: Text, task_ref: Text):
+    def _add_if_needed(name: str, task_ref: str):
         if not root_task_names.intersection({name, f'{name}[s]', f'{name}[h]'}):
             assigned_task = TASK_REGISTRY.resolve_assigned_task(task_ref, name, visibility)
             if assigned_task is not None:
@@ -229,8 +229,8 @@ def _add_builtin_tasks(tool: Tool):
 
 
 def main(tool: Tool,
-         runner_args: List[Text] = None,
-         cli_args: List[Text] = None,
+         runner_args: list[str] = None,
+         cli_args: list[str] = None,
          ):
     """
     Main function called from jiig script to drive tool and task initialization.
@@ -252,7 +252,7 @@ def main(tool: Tool,
         raw_arguments = cli_args
 
     # Construct the driver.
-    supported_global_options: List[Text] = []
+    supported_global_options: list[str] = []
     if not tool.tool_options.disable_debug:
         supported_global_options.append('debug')
     if not tool.tool_options.disable_dry_run:
@@ -341,7 +341,7 @@ def main(tool: Tool,
         log_error(f'Bad field {plural("hint", bad_field_hints)}:', *bad_field_hints)
 
     # Convert driver task stack to RegisteredTask stack.
-    task_stack: List[AssignedTask] = [tool.assigned_root_task]
+    task_stack: list[AssignedTask] = [tool.assigned_root_task]
     for driver_task in driver_app_data.task_stack:
         for sub_task in task_stack[-1].sub_tasks:
             if sub_task.name == driver_task.name:
@@ -349,7 +349,7 @@ def main(tool: Tool,
                 break
 
     class HelpGenerator(RuntimeHelpGenerator):
-        def generate_help(self, *names: Text, show_hidden: bool = False):
+        def generate_help(self, *names: str, show_hidden: bool = False):
             driver.provide_help(driver_root_task, *names, show_hidden=show_hidden)
 
     # Create and initialize root Runtime context.

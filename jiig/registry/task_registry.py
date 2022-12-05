@@ -26,11 +26,11 @@ import re
 import sys
 from dataclasses import dataclass
 from inspect import isfunction, ismodule
-from typing import Text, Dict, List, Optional, Union, cast, Any, Callable, Sequence, Iterator
+from typing import cast, Any, Callable, Sequence, Iterator
 from types import ModuleType
 
 from ..util.general import DefaultValue
-from ..util.log import log_warning, log_error, abort
+from ..util.log import log_warning, abort
 from ..util.footnotes import NotesList, NotesDict, FootnoteBuilder
 from ..util.python import get_function_fields
 from ..util.repetition import Repetition
@@ -48,33 +48,33 @@ DOC_STRING_PARAM_REGEX = re.compile(r'^\s*:param\s+(\w+)\s*:\s*(.*)\s*$')
 # The best we can do for now for a task function type hint, because Callable has
 # no syntax for variable keyword arguments.
 TaskFunction = Callable
-TaskReference = Union[Text, ModuleType, TaskFunction]
+TaskReference = str | ModuleType | TaskFunction
 SubTaskList = Sequence[TaskReference]
-SubTaskDict = Dict[Text, TaskReference]
-SubTaskCollection = Union[SubTaskList, SubTaskDict]
+SubTaskDict = dict[str, TaskReference]
+SubTaskCollection = SubTaskList | SubTaskDict
 TaskImplementation = TaskFunction
 
 
 @dataclass
 class TaskField:
     """Data extracted from task dataclass or task function signature."""
-    name: Text
-    description: Text
+    name: str
+    description: str
     element_type: Any
     field_type: Any
-    default: Optional[DefaultValue]
-    repeat: Optional[Repetition]
-    choices: Optional[List]
-    adapters: List[ArgumentAdapter]
+    default: DefaultValue | None
+    repeat: Repetition | None
+    choices: list | None
+    adapters: list[ArgumentAdapter]
 
 
 @dataclass
 class ParsedDocString:
     """Parsed doc string fields."""
-    description: Text
+    description: str
     notes: NotesList
     footnotes: NotesDict
-    field_descriptions: Dict[Text, Text]
+    field_descriptions: dict[str, str]
 
 
 class TaskRegistrationRecord(RegistrationRecord):
@@ -89,11 +89,11 @@ class TaskRegistrationRecord(RegistrationRecord):
 
     def __init__(self,
                  implementation: TaskImplementation,
-                 module: Optional[ModuleType],
-                 primary_tasks: Optional[SubTaskCollection],
-                 secondary_tasks: Optional[SubTaskCollection],
-                 hidden_tasks: Optional[SubTaskCollection],
-                 driver_hints: Optional[Dict],
+                 module: ModuleType | None,
+                 primary_tasks: SubTaskCollection | None,
+                 secondary_tasks: SubTaskCollection | None,
+                 hidden_tasks: SubTaskCollection | None,
+                 driver_hints: dict | None,
                  ):
         """
         Task registration constructor.
@@ -152,7 +152,7 @@ class TaskRegistrationRecord(RegistrationRecord):
                 yield task_reference
 
 
-def _get_default_task_name(reference: TaskReference) -> Text:
+def _get_default_task_name(reference: TaskReference) -> str:
     if ismodule(reference):
         return reference.__name__.split('.')[-1]
     if isinstance(reference, str):
@@ -164,7 +164,7 @@ def _get_default_task_name(reference: TaskReference) -> Text:
     return name
 
 
-def _make_sub_tasks_map(raw_tasks: Optional[SubTaskCollection]) -> Optional[SubTaskDict]:
+def _make_sub_tasks_map(raw_tasks: SubTaskCollection | None) -> SubTaskDict | None:
     # None?
     if raw_tasks is None:
         return None
@@ -188,7 +188,7 @@ class AssignedTask:
 
     def __init__(self,
                  registered_task: TaskRegistrationRecord,
-                 name: Text,
+                 name: str,
                  visibility: int,
                  ):
         """
@@ -202,9 +202,9 @@ class AssignedTask:
         self._registered_task = registered_task
         self.name = name
         self.visibility = visibility
-        self._parsed_doc_string: Optional[ParsedDocString] = None
-        self._sub_tasks: Optional[List['AssignedTask']] = None
-        self._fields: Optional[List[TaskField]] = None
+        self._parsed_doc_string: ParsedDocString | None = None
+        self._sub_tasks: list['AssignedTask'] | None = None
+        self._fields: list[TaskField] | None = None
 
     @property
     def implementation(self) -> TaskImplementation:
@@ -225,7 +225,7 @@ class AssignedTask:
         return self._registered_task.module
 
     @property
-    def description(self) -> Text:
+    def description(self) -> str:
         """
         Task description.
 
@@ -256,14 +256,14 @@ class AssignedTask:
                 else self.parsed_doc_string.footnotes)
 
     @property
-    def sub_tasks(self) -> List['AssignedTask']:
+    def sub_tasks(self) -> list['AssignedTask']:
         """
         Assigned sub-task list.
 
         :return: sub-task list
         """
         if self._sub_tasks is None:
-            self._sub_tasks: List[AssignedTask] = []
+            self._sub_tasks: list[AssignedTask] = []
             if self._registered_task.primary_tasks:
                 for name, task_ref in self._registered_task.primary_tasks.items():
                     task = TASK_REGISTRY.resolve_assigned_task(task_ref, name, 0, required=True)
@@ -279,7 +279,7 @@ class AssignedTask:
         return self._sub_tasks
 
     @property
-    def fields(self) -> List[TaskField]:
+    def fields(self) -> list[TaskField]:
         """
         Fields and defaults for task.
 
@@ -300,7 +300,7 @@ class AssignedTask:
             if errors:
                 # noinspection PyUnboundLocalVariable
                 abort(f'Bad task {self.full_name} {plural("field", errors)}.', *errors)
-            task_fields: List[TaskField] = []
+            task_fields: list[TaskField] = []
             # noinspection PyUnboundLocalVariable
             for raw_field in raw_fields:
                 description = self.parsed_doc_string.field_descriptions.get(raw_field.name)
@@ -337,7 +337,7 @@ class AssignedTask:
         return self._parsed_doc_string
 
     @property
-    def hints(self) -> Dict:
+    def hints(self) -> dict:
         """
         Task hints for driver.
 
@@ -364,7 +364,7 @@ class TaskRegistry(Registry):
     def resolve(self,
                 reference: TaskReference,
                 required: bool = False,
-                ) -> Optional[TaskRegistrationRecord]:
+                ) -> TaskRegistrationRecord | None:
         """
         Resolve task reference to registration record (if possible).
 
@@ -379,10 +379,10 @@ class TaskRegistry(Registry):
 
     def resolve_assigned_task(self,
                               reference: TaskReference,
-                              name: Text,
+                              name: str,
                               visibility: int,
                               required: bool = False,
-                              ) -> Optional[AssignedTask]:
+                              ) -> AssignedTask | None:
         """
         Resolve task reference to an AssignedTask (if possible).
 
@@ -411,7 +411,7 @@ class TaskRegistry(Registry):
 
     def guess_root_task_implementation(self,
                                        *additional_packages: str,
-                                       ) -> Optional[TaskImplementation]:
+                                       ) -> TaskImplementation:
         """
         Attempt to guess the root task by finding one with no references.
 
@@ -429,8 +429,8 @@ class TaskRegistry(Registry):
         """
 
         # Gather the full initial candidate pool.
-        candidates_by_id: Dict[int, TaskRegistrationRecord] = {}
-        candidate_ids_by_module_name: Dict[Text, int] = {}
+        candidates_by_id: dict[int, TaskRegistrationRecord] = {}
+        candidate_ids_by_module_name: dict[str, int] = {}
         for item_id, registration in self.by_id.items():
             if (not registration.implementation.__module__
                     or not registration.implementation.__module__.startswith('jiig.')):
@@ -466,12 +466,10 @@ class TaskRegistry(Registry):
 
         # Wrap-up.
         if len(candidates_by_id) == 0:
-            log_error('Root task not found.')
-            return None
+            abort('Root task not found.')
         if len(candidates_by_id) != 1:
             names = sorted([candidate.full_name for candidate in candidates_by_id.values()])
-            log_error(f'More than one root task candidate.', *names)
-            return None
+            abort(f'More than one root task candidate. {names}')
         return list(candidates_by_id.values())[0].implementation
 
 
@@ -482,9 +480,9 @@ def _parse_doc_string(implementation: TaskImplementation) -> ParsedDocString:
     footnote_builder = FootnoteBuilder()
     doc_string = implementation.__doc__ or ''
     # Pull out and parse `:param <name>: description` items from the doc string.
-    non_param_lines: List[Text] = []
-    field_descriptions: Dict[Text, Text] = {}
-    param_name: Optional[Text] = None
+    non_param_lines: list[str] = []
+    field_descriptions: dict[str, str] = {}
+    param_name: str | None = None
     for line in doc_string.split(os.linesep):
         param_matched = DOC_STRING_PARAM_REGEX.match(line)
         if param_matched:

@@ -40,11 +40,10 @@ the Mediterranean Sea.
 
 import os
 import re
-from typing import Text, List, Optional, Dict, Union
 
-NotesSpec = Union[Text, List[Text]]
-NotesList = List[Text]
-NotesDict = Dict[Text, Text]
+NotesSpec = str | list[str]
+NotesList = list[str]
+NotesDict = dict[str, str]
 
 FOOTNOTE_MARKER_REGEX = re.compile(r'\[\^(\w+)\]')
 FOOTNOTE_DECLARATION_REGEX = re.compile(rf'^\s*\[\^(\w+)\]:\s*(.*)$', re.MULTILINE)
@@ -54,12 +53,12 @@ class FootnoteBuilder:
     """Scrapes footnote labels from text blocks."""
 
     def __init__(self):
-        self.labels: List[Text] = []
+        self.labels: list[str] = []
         self.original_body_paragraphs: NotesList = []
         self.modified_body_paragraphs: NotesList = []
         self.footnotes: NotesDict = {}
 
-    def add_footnotes(self, *footnotes: Optional[NotesDict]):
+    def add_footnotes(self, *footnotes: NotesDict | None):
         """
         Add footnotes that are available if referenced by markers.
 
@@ -69,7 +68,7 @@ class FootnoteBuilder:
             if footnote_dictionary:
                 self.footnotes.update(footnote_dictionary)
 
-    def parse(self, text: Text):
+    def parse(self, text: str):
         """
         Parse text block(s) for footnote declarations.
 
@@ -77,7 +76,7 @@ class FootnoteBuilder:
 
         :param text: text to parse
         """
-        lines: List[Text] = text.strip().split(os.linesep)
+        lines: list[str] = text.strip().split(os.linesep)
         paragraphs: NotesList = []
         is_new_paragraph = True
         for line in lines:
@@ -97,7 +96,7 @@ class FootnoteBuilder:
             else:
                 self.original_body_paragraphs.append(paragraph)
                 start_idx = 0
-                parts: List[Text] = []
+                parts: list[str] = []
                 for matched in FOOTNOTE_MARKER_REGEX.finditer(paragraph):
                     if matched.start() > start_idx:
                         parts.append(paragraph[start_idx:matched.start()])
@@ -122,7 +121,7 @@ class FootnoteBuilder:
                 paragraphs.append(f'[^{label_num}]: {self.footnotes[label].strip()}')
         return paragraphs
 
-    def _register_label(self, label: Text) -> int:
+    def _register_label(self, label: str) -> int:
         for label_num, existing_label in enumerate(self.labels, start=1):
             if label == existing_label:
                 return label_num

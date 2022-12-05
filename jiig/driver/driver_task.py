@@ -18,7 +18,7 @@
 """Driver task data."""
 
 from dataclasses import dataclass
-from typing import Text, List, Any, Dict, Optional, Sequence
+from typing import Any, Sequence
 
 from ..util.footnotes import NotesList, NotesDict
 from ..util.general import DefaultValue
@@ -30,22 +30,22 @@ from .driver_field import DriverField
 @dataclass
 class DriverTask:
     """Task data fed to driver."""
-    name: Text
-    description: Text
-    sub_tasks: List['DriverTask']
-    fields: List[DriverField]
+    name: str
+    description: str
+    sub_tasks: list['DriverTask']
+    fields: list[DriverField]
     notes: NotesList
     footnotes: NotesDict
     visibility: int
-    hints: Dict
+    hints: dict
 
     def add_sub_task(self,
-                     name: Text,
-                     description: Text,
+                     name: str,
+                     description: str,
                      notes: NotesList,
                      footnotes: NotesDict,
                      visibility: int,
-                     hints: Dict,
+                     hints: dict,
                      ) -> 'DriverTask':
         """
         Add sub-task data.
@@ -63,12 +63,12 @@ class DriverTask:
         return sub_task
 
     def add_field(self,
-                  name: Text,
-                  description: Text,
+                  name: str,
+                  description: str,
                   element_type: Any,
-                  repeat: Optional[Repetition] = None,
-                  default: Optional[DefaultValue] = None,
-                  choices: Optional[Sequence] = None,
+                  repeat: Repetition | None = None,
+                  default: DefaultValue | None = None,
+                  choices: Sequence | None = None,
                   ):
         """
         Add task field data.
@@ -87,7 +87,7 @@ class DriverTask:
                                        default=default,
                                        choices=choices))
 
-    def resolve_task_stack(self, names: Sequence[Text]) -> Optional[List['DriverTask']]:
+    def resolve_task_stack(self, names: Sequence[str]) -> list['DriverTask'] | None:
         """
         Get task stack (list) based on names list.
 
@@ -95,8 +95,8 @@ class DriverTask:
         :return: sub-task stack as list or None if it fails to resolve
         """
         def _resolve_sub_stack(task: 'DriverTask',
-                               sub_names: Sequence[Text],
-                               ) -> List['DriverTask']:
+                               sub_names: Sequence[str],
+                               ) -> list['DriverTask']:
             for sub_task in task.sub_tasks:
                 if sub_task.name == sub_names[0]:
                     if len(sub_names) == 1:

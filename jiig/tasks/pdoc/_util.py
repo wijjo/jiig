@@ -22,14 +22,14 @@ Since pdoc is a third party library, this module guards against import errors by
 loading the library only as needed.
 """
 
-from typing import Text, List, Optional, Iterator
+from typing import Optional, Iterator
 
 from jiig.util.stream import OutputRedirector
 
 IGNORED_ERROR_TEXT = 'You are running a VERY old version of tkinter'
 
 
-def _output_filter(line: Text, is_error: bool = False) -> Optional[Text]:
+def _output_filter(line: str, is_error: bool = False) -> Optional[str]:
     if is_error and line.find(IGNORED_ERROR_TEXT) != -1:
         return None
     return line
@@ -39,8 +39,8 @@ class PdocBuilder:
     """Utility class to build Pdoc documentation."""
 
     def __init__(self,
-                 doc_api_packages: List[Text],
-                 doc_api_packages_excluded: List[Text],
+                 doc_api_packages: list[str],
+                 doc_api_packages_excluded: list[str],
                  ):
         import pdoc
         self.doc_api_packages = doc_api_packages

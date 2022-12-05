@@ -22,12 +22,12 @@ Uses common Registry support, but adds data to the registration record and
 provides a more type-specific API for accessing and querying the registry.
 """
 import sys
-from typing import Union, Type, Text, Optional
+from typing import Type
 from types import ModuleType
 
 from ._registry import RegistrationRecord, Registry
 
-ContextReference = Union[Type['SelfRegisteringContextBase'], Text, ModuleType]
+ContextReference = Type['SelfRegisteringContextBase'] | str | ModuleType
 ContextImplementation = Type['SelfRegisteringContextBase']
 
 
@@ -71,7 +71,7 @@ class ContextRegistry(Registry):
     def resolve(self,
                 reference: ContextReference,
                 required: bool = False,
-                ) -> Optional[ContextRegistrationRecord]:
+                ) -> ContextRegistrationRecord | None:
         """
         Resolve reference to registration record (if possible).
 

@@ -20,7 +20,6 @@ Task creation task.
 """
 
 import os
-from typing import Text, List
 
 import jiig
 from jiig.util.template_expansion import expand_folder
@@ -53,8 +52,8 @@ def create(
 
 
 def expand_tasks(runtime: jiig.Runtime,
-                 output_folder: Text,
-                 task_names: List[Text],
+                 output_folder: str,
+                 task_names: list[str],
                  force: bool = False,
                  quiet: bool = False,
                  ):
