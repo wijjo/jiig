@@ -20,8 +20,8 @@
 from dataclasses import dataclass
 from typing import Any, Sequence
 
-from ..util.footnotes import NotesList, NotesDict
-from ..util.general import DefaultValue
+from ..util.default import DefaultValue
+from jiig.util.text.footnotes import NotesList, NotesDict
 from ..util.repetition import Repetition
 
 from .driver_field import DriverField

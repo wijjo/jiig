@@ -21,7 +21,7 @@ import os
 import sys
 import traceback
 from contextlib import contextmanager
-from typing import Any, Iterator, Sequence, Optional
+from typing import Any, Iterator, Sequence
 
 from .options import OPTIONS
 from .exceptions import get_exception_stack
@@ -88,7 +88,7 @@ def log_message(text: Any, *args, **kwargs):
     """
     Display message line(s) and indented lines for relevant keyword data.
 
-    Keywords:
+    Special keywords:
        tag                        prefix for all lines displayed in uppercase
        sub_tag                    optional text to enclose in square brackets next to the tag
        verbose                    True if requires VERBOSE mode
@@ -98,6 +98,10 @@ def log_message(text: Any, *args, **kwargs):
        exception_traceback_skip   number of stack frames to skip
        string_file_name           file name to replace <string> in exception output for exec'd file
        skip_non_source_frames     exclude non-source file frames if True
+
+    :param text: message(s) (can be sequence)
+    :param args: logged positional arguments
+    :param kwargs: logged keyword arguments + special keywords
     """
     tag = kwargs.pop('tag', None)
     verbose = kwargs.pop('verbose', None)
@@ -157,7 +161,13 @@ def log_message(text: Any, *args, **kwargs):
 
 
 def abort(text: Any, *args, **kwargs):
-    """Display, and in the future log, a fatal _error message (to stderr) and quit."""
+    """
+    Display, and in the future log, a fatal _error message (to stderr) and quit.
+
+    :param text: message(s) (can be sequence)
+    :param args: logged positional arguments
+    :param kwargs: logged keyword arguments + special keywords (see log_message())
+    """
     skip = kwargs.pop('skip', 0)
     kwargs['tag'] = 'FATAL'
     kwargs['is_error'] = True
@@ -173,21 +183,38 @@ def abort(text: Any, *args, **kwargs):
 
 
 def log_warning(text: Any, *args, **kwargs):
-    """Display, and in the future log, a warning message (to stderr)."""
+    """
+    Display, and in the future log, a warning message (to stderr).
+
+    :param text: message(s) (can be sequence)
+    :param args: logged positional arguments
+    :param kwargs: logged keyword arguments + special keywords (see log_message())
+    """
     kwargs['tag'] = 'WARNING'
     kwargs['is_error'] = True
     log_message(text, *args, **kwargs)
 
 
 def log_error(text: Any, *args, **kwargs):
-    """Display, and in the future log, an _error message (to stderr)."""
+    """
+    Display, and in the future log, an _error message (to stderr).
+
+    :param text: message(s) (can be sequence)
+    :param args: logged positional arguments
+    :param kwargs: logged keyword arguments + special keywords (see log_message())
+    """
     kwargs['tag'] = 'ERROR'
     kwargs['is_error'] = True
     log_message(text, *args, **kwargs)
 
 
 def log_heading(heading: str, level: int = 0):
-    """Display, and in the future log, a heading message to delineate blocks."""
+    """
+    Display, and in the future log, a heading message to delineate blocks.
+
+    :param heading: heading text
+    :param level: heading level 0-n
+    """
     decoration = f'=====' if level <= 1 else f'---'
     if heading:
         line = ' '.join([decoration, heading, decoration])
@@ -201,12 +228,19 @@ def log_block_begin(level: int, heading: str):
     Display, and in the future log, a heading message to delineate blocks.
 
     For now it just calls log_heading().
+
+    :param level: block level 0-n
+    :param heading: heading text
     """
     log_heading(heading, level=level)
 
 
 def log_block_end(level: int):
-    """Display, and in the future log, a message to delineate block endings."""
+    """
+    Display, and in the future log, a message to delineate block endings.
+
+    :param level: block level 0-n
+    """
     log_heading('', level=level)
 
 
@@ -318,7 +352,7 @@ class TopicLogger:
             self.delayed = parent.delayed
         else:
             self.delayed = False
-        self.parent: Optional[TopicLogger] = parent
+        self.parent: TopicLogger | None = parent
         self.errors: list[tuple[Any, Sequence, dict]] = []
         self.warnings: list[tuple[Any, Sequence, dict]] = []
         self.messages: list[tuple[Any, Sequence, dict]] = []

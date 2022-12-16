@@ -20,7 +20,7 @@ Global option flags for util library.
 """
 
 import os
-from typing import Optional, Collection
+from typing import Collection
 
 
 def _env_boolean(name: str) -> bool:
@@ -39,12 +39,13 @@ class Options:
     """
 
     def __init__(self):
+        """Options constructor."""
         # None for booleans indicate that initialization hasn't taken place.
-        self._verbose: Optional[bool] = None
-        self._debug: Optional[bool] = None
-        self._dry_run: Optional[bool] = None
-        self._pause: Optional[bool] = None
-        self._keep_files: Optional[bool] = None
+        self._verbose: bool | None = None
+        self._debug: bool | None = None
+        self._dry_run: bool | None = None
+        self._pause: bool | None = None
+        self._keep_files: bool | None = None
         self._message_indent = '   '
         self._column_separator = '  '
         self._env_verbose: bool = _env_boolean('JIIG_VERBOSE')
@@ -202,11 +203,11 @@ class Options:
 
         :param other: other Options instance to copy from
         """
-        self._verbose: Optional[bool] = other._verbose
-        self._debug: Optional[bool] = other._debug
-        self._dry_run: Optional[bool] = other._dry_run
-        self._pause: Optional[bool] = other._pause
-        self._keep_files: Optional[bool] = other._keep_files
+        self._verbose: bool | None = other._verbose
+        self._debug: bool | None = other._debug
+        self._dry_run: bool | None = other._dry_run
+        self._pause: bool | None = other._pause
+        self._keep_files: bool | None = other._keep_files
         self._message_indent = other._message_indent
         self._column_separator = other._column_separator
 

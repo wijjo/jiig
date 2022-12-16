@@ -26,10 +26,11 @@ import sys
 from contextlib import contextmanager
 from typing import Sequence, Any
 
-from ....util.log import Logger
-from ....util.general import make_list, DefaultValue
-from ....util.repetition import Repetition
-from ....util.python import format_call_string
+from jiig.util.collections import make_list
+from jiig.util.default import DefaultValue
+from jiig.util.log import Logger
+from jiig.util.repetition import Repetition
+from jiig.util.python import format_call_string
 
 from ..cli_types import CLIError, CLIPreliminaryResults, CLIResults, CLIOptions
 from ..cli_command import CLICommand
@@ -177,9 +178,11 @@ class _ArgumentParser(argparse.ArgumentParser):
             sys.exit(2)
 
     def format_usage(self):
+        """Format usage message."""
         return f'{self.see_help_message}{os.linesep}'
 
     def format_help(self):
+        """Format help message."""
         return super().format_help()
 
     def _dump(self, method_name, *args, **kwargs):
@@ -313,25 +316,26 @@ class Implementation(CLIImplementation):
             kwargs['default'] = default.value
         if choices:
             kwargs['choices'] = choices
-        # Convert and validate repetition to make an `nargs` value.
-        if repeat is None:
-            if default is not None:
-                kwargs['nargs'] = '?'
-        else:
-            if repeat.minimum is None or repeat.minimum == 0:
-                if repeat.maximum is None:
-                    kwargs['nargs'] = '*'
-                elif repeat.maximum == 1:
+        # Convert and validate positional argument repetition to make an `nargs` value.
+        if flags is None:
+            if repeat is None:
+                if default is not None:
                     kwargs['nargs'] = '?'
-            elif repeat.minimum == 1:
-                if repeat.maximum is None:
-                    kwargs['nargs'] = '+'
-            elif repeat.minimum > 0:
-                if repeat.minimum == repeat.maximum:
-                    kwargs['nargs'] = repeat.minimum
-            if 'nargs' not in kwargs:
-                logger.error(f'Bad repeat range for "{command_name}", field "{name}".',
-                             (repeat.minimum, repeat.maximum))
+            else:
+                if repeat.minimum is None or repeat.minimum == 0:
+                    if repeat.maximum is None:
+                        kwargs['nargs'] = '*'
+                    elif repeat.maximum == 1:
+                        kwargs['nargs'] = '?'
+                elif repeat.minimum == 1:
+                    if repeat.maximum is None:
+                        kwargs['nargs'] = '+'
+                elif repeat.minimum > 0:
+                    if repeat.minimum == repeat.maximum:
+                        kwargs['nargs'] = repeat.minimum
+                if 'nargs' not in kwargs:
+                    logger.error(f'Bad repeat range for "{command_name}", field "{name}".',
+                                 (repeat.minimum, repeat.maximum))
         # Add the argument to argparse.
         parser.add_argument(*make_list(flags), **kwargs)
 

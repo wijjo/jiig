@@ -23,13 +23,20 @@ from shutil import get_terminal_size
 from textwrap import wrap
 from typing import Iterator, Sequence, Any
 
-from .footnotes import FootnoteBuilder, NotesList, NotesDict
-from .general import DefaultValue, make_list
+from .collections import make_list
+from .default import DefaultValue
+from jiig.util.text.footnotes import FootnoteBuilder, NotesList, NotesDict
 from .repetition import Repetition
 
 
 class Footnote:
+    """Footnote data."""
     def __init__(self, text: str):
+        """
+        Footnote constructor.
+
+        :param text: footnote text
+        """
         self.text = text.strip()
         self.option_flags: list[str] = []
         self.argument_dests: list[str] = []
@@ -37,6 +44,7 @@ class Footnote:
 
 @dataclass
 class HelpCommandData:
+    """Help data for command."""
     name: str
     help_text: str
     is_secondary: bool = False
@@ -47,6 +55,7 @@ class HelpCommandData:
 
 @dataclass
 class HelpOption:
+    """Help data for option."""
     name: str
     description: str = None
     flags: list[str] = None
@@ -61,6 +70,7 @@ class HelpOption:
 
 @dataclass
 class HelpArgument:
+    """Help data for argument."""
     name: str
     description: str = None
     repeat: Repetition = None
@@ -152,6 +162,7 @@ class _HelpBlockFormatter:
 
 
 class HelpFormatter:
+    """Help formatter."""
 
     def __init__(self,
                  program_name: str,

@@ -4,10 +4,12 @@ task mytask module
 Refer to the documentation for more information about Task functions.
 """
 
-import jiig
+from jiig import fields
+from jiig.task import task
+from jiig.runtime import Runtime
 
 
-@jiig.task(
+@task(
     cli={
         'options': {
             'template_bool_option': '-b',
@@ -16,10 +18,10 @@ import jiig
     }
 )
 def mytask(
-    runtime: jiig.Runtime,
-    template_bool_option: jiig.f.boolean(),
-    template_string_option: jiig.f.text(),
-    template_argument_positional: jiig.f.text(),
+    runtime: Runtime,
+    template_bool_option: fields.boolean(),
+    template_string_option: fields.text(),
+    template_argument_positional: fields.text(),
 ):
     """
     mytask help description

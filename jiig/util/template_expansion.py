@@ -59,6 +59,7 @@ delimiters. It allows template files to retain conventional syntax, while making
 it a bit less likely for accidental substitutions to happen. "Word" expansion
 may only be specified through the _template.json configuration file.
 """
+
 import json
 import os
 import re
@@ -66,14 +67,28 @@ from dataclasses import dataclass
 from fnmatch import fnmatch
 from pathlib import Path
 from string import Template
-from typing import Optional, Sequence, cast, IO
+from typing import Sequence, cast
 
 from .exceptions import format_exception
-from .filesystem import check_file_exists, short_path, create_folder, copy_file, make_relative_path
-from .log import abort, log_topic, TopicLogger, log_block_begin, log_block_end, \
-    log_error, log_warning, log_message
+from .filesystem import (
+    check_file_exists,
+    copy_file,
+    create_folder,
+    make_relative_path,
+    short_path,
+)
+from .log import (
+    TopicLogger,
+    abort,
+    log_block_begin,
+    log_block_end,
+    log_error,
+    log_message,
+    log_topic,
+    log_warning,
+)
+from .messages import format_message_block
 from .options import OPTIONS
-from .python import format_message_block
 from .stream import open_text_stream
 
 TEMPLATE_FOLDER_SYMBOL_REGEX = re.compile(r'\(=(\w+)=\)')
@@ -88,7 +103,7 @@ TEMPLATE_EXTENSIONS_ALL = [TEMPLATE_EXTENSION, TEMPLATE_EXTENSION_EXE, TEMPLATE_
 # === Private interface.
 
 
-class _ExpansionError(Exception):
+class TemplateExpansionError(Exception):
     pass
 
 
@@ -97,7 +112,7 @@ class _ConfigExpansionItem:
     # Data directly extracted and scrubbed from configuration for an expansion
     path: str
     output_path: str
-    description: Optional[str]
+    description: str | None
     expansion: str
     executable: bool
 
@@ -105,8 +120,8 @@ class _ConfigExpansionItem:
 class _TemplateExpansionSpec:
 
     def __init__(self,
-                 output_path: str,
-                 description: Optional[str],
+                 output_path: Path,
+                 description: str | None,
                  expansion: str,
                  executable: bool,
                  ):
@@ -116,13 +131,13 @@ class _TemplateExpansionSpec:
         self.executable = executable
 
 
-def _get_template_folder_expansion_specs_by_path(template_folder: str,
+def _get_template_folder_expansion_specs_by_path(template_folder: Path,
                                                  symbols: dict,
                                                  ) -> dict[str, _TemplateExpansionSpec]:
-    config_path = os.path.join(template_folder, TEMPLATE_JSON)
+    config_path = template_folder / TEMPLATE_JSON
     expansion_specs_by_path: dict[str, _TemplateExpansionSpec] = {}
     for config_expansion in _get_configuration_expansions(config_path, symbols):
-        expansion_spec = _TemplateExpansionSpec(config_expansion.output_path,
+        expansion_spec = _TemplateExpansionSpec(Path(config_expansion.output_path),
                                                 config_expansion.description,
                                                 config_expansion.expansion,
                                                 config_expansion.executable)
@@ -130,28 +145,36 @@ def _get_template_folder_expansion_specs_by_path(template_folder: str,
     return expansion_specs_by_path
 
 
-def _read_configuration_json(config_path_or_stream: str | Path | IO,
-                             symbols: dict,
-                             ) -> object:
-    if not os.path.isfile(config_path_or_stream):
+def _expand_python_template_text(input_text: str, symbols: dict) -> str:
+    try:
+        return Template(input_text).substitute(symbols)
+    except KeyError as exc_key_error:
+        message = format_message_block('Missing template symbol.', symbol=exc_key_error)
+        raise TemplateExpansionError(message)
+
+
+def _read_configuration_json_file(config_path: Path,
+                                  symbols: dict,
+                                  ) -> object:
+    if not config_path.is_file():
         return {}
-    with open_text_stream(config_path_or_stream) as text_stream:
+    with open_text_stream(config_path) as text_stream:
         raw_text = text_stream.read()
         expanded_text = _expand_python_template_text(raw_text, symbols)
         try:
             return json.loads(expanded_text)
         except json.JSONDecodeError as exc:
-            abort(f'Failed to load configuration JSON: {config_path_or_stream}', exc)
+            abort(f'Failed to load configuration JSON: {config_path}', exc)
 
 
-def _get_configuration_expansions(config_path: str | Path,
+def _get_configuration_expansions(config_path: Path,
                                   symbols: dict,
                                   ) -> list[_ConfigExpansionItem]:
-    if not os.path.exists(config_path):
+    if not config_path.exists():
         return []
     expansion_items: list[_ConfigExpansionItem] = []
     with log_topic(f'"{config_path}" issues', delayed=True) as topic:
-        config_json = cast(dict, _read_configuration_json(config_path, symbols))
+        config_json = cast(dict, _read_configuration_json_file(config_path, symbols))
         config_templates = config_json.get('templates')
         if config_templates:
             if isinstance(config_templates, list):
@@ -201,7 +224,7 @@ def _get_configuration_expansions(config_path: str | Path,
     return expansion_items
 
 
-def _set_permissions(target_path: str, executable: bool = False):
+def _set_permissions(target_path: Path, executable: bool = False):
     if executable:
         chmod_command = f'chmod +x {target_path}'
         log_message('Set executable permission.', target=short_path(target_path))
@@ -216,32 +239,32 @@ def _set_permissions(target_path: str, executable: bool = False):
             log_message(chmod_command)
 
 
-def _simple_copy(source_path: str,
-                 target_path: str,
+def _simple_copy(source_path: Path,
+                 target_path: Path,
                  overwrite: bool = False,
                  ):
-    create_folder(os.path.dirname(target_path))
+    create_folder(target_path.parent)
     copy_file(source_path, target_path, overwrite=overwrite)
 
 
-def _expand_python_template(source_path: str | Path,
-                            target_path: str | Path,
-                            symbols: dict,
-                            ):
+def _expand_python_template_file(source_path: str | Path,
+                                 target_path: str | Path,
+                                 symbols: dict,
+                                 ):
     with open_text_stream(source_path) as input_stream:
-        create_folder(os.path.dirname(target_path))
+        create_folder(target_path.parent)
         if not OPTIONS.dry_run:
             with open(target_path, 'w', encoding='utf-8') as output_stream:
                 output_text = _expand_python_template_text(input_stream.read(), symbols)
                 output_stream.write(output_text)
 
 
-def _expand_regular_expressions(source_path: str | Path,
-                                target_path: str | Path,
-                                substitutions: list[tuple[re.Pattern, str]],
-                                ):
+def _file_expand_regular_expressions(source_path: str | Path,
+                                     target_path: str | Path,
+                                     substitutions: list[tuple[re.Pattern, str]],
+                                     ):
     with open_text_stream(source_path) as input_stream:
-        create_folder(os.path.dirname(target_path))
+        create_folder(target_path.parent)
         if not OPTIONS.dry_run:
             with open(target_path, 'w', encoding='utf-8') as output_stream:
                 output_text = input_stream.read()
@@ -290,61 +313,61 @@ def _expand_template_path(source_path: str,
     return expanded_name
 
 
-class _TemplateExpander:
+class _TemplateFileExpander:
     def __init__(self,
-                 source_root: str,
+                 source_root: Path,
                  overwrite: bool = False,
                  symbols: dict = None,
                  ):
-        if not os.path.exists(source_root):
+        if not source_root.exists():
             abort(f'Source template folder does not exist.',
                   source_root)
-        if not os.path.isdir(source_root):
+        if not source_root.is_dir():
             abort(f'Source template folder path exists, but is not a folder.',
                   source_root)
         self.source_root = source_root
         self.overwrite = overwrite
         self.symbols = symbols or {}
-        self.substitutions: Optional[list[tuple[re.Pattern, str]]] = None
+        self.substitutions: list[tuple[re.Pattern, str]] | None = None
         self.expansion_specs_by_path = _get_template_folder_expansion_specs_by_path(
             source_root, symbols)
         # Skipped file paths hard-coded for now to skip the configuration file.
         self.skipped_paths = [TEMPLATE_JSON]
 
     def expand_folder(self,
-                      target_root: str,
+                      target_root: Path,
                       sub_folder: str = None,
                       excludes: Sequence[str] = None,
                       includes: Sequence[str] = None,
                       ):
-        if os.path.exists(target_root) and not os.path.isdir(target_root):
+        if target_root.exists() and not target_root.is_dir():
             abort(f'Target folder path exists, but is not a folder.',
                   target_root)
         if sub_folder is None:
             source_folder = self.source_root
             target_folder = target_root
         else:
-            source_folder = os.path.join(self.source_root, sub_folder)
-            target_folder = os.path.join(target_root, sub_folder)
+            source_folder = self.source_root / sub_folder
+            target_folder = target_root / sub_folder
         log_block_begin(1, 'Expanding templates')
         log_message('Folders:', source=source_folder, target=target_folder)
         failed = False
         for visit_folder, visit_sub_folders, visit_file_names in os.walk(source_folder):
             relative_folder = make_relative_path(visit_folder, source_folder)
-            input_files: list[str] = []
+            input_files: list[Path] = []
             for file_name in visit_file_names:
-                relative_path = os.path.join(relative_folder, file_name)
-                if relative_path in self.skipped_paths:
+                relative_path = relative_folder / file_name
+                if str(relative_path) in self.skipped_paths:
                     continue
                 if includes is not None:
                     for include_pattern in includes:
-                        if fnmatch(relative_path, include_pattern):
+                        if fnmatch(str(relative_path), include_pattern):
                             break
                     else:
                         continue
                 if excludes is not None:
                     for exclude_pattern in excludes:
-                        if not fnmatch(relative_path, exclude_pattern):
+                        if not fnmatch(str(relative_path), exclude_pattern):
                             continue
                 input_files.append(relative_path)
             if input_files:
@@ -352,7 +375,7 @@ class _TemplateExpander:
                 for relative_path in input_files:
                     try:
                         self._expand_file(relative_path, target_root)
-                    except _ExpansionError as exc:
+                    except TemplateExpansionError as exc:
                         log_error(str(exc))
                         failed = True
                 log_block_end(2)
@@ -360,7 +383,7 @@ class _TemplateExpander:
         if failed:
             abort('Template expansion failed.')
 
-    def _expand_file(self, relative_path: str, target_root: str):
+    def _expand_file(self, relative_path: Path, target_root: Path):
 
         expansion_spec = self._get_expansion_spec(relative_path)
 
@@ -368,12 +391,12 @@ class _TemplateExpander:
         if expansion_spec.expansion == WORD_EXPANSION and self.substitutions is None:
             self.substitutions = _build_word_substitution_list(self.symbols)
 
-        source_path = os.path.join(self.source_root, relative_path)
-        target_path = os.path.join(target_root, expansion_spec.output_path)
+        source_path = self.source_root / relative_path
+        target_path = target_root / expansion_spec.output_path
 
-        if os.path.exists(target_path):
-            if not os.path.isfile(target_path):
-                raise _ExpansionError('Expansion target "{target_path}" exists, but is not a file')
+        if target_path.exists():
+            if not target_path.is_file():
+                raise TemplateExpansionError('Expansion target "{target_path}" exists, but is not a file')
             if not self.overwrite:
                 log_message(f'Skip existing file "{expansion_spec.output_path}".')
                 return
@@ -381,11 +404,11 @@ class _TemplateExpander:
         if not OPTIONS.dry_run:
             check_file_exists(source_path)
 
-        create_folder(os.path.dirname(target_path))
+        create_folder(target_path.parent)
 
         symbols = {
-            'source': relative_path,
-            'target': expansion_spec.output_path,
+            'source': str(relative_path),
+            'target': str(expansion_spec.output_path),
             'expansion method': expansion_spec.expansion,
         }
         if expansion_spec.description:
@@ -394,30 +417,31 @@ class _TemplateExpander:
 
         try:
             if expansion_spec.expansion == TEMPLATE_EXPANSION:
-                _expand_python_template(source_path, target_path, self.symbols)
+                _expand_python_template_file(source_path, target_path, self.symbols)
             elif expansion_spec.expansion == WORD_EXPANSION:
-                _expand_regular_expressions(source_path, target_path, self.substitutions)
+                _file_expand_regular_expressions(source_path, target_path, self.substitutions)
             else:
                 _simple_copy(source_path, target_path, overwrite=self.overwrite)
-        except (IOError, OSError, _ExpansionError) as exc:
-            if os.path.exists(target_path):
+        except (IOError, OSError, TemplateExpansionError) as exc:
+            if target_path.exists():
                 try:
                     os.remove(target_path)
                 except (IOError, OSError) as exc_remove:
                     log_warning('Unable to remove failed target file.',
                                 expansion_spec.output_path, exception=exc_remove)
-            if isinstance(exc, _ExpansionError):
+            if isinstance(exc, TemplateExpansionError):
                 raise
-            raise _ExpansionError(format_exception(exc))
+            raise TemplateExpansionError(format_exception(exc))
 
         _set_permissions(target_path, executable=expansion_spec.executable)
 
-    def _get_expansion_spec(self, relative_path: str) -> _TemplateExpansionSpec:
-        config_expansion_spec = self.expansion_specs_by_path.get(relative_path)
+    def _get_expansion_spec(self, relative_path: Path) -> _TemplateExpansionSpec:
+        config_expansion_spec = self.expansion_specs_by_path.get(str(relative_path))
         if config_expansion_spec:
             return config_expansion_spec
-        source_folder_path, source_file_name = os.path.split(relative_path)
-        target_file_name, extension = os.path.splitext(source_file_name)
+        source_folder_path = relative_path.parent
+        target_file_name = relative_path.stem
+        extension = relative_path.suffix
         expansion = DEFAULT_EXPANSION
         executable = False
         if extension not in TEMPLATE_EXTENSIONS_ALL:
@@ -427,18 +451,10 @@ class _TemplateExpander:
             target_file_name = '.' + target_file_name
         elif extension == TEMPLATE_EXTENSION_EXE:
             executable = True
-        output_path = os.path.join(source_folder_path, target_file_name)
+        output_path = source_folder_path / target_file_name
         generated_spec = _TemplateExpansionSpec(output_path, None, expansion, executable)
-        self.expansion_specs_by_path[relative_path] = generated_spec
+        self.expansion_specs_by_path[str(relative_path)] = generated_spec
         return generated_spec
-
-
-def _expand_python_template_text(input_text: str, symbols: dict) -> str:
-    try:
-        return Template(input_text).substitute(symbols)
-    except KeyError as exc_key_error:
-        raise _ExpansionError(format_message_block('Missing template symbol.',
-                                                   symbol=exc_key_error))
 
 
 # === Public interface.
@@ -452,9 +468,9 @@ ALL_EXPANSIONS = (TEMPLATE_EXPANSION, WORD_EXPANSION, COPY_EXPANSION)
 DEFAULT_EXPANSION = TEMPLATE_EXPANSION
 
 
-def expand_folder(source_root: str,
-                  target_root: str,
-                  sub_folder: str = None,
+def expand_folder(source_root: str | Path,
+                  target_root: str | Path,
+                  sub_folder: str | Path = None,
                   includes: Sequence[str] = None,
                   excludes: Sequence[str] = None,
                   overwrite: bool = False,
@@ -474,5 +490,9 @@ def expand_folder(source_root: str,
     :param overwrite: force overwriting of existing files if True
     :param symbols: symbols used for template expansion
     """
-    expander = _TemplateExpander(source_root, overwrite=overwrite, symbols=symbols)
+    if not isinstance(source_root, Path):
+        source_root = Path(source_root)
+    if not isinstance(target_root, Path):
+        target_root = Path(target_root)
+    expander = _TemplateFileExpander(source_root, overwrite=overwrite, symbols=symbols)
     expander.expand_folder(target_root, sub_folder=sub_folder, includes=includes, excludes=excludes)

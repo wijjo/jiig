@@ -50,7 +50,7 @@ def format_message_lines(text: Any, *args, **kwargs) -> Iterator[str]:
     def _generate_exception_lines(exc: Exception) -> Iterator[str]:
         exc_lines = format_exception(exc).split(os.linesep)
         if exc_lines:
-            exc_text = f'exception: {exc_lines[0]}'
+            exc_text = exc_lines[0]
             if string_file_name:
                 exc_text = exc_text.replace('<string>', string_file_name)
             yield exc_text

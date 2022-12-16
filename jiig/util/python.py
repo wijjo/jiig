@@ -27,21 +27,29 @@ from dataclasses import fields, is_dataclass, MISSING
 from pathlib import Path
 from inspect import isclass, isfunction, signature
 from types import ModuleType
-from typing import Optional, Type, Any, TypeVar, get_type_hints, get_args, Callable, IO
+from typing import Type, Any, TypeVar, get_type_hints, get_args, Callable, IO
 
-from .log import abort, log_error, log_message, log_warning
+from .default import DefaultValue
 from .filesystem import delete_folder, short_path
-from .general import DefaultValue
+from .log import abort, log_error, log_message, log_warning
 from .messages import format_message_block
 from .options import OPTIONS
 from .process import run
 from .stream import open_text_stream
-from .text import plural
+from .text.grammar import pluralize
 
 PYTHON_NATIVE_ENVIRONMENT_NAME = 'JIIG_NATIVE_PYTHON'
 
 
 def format_call_string(call_name: str, *args, **kwargs) -> str:
+    """
+    Format name and arguments with call syntax.
+
+    :param call_name: callable name
+    :param args: positional arguments
+    :param kwargs: keyword arguments
+    :return: formatted string
+    """
     returned = kwargs.pop('returned', None)
     parts = []
     if args:
@@ -56,25 +64,29 @@ def format_call_string(call_name: str, *args, **kwargs) -> str:
     return f'{call_name}({arg_body}){return_string}'
 
 
-def module_path_to_name(path: str) -> str:
+def module_path_to_name(path: str | Path) -> str:
     """
     Convert module path to name.
 
     :param path: module path
     :return: name (always returns something)
     """
-    names = [os.path.splitext(os.path.basename(path))[0]]
-    folder = os.path.dirname(path)
-    while os.path.exists(os.path.join(folder, '__init__.py')):
-        names.insert(0, os.path.basename(folder))
-        parent_folder = os.path.dirname(folder)
+    if not isinstance(path, Path):
+        path = Path(path)
+    names = [path.stem]
+    folder = path.parent
+    while (folder / '__init__.py').exists():
+        names.insert(0, folder.name)
+        parent_folder = folder.parent
         if parent_folder == folder:
             break
         folder = parent_folder
     return '.'.join(names)
 
 
-def import_module_path(module_path: str, module_name: str = None) -> ModuleType:
+def import_module_path(module_path: str | Path,
+                       module_name: str = None,
+                       ) -> ModuleType:
     """
     Dynamically import a module by name and path.
 
@@ -93,7 +105,7 @@ def import_module_path(module_path: str, module_name: str = None) -> ModuleType:
     return module
 
 
-def import_modules_from_folder(folder: str,
+def import_modules_from_folder(folder: str | Path,
                                package_name: str = None,
                                retry: bool = False,
                                ) -> list[str]:
@@ -105,14 +117,17 @@ def import_modules_from_folder(folder: str,
     :param retry: retry modules with ModuleNotFoundError exceptions if True
     :return: imported paths
     """
+    # Work with path strings here.
+    folder = str(folder)
     # Stage 1 - gather the list of module paths and names to import.
-    log_message(f'import_modules_from_folder({package_name}, {folder})', debug=True)
+    log_message(f'import_modules_from_folder({package_name}, {folder})',
+                debug=True)
     to_import: list[tuple[str, str]] = []
     imported: list[str] = []
     for walk_folder, _walk_sub_folders, walk_file_names in os.walk(folder):
         if os.path.basename(walk_folder).startswith('_'):
             continue
-        relative_folder = walk_folder[len(folder) + 1:]
+        relative_folder = walk_folder[len(str(folder)) + 1:]
         for file_name in walk_file_names:
             base_name, extension = os.path.splitext(file_name)
             if not base_name.startswith('_') and extension == '.py':
@@ -126,7 +141,7 @@ def import_modules_from_folder(folder: str,
                 module_name = '.'.join(package_parts)
                 to_import.append((module_name, module_path))
     # Stage 2 - attempt the imports and handle errors, optionally with retries.
-    retry_count: Optional[int] = None
+    retry_count: int | None = None
     exceptions: list[tuple[str, str, Exception]] = []
     while to_import:
         to_retry: list[tuple[str, str]] = []
@@ -189,18 +204,31 @@ def execute_source(path_or_stream: str | Path | IO,
             raise
 
 
-def build_virtual_environment(venv_folder: str,
+def build_virtual_environment(venv_folder: str | Path,
                               packages: list = None,
                               rebuild: bool = False,
-                              quiet: bool = False):
-    pip_path = os.path.join(venv_folder, 'bin', 'pip')
+                              quiet: bool = False,
+                              ):
+    """
+    Build virtual environment.
+
+    :param venv_folder: virtual environment folder path
+    :param packages: packages to install in the virtual environment
+    :param rebuild: force rebuild if True
+    :param quiet: suppress non-error messages if True
+    """
+    if not isinstance(venv_folder, Path):
+        venv_folder = Path(venv_folder)
+    pip_path = venv_folder / 'bin' / 'pip'
     venv_short_path = short_path(venv_folder, is_folder=True)
-    if os.path.exists(os.path.join(venv_folder, 'bin', 'python')):
+    if (venv_folder / 'bin' / 'python').exists():
         if not rebuild:
             if not quiet:
                 log_message('Virtual environment already exists.', venv_short_path)
             if packages:
-                install_missing_virtual_environment_packages(venv_folder, packages, quiet=quiet)
+                install_missing_virtual_environment_packages(venv_folder,
+                                                             packages,
+                                                             quiet=quiet)
             return
         delete_folder(venv_folder)
     log_message('Create virtual environment', venv_short_path)
@@ -219,13 +247,26 @@ def build_virtual_environment(venv_folder: str,
         run([pip_path, 'install'] + packages)
 
 
-def install_missing_virtual_environment_packages(venv_folder: str,
+def install_missing_virtual_environment_packages(venv_folder: str | Path,
                                                  packages: list[str],
-                                                 quiet: bool = False):
+                                                 quiet: bool = False,
+                                                 ):
+    """
+    Install missing virtual environment packages.
+
+    :param venv_folder: virtual environment folder path
+    :param packages: packages needed
+    :param quiet: suppress non-error messages if True
+    """
     if not packages:
         return
-    pip_path = os.path.join(venv_folder, 'bin', 'pip')
-    result = run([pip_path, 'list'], capture=True, quiet=quiet, run_always=True)
+    if not isinstance(venv_folder, Path):
+        venv_folder = Path(venv_folder)
+    pip_path = venv_folder / 'bin' / 'pip'
+    result = run([pip_path, 'list'],
+                 capture=True,
+                 quiet=quiet,
+                 run_always=True)
     installed = set()
     for line in result.stdout.split(os.linesep)[2:]:
         columns = line.split(maxsplit=1)
@@ -241,10 +282,20 @@ def install_missing_virtual_environment_packages(venv_folder: str,
     run(pip_args)
 
 
-def update_virtual_environment(venv_folder: str, packages: list = None):
-    pip_path = os.path.join(venv_folder, 'bin', 'pip')
+def update_virtual_environment(venv_folder: str | Path,
+                               packages: list = None,
+                               ):
+    """
+    Update packages and pip in virtual environment.
+
+    :param venv_folder: virtual environment folder path
+    :param packages: packages needed
+    """
+    if not isinstance(venv_folder, Path):
+        venv_folder = Path(venv_folder)
+    pip_path = venv_folder / 'bin' / 'pip'
     venv_short_path = short_path(venv_folder, is_folder=True)
-    if not os.path.isdir(venv_folder) or not os.path.isfile(pip_path):
+    if not venv_folder.is_dir() or not pip_path.is_file():
         abort('Virtual environment is missing or incomplete.', venv_short_path)
     log_message('Update virtual environment', venv_short_path)
     log_message('Upgrade pip in virtual environment.', verbose=True)
@@ -327,7 +378,7 @@ def symbols_to_dataclass(symbols: dict,
         if missing_names:
             if from_uppercase:
                 missing_names = map(str.upper, missing_names)
-            attribute_word = plural('attribute', missing_names)
+            attribute_word = pluralize('attribute', missing_names)
             message = format_message_block(f'{dc_type.__name__} data is missing'
                                            f' the following {attribute_word}:',
                                            *sorted(missing_names))
@@ -350,7 +401,7 @@ def symbols_to_dataclass(symbols: dict,
         else:
             unknown_keys.append(name)
     if unknown_keys:
-        log_warning(f'Unknown {plural("key", unknown_keys)} in {dc_type.__name__} source'
+        log_warning(f'Unknown {pluralize("key", unknown_keys)} in {dc_type.__name__} source'
                     f' dictionary: {" ".join(sorted(unknown_keys))}', symbols)
 
     try:
@@ -389,9 +440,13 @@ def module_to_dataclass(module: object,
                                 overflow=overflow)
 
 
-def load_configuration_script(script_path: str, **default_symbols) -> dict:
+def load_configuration_script(script_path: str | Path,
+                              **default_symbols,
+                              ) -> dict:
     """
     Load a Python syntax configuration script.
+
+    Obviously executing Python code is potentially unsafe.
 
     :param script_path: script path
     :param default_symbols: default symbols
@@ -399,7 +454,7 @@ def load_configuration_script(script_path: str, **default_symbols) -> dict:
     """
     symbols = dict(default_symbols)
     try:
-        with open(file=script_path) as script_file:
+        with open(script_path, encoding='utf-8') as script_file:
             exec(script_file.read(), symbols)
             return symbols
     except Exception as script_exc:
@@ -411,6 +466,7 @@ def load_configuration_script(script_path: str, **default_symbols) -> dict:
 
 class ExtractedField:
     """Annotation and default for dataclass or function-extracted field."""
+
     def __init__(self, name: str, hint: Any, default: DefaultValue = None):
         """
         ExtractedField constructor.

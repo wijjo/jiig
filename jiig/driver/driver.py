@@ -17,9 +17,11 @@
 
 """Base driver class."""
 
+from abc import ABC, abstractmethod
+from inspect import isabstract
 from typing import Sequence
 
-from ..registry import SelfRegisteringDriverBase
+from ..runtime import RuntimePaths
 from ..util.log import LogWriter
 
 from .driver_task import DriverTask
@@ -29,14 +31,20 @@ from .driver_options import DriverOptions
 IMPLEMENTATION_CLASS_NAME = 'Implementation'
 
 
-class Driver(SelfRegisteringDriverBase, skip_registration=True):
-    """Jiig driver base class."""
+class Driver(ABC):
+    """
+    Jiig driver base class.
+
+    Automatically registers concrete subclasses.
+    """
+
     supported_task_hints: list[str] = []
     supported_field_hints: list[str] = []
 
     def __init__(self,
                  name: str,
                  description: str,
+                 paths: RuntimePaths,
                  options: DriverOptions = None,
                  ):
         """
@@ -44,13 +52,24 @@ class Driver(SelfRegisteringDriverBase, skip_registration=True):
 
         :param name: tool name
         :param description: tool description
+        :param paths: runtime paths
         :param options: various driver options
         """
         self.name = name
         self.description = description
+        self.paths = paths
         self.options = options or DriverOptions()
         self.enabled_global_options: list[str] = []
         self.phase = 'construction'
+
+    def __init_subclass__(cls, /, **kwargs):
+        """Self-register Driver subclasses (only)."""
+        super().__init_subclass__(**kwargs)
+        if not isabstract(cls):
+            # Import internal dependency locally so that this module could be
+            # imported by the root package, if desired.
+            from jiig.internal.registration.drivers import DRIVER_REGISTRY
+            DRIVER_REGISTRY.register(cls)
 
     def initialize_driver(self,
                           command_line_arguments: Sequence[str],
@@ -64,6 +83,7 @@ class Driver(SelfRegisteringDriverBase, skip_registration=True):
         self.phase = 'driver-initialization'
         return self.on_initialize_driver(command_line_arguments)
 
+    @abstractmethod
     def on_initialize_driver(self,
                              command_line_arguments: Sequence[str],
                              ) -> DriverInitializationData:
@@ -73,7 +93,7 @@ class Driver(SelfRegisteringDriverBase, skip_registration=True):
         :param command_line_arguments: command line arguments
         :return: driver initialization data
         """
-        raise NotImplementedError
+        ...
 
     def initialize_application(self,
                                initialization_data: DriverInitializationData,
@@ -89,6 +109,7 @@ class Driver(SelfRegisteringDriverBase, skip_registration=True):
         self.phase = 'application-initialization'
         return self.on_initialize_application(initialization_data, root_task)
 
+    @abstractmethod
     def on_initialize_application(self,
                                   initialization_data: DriverInitializationData,
                                   root_task: DriverTask,
@@ -100,7 +121,7 @@ class Driver(SelfRegisteringDriverBase, skip_registration=True):
         :param root_task: root task
         :return: driver application data
         """
-        raise NotImplementedError
+        ...
 
     def provide_help(self,
                      root_task: DriverTask,
@@ -115,6 +136,7 @@ class Driver(SelfRegisteringDriverBase, skip_registration=True):
         """
         self.on_provide_help(root_task, list(names), show_hidden)
 
+    @abstractmethod
     def on_provide_help(self,
                         root_task: DriverTask,
                         names: list[str],
@@ -126,12 +148,13 @@ class Driver(SelfRegisteringDriverBase, skip_registration=True):
         :param names: name parts (task name stack)
         :param show_hidden: show hidden task help if True
         """
-        raise NotImplementedError
+        ...
 
+    @abstractmethod
     def get_log_writer(self) -> LogWriter:
         """
         Required override to provide a log writer.
 
         :return: log writer
         """
-        raise NotImplementedError
+        ...

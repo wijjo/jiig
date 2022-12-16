@@ -20,7 +20,7 @@ import shlex
 import subprocess
 import sys
 from dataclasses import dataclass
-from typing import Optional, Callable, Any, NoReturn
+from typing import Callable, Any
 
 import PySimpleGUI as Gui
 
@@ -31,7 +31,7 @@ class ActionButtonSpec:
     default: bool
 
 
-HandlerFunction = Callable[['AdminPanel', Any], NoReturn]
+HandlerFunction = Callable[['AdminPanel', Any], None]
 
 
 # noinspection PyUnresolvedReferences
@@ -56,7 +56,7 @@ class AdminPanel:
 
     def add_action(self,
                    name: str,
-                   handler: Callable[['AdminPanel', Any], NoReturn] = None):
+                   handler: Callable[['AdminPanel', Any], None] = None):
         action_name = f'{name[0].upper()}{name[1:].lower()}'
         self.actions.append(action_name)
         if handler:

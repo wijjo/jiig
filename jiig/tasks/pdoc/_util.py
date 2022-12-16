@@ -22,14 +22,14 @@ Since pdoc is a third party library, this module guards against import errors by
 loading the library only as needed.
 """
 
-from typing import Optional, Iterator
+from typing import Iterator
 
 from jiig.util.stream import OutputRedirector
 
 IGNORED_ERROR_TEXT = 'You are running a VERY old version of tkinter'
 
 
-def _output_filter(line: str, is_error: bool = False) -> Optional[str]:
+def _output_filter(line: str, is_error: bool = False) -> str | None:
     if is_error and line.find(IGNORED_ERROR_TEXT) != -1:
         return None
     return line

@@ -28,7 +28,8 @@ import json
 import os
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Optional, Iterator, Any, Iterable
+from pathlib import Path
+from typing import Iterator, Any, Iterable
 
 from .log import abort, log_error, log_message, log_warning
 from .process import shell_command_string
@@ -46,8 +47,6 @@ from .stream import read_json_file
 #   },
 #   ...
 # }
-
-DEFAULT_ALIASES_PATH = os.path.expanduser('~/.jiig-aliases')
 
 
 @dataclass
@@ -69,7 +68,7 @@ class _AliasCatalogScrubber:
             self._error('Entire alias map is not a dictionary.')
         self.scrubbed_data = catalog
 
-    def _scrub_tool_data(self, tool_name: str, tool_data: Any) -> Optional[dict]:
+    def _scrub_tool_data(self, tool_name: str, tool_data: Any) -> dict | None:
         scrubbed_tool_data = {}
         if isinstance(tool_data, dict):
             for alias_name in sorted(tool_data.keys()):
@@ -80,7 +79,7 @@ class _AliasCatalogScrubber:
             self._error(f'Alias tool "{tool_name}" data is not a dictionary.')
         return scrubbed_tool_data or None
 
-    def _scrub_alias_data(self, alias_name: str, alias_data: Any) -> Optional[dict]:
+    def _scrub_alias_data(self, alias_name: str, alias_data: Any) -> dict | None:
         scrubbed_alias_data = {}
         if isinstance(alias_data, dict):
             command = alias_data.get('command')
@@ -103,7 +102,7 @@ class _AliasCatalogScrubber:
 
 @dataclass
 class Alias:
-    """Returned alias data."""
+    """Alias data."""
     # The name is the long/fully-expanded name.
     name: str
     description: str
@@ -112,38 +111,65 @@ class Alias:
 
     @property
     def command_string(self) -> str:
+        """
+        Full shell command string.
+
+        :return: shell-quoted command string
+        """
         return shell_command_string(*self.command)
 
     @property
     def short_name(self) -> str:
+        """
+        Shortened alias name.
+
+        :return: shortened alias name
+        """
         if self._short_name is None:
             self._short_name = shrink_alias_name(self.name)
         return self._short_name
 
     @property
     def label(self) -> str:
+        """
+        Alias label.
+
+        :return: alias label
+        """
         return os.path.basename(self.name)
 
     @property
-    def path(self) -> Optional[str]:
+    def path(self) -> str | None:
+        """
+        Alias folder path.
+
+        :return: alias folder path
+        """
         return os.path.dirname(self.name) or None
 
     @property
-    def short_path(self) -> Optional[str]:
+    def short_path(self) -> str | None:
+        """
+        Shortened alias folder path.
+
+        :return: shortened alias folder path
+        """
         return os.path.dirname(self.short_name) or None
 
 
-def is_alias_name(name: str) -> bool:
+def is_alias_name(name: str | Path) -> bool:
     """
     Check if name is an alias.
 
     :param name: name to check
     :return: True if it is an alias
     """
-    return name[0] in (os.path.sep, '.', '~')
+    return str(name)[0] in (os.path.sep, '.', '~')
 
 
-def expand_alias_name(short_name: str, checked: bool = False) -> Optional[str]:
+def expand_alias_name(short_name: str,
+                      checked: bool = False,
+                      ) -> str | None:
     """
     Expand scoped alias name.
 
@@ -217,9 +243,17 @@ class AliasCatalog:
     flushing of changes to an aliases file.
     """
 
-    def __init__(self, tool_name: str, catalog_path: str):
+    def __init__(self, tool_name: str, catalog_path: str | Path):
+        """
+        AliasCatalog constructor.
+
+        :param tool_name: tool name
+        :param catalog_path:
+        """
         self.tool_name = tool_name
         self.catalog_path = catalog_path
+        if not isinstance(self.catalog_path, Path):
+            self.catalog_path = Path(self.catalog_path)
         self.catalog = {}
         self.modified = False
         self.disable_saving = False
@@ -242,7 +276,7 @@ class AliasCatalog:
             self._sort_catalog()
         return self._iterate_aliases()
 
-    def get_alias(self, alias_name: str) -> Optional[Alias]:
+    def get_alias(self, alias_name: str) -> Alias | None:
         """
         Get alias by name.
 
@@ -264,7 +298,7 @@ class AliasCatalog:
         """Load and validate the aliases file."""
         self.disable_saving = False
         self.modified = False
-        if os.path.exists(self.catalog_path):
+        if self.catalog_path.exists():
             raw_catalog = read_json_file(self.catalog_path)
             scrubber = _AliasCatalogScrubber(raw_catalog)
             self.catalog = scrubber.scrubbed_data
@@ -429,7 +463,7 @@ class AliasCatalog:
 
 @contextmanager
 def open_alias_catalog(tool_name: str,
-                       catalog_path: str = None,
+                       catalog_path: str | Path,
                        ) -> Iterator[AliasCatalog]:
     """
     Opens an alias catalog.
@@ -444,5 +478,5 @@ def open_alias_catalog(tool_name: str,
     :param catalog_path: path to catalog file (defaults to default catalog path)
     :return: open catalog context manager
     """
-    with AliasCatalog(tool_name, catalog_path or DEFAULT_ALIASES_PATH) as catalog:
+    with AliasCatalog(tool_name, catalog_path) as catalog:
         yield catalog

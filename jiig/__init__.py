@@ -17,22 +17,21 @@
 
 """
 Jiig library.
-
-TODO: <more library documentation goes here>
 """
 
-# Key types and functions exposed at the top level.
-from .decorators import task
-from .driver import Driver, DriverTask
-from .contexts import Context, ActionContext
-from .registry import AssignedTask, Field, ArgumentAdapter, \
-    Runtime, RuntimeHelpGenerator, Tool, ToolOptions, JIIG_VENV_ROOT
+# Top-level imports to allow task implementations to just import jiig. These
+# must have minimal dependencies in order to avoid inadvertent circular imports.
+from .action_context import ActionContext
+from .context import Context
+from .runtime import Runtime
 from .startup import main
+from .task import task
+from .tool import Tool
 from .util.options import OPTIONS
 from .util.script import Script
 
 # Top level public modules and their shortened aliases.
+from . import adapters
 from . import adapters as a
+from . import fields
 from . import fields as f
-from . import contexts as c
-from . import adapters, fields, contexts, driver, util, tasks

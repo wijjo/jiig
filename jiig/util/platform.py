@@ -23,9 +23,9 @@ import platform
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Optional, Sequence
+from typing import Sequence
 
-from .general import make_list
+from .collections import make_list
 from .log import abort
 
 
@@ -37,7 +37,7 @@ class BaseSystemPackage(ABC):
         ...
 
     @abstractmethod
-    def get_check_executable(self, platform_name: str) -> Optional[str]:
+    def get_check_executable(self, platform_name: str) -> str | None:
         ...
 
 
@@ -50,7 +50,7 @@ class SystemPackage(BaseSystemPackage):
     def get_packages(self, platform_name: str) -> list[str]:
         return make_list(self.packages)
 
-    def get_check_executable(self, platform_name: str) -> Optional[str]:
+    def get_check_executable(self, platform_name: str) -> str | None:
         return self.check_executable
 
 
@@ -61,7 +61,7 @@ class DevelopmentToolPackageBundle(BaseSystemPackage):
     def get_packages(self, platform_name: str) -> list[str]:
         return DEVELOPMENT_PACKAGES[platform_name]
 
-    def get_check_executable(self, platform_name: str) -> Optional[str]:
+    def get_check_executable(self, platform_name: str) -> str | None:
         return 'gcc'
 
 
@@ -72,7 +72,7 @@ class VimPackageBundle(BaseSystemPackage):
         # TODO: Adapt for neovim, plugins, etc..
         return ['vim', 'vim-doc']
 
-    def get_check_executable(self, platform_name: str) -> Optional[str]:
+    def get_check_executable(self, platform_name: str) -> str | None:
         return 'vim'
 
 
@@ -83,14 +83,14 @@ class ZshPackageBundle(BaseSystemPackage):
         # TODO: Adapt for plugins and other options.
         return ['zsh', 'zsh-doc']
 
-    def get_check_executable(self, platform_name: str) -> Optional[str]:
+    def get_check_executable(self, platform_name: str) -> str | None:
         return 'zsh'
 
 
 @dataclass
 class PackageManager:
     install_command: str
-    update_command: Optional[str]
+    update_command: str | None
     root_required: bool
 
 
@@ -181,7 +181,7 @@ DEVELOPMENT_PACKAGES: dict[str, list[str]] = {
 
 def get_package_manager(package_manager_name: str,
                         checked: bool = False,
-                        ) -> Optional[PackageManager]:
+                        ) -> PackageManager | None:
     """
     Look up package manager by name.
 
@@ -196,7 +196,7 @@ def get_package_manager(package_manager_name: str,
 
 
 def get_working_platform(checked: bool = False,
-                         ) -> Optional[Platform]:
+                         ) -> Platform | None:
     """
     Look up working platform information.
 
@@ -214,7 +214,7 @@ def get_working_platform(checked: bool = False,
 
 def get_platform(platform_name: str,
                  checked: bool = False,
-                 ) -> Optional[Platform]:
+                 ) -> Platform | None:
     """
     Look up platform information by name.
 

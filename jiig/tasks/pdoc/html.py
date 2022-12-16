@@ -48,8 +48,8 @@ def html(
     :param runtime: Jiig runtime API.
     :param force: Overwrite existing files.
     """
-    builder = PdocBuilder(runtime.tool.doc_api_packages,
-                          runtime.tool.doc_api_packages_excluded)
+    builder = PdocBuilder(runtime.meta.doc_api_packages,
+                          runtime.meta.doc_api_packages_excluded)
     if not force:
         for module in builder.iterate_modules():
             path = _module_path(module)
@@ -57,10 +57,10 @@ def html(
                 if not os.path.isfile(path):
                     runtime.abort(f'Output path exists, but is not a file.', path)
                 runtime.abort(f'One or more output files exist in the'
-                              f' output folder "{runtime.tool.doc_folder}".',
+                              f' output folder "{runtime.paths.doc}".',
                               'Use -f or --force to overwrite.')
     for module in builder.iterate_modules():
-        path = os.path.join(runtime.tool.doc_folder,
+        path = os.path.join(runtime.paths.doc,
                             *module.url().split('/')[1:])
         create_folder(os.path.dirname(path), quiet=True)
         try:

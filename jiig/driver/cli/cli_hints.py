@@ -17,7 +17,7 @@
 
 """CLI hints."""
 
-from ...util.general import make_list
+from ...util.collections import make_list
 from ...util.log import log_error
 
 CLI_HINT_ROOT_NAME = 'cli'

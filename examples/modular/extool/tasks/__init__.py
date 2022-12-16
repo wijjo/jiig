@@ -1,11 +1,12 @@
-import jiig
+from jiig.task import task
+from jiig.runtime import Runtime
 
 from . import calc, case, words
 
 
 # noinspection PyUnusedLocal
-@jiig.task(tasks=(calc, case, words))
-def root(runtime: jiig.Runtime):
+@task(tasks=(calc, case, words))
+def root(runtime: Runtime):
     """
     top level tasks
 

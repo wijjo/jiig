@@ -15,15 +15,19 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Network utilities."""
+"""
+Network utilities.
+"""
+
 import json
 import os
 import re
 from dataclasses import dataclass
+from typing import Any, Hashable, Callable
 from urllib.error import URLError
 from urllib.request import urlopen, Request
 
-from .json import JSONDict
+from .collections import AttributeDictionary
 from .log import abort
 from .options import OPTIONS
 from .process import run, pipe
@@ -134,7 +138,7 @@ def download_text(url_or_request: str | Request,
 def download_json(url_or_request: str | Request,
                   headers: dict = None,
                   timeout: float = None,
-                  ) -> JSONDict:
+                  ) -> AttributeDictionary:
     """
     Download JSON data from URL.
 
@@ -144,13 +148,12 @@ def download_json(url_or_request: str | Request,
     :return: downloaded and decoded JSON data
     """
     try:
-        return JSONDict(
-            json.loads(
-                download_text(url_or_request,
-                              headers=headers,
-                              timeout=timeout),
-            ),
-        )
+        json_text = download_text(url_or_request, headers=headers, timeout=timeout)
+        json_data = json.loads(json_text)
+        if isinstance(json_data, list):
+            # A little hack-y, but does leverage attribute_dictionary() for a list.
+            return AttributeDictionary.new({'wrapped': json_data}).wrapped
+        return AttributeDictionary.new(json_data)
     except json.JSONDecodeError as exc:
         abort(f'Failed to parse JSON data from URL: {url_or_request}', exc)
 
@@ -224,3 +227,141 @@ def is_ip_address(possible_ip_addr: str) -> bool:
     :return: True if it looks like an IP address
     """
     return bool(IP_ADDRESS_REGEX.match(possible_ip_addr))
+
+
+class NoStateCls:
+    """Class for special NoState instance."""
+    pass
+
+
+NoState = NoStateCls()
+
+
+class ElementScanner:
+    """HTML element scanner."""
+
+    def __init__(self,
+                 tag: str,
+                 style_classes: set[str],
+                 text_pattern: re.Pattern,
+                 function: Callable):
+        """
+        HTML element scanner constructor.
+
+        :param tag: case-insensitive tag literal for filtering elements
+        :param style_classes: style class regex patterns
+        :param text_pattern: regular expression for searching the inner text block
+        :param function: callback function
+        """
+        self.tag = tag
+        self.style_classes = style_classes
+        self.text_pattern = text_pattern
+        self.function = function
+
+
+class HTMLScanner:
+    """Base class for awk-like web HTML scanners."""
+
+    scanners: dict[Any, list[ElementScanner]] = None
+
+    def __init__(self):
+        """HTML scanner constructor."""
+        self._state = None
+
+    @classmethod
+    def match(cls,
+              tag: str = None,
+              style_class: str = None,
+              text: str = None,
+              state: Any = None):
+        """
+        Decorator for methods that participate in HTML scanning and extraction.
+
+        :param tag: case-insensitive tag literal for filtering elements
+        :param style_class: style class regex patterns
+        :param text: regular expression for searching the inner text block
+        :param state: required state if set, or all states if not
+        """
+        if cls.scanners is None:
+            cls.scanners = {}
+
+        def _inner(function: Callable) -> Callable:
+            element_scanner = ElementScanner(
+                tag,
+                set(style_class.split()),
+                re.compile(text),
+                function)
+            cls.scanners.setdefault(state, []).append(element_scanner)
+            return function
+
+        return _inner
+
+    def _call_line_handlers(self, line: str, state: Any | None) -> bool:
+        for matcher, handler in self.scanners.get(state, []):
+            match = matcher.match(line)
+            if match:
+                handler(self, match)
+        # TODO
+        return False
+
+    def scan(self,
+             url_or_request: str | Request,
+             headers: dict = None,
+             timeout: float = None,
+             state: Any = NoState,
+             ):
+        """
+        Scan an HTML string, file, stream, or URL.
+
+        :param url_or_request: HTML input URL or Request object
+        :param headers: optional HTML headers
+        :param timeout: timeout in seconds when downloading URL or Request
+        :param state: next state value
+        :return: self for chaining
+        """
+        text = download_text(url_or_request, headers=headers, timeout=timeout)
+        if state is not NoState:
+            self.set_state(state)
+        self.begin()
+        try:
+            for line in text.split(os.linesep):
+                for matcher, handler in self.scanners.get(self._state, []):
+                    match = matcher.match(line)
+                    if match:
+                        handler(self, match)
+        except StopIteration:
+            pass
+        # Make it chainable for one-liners.
+        return self
+
+    def end_scan(self):
+        """Call to end in-progress scan."""
+        raise StopIteration
+
+    def begin(self, *args, **kwargs):
+        """
+        Begin scan.
+
+        :param args: positional arguments
+        :param kwargs: keyword arguments
+        """
+        pass
+
+    def get_state(self) -> Hashable:
+        """
+        Get scan state.
+
+        :return: state
+        """
+        return self._state
+
+    def set_state(self, state: Hashable):
+        """
+        Set state.
+
+        :param state: state
+        """
+        if state not in self.scanners:
+            raise RuntimeError(f'State {state} is not supported by '
+                               f'parser: {self.__class__.__name__}')
+        self._state = state

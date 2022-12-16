@@ -29,7 +29,7 @@ def root(runtime: jiig.Runtime):
 
     :param runtime: Jiig runtime API.
     """
-    if not runtime.tool.pip_packages and not runtime.tool.tool_options.venv_required:
+    if not runtime.meta.pip_packages and not runtime.options.venv_required:
         runtime.abort(f'A virtual environment is not required.')
-    if not runtime.tool.venv_folder:
+    if not runtime.paths.venv:
         runtime.abort(f'Virtual environment folder (venv_folder) is not set.')

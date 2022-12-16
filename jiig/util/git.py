@@ -35,7 +35,9 @@ def get_repo_url(repo_folder: str = None) -> str:
     if repo_folder is None:
         repo_folder = os.getcwd()
     with temporary_working_folder(repo_folder):
-        return run(['git', 'config', '--get', 'remote.origin.url'], capture=True).stdout.strip()
+        return run(['git', 'config', '--get', 'remote.origin.url'],
+                   capture=True,
+                   ).stdout.strip()
 
 
 def repo_name_from_url(url: str) -> str:

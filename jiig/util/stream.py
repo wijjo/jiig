@@ -29,7 +29,7 @@ from io import StringIO
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from types import TracebackType
-from typing import IO, Iterator, Any, AnyStr, Optional, Callable, Iterable, Type
+from typing import IO, Iterator, Any, AnyStr, Callable, Iterable, Type
 
 from .log import abort
 from .filesystem import create_folder
@@ -112,7 +112,7 @@ class OutputRedirector:
     """
 
     def __init__(self,
-                 line_filter: Callable[[str, bool], Optional[str]] = None,
+                 line_filter: Callable[[str, bool], str | None] = None,
                  auto_flush: bool = False,
                  ):
         """
@@ -123,12 +123,12 @@ class OutputRedirector:
         :param auto_flush: automatically flush captured output
         """
         self._line_filter = line_filter
-        self._stdout_save: Optional[IO] = None
-        self._stderr_save: Optional[IO] = None
-        self._stdout_stream: Optional[IO] = None
-        self._stderr_stream: Optional[IO] = None
-        self._stdout_text: Optional[str] = None
-        self._stderr_text: Optional[str] = None
+        self._stdout_save: IO | None = None
+        self._stderr_save: IO | None = None
+        self._stdout_stream: IO | None = None
+        self._stderr_stream: IO | None = None
+        self._stdout_text: str | None = None
+        self._stderr_text: str | None = None
         self._auto_flush = auto_flush
 
     @property
@@ -234,7 +234,9 @@ class OutputRedirector:
         self.end_capture()
 
 
-def open_input_file(path: str, binary: bool = False) -> IO:
+def open_input_file(path: str | Path,
+                    binary: bool = False,
+                    ) -> IO:
     """
     Convenient opening of text or binary files for reading.
 
@@ -257,7 +259,7 @@ class OutputFile(IO):
     Generally not used directly. It is returned by stream.open_output_file().
     """
 
-    def __init__(self, open_file: IO, path: Optional[str | Path]):
+    def __init__(self, open_file: IO, path: str | Path | None):
         """
         Output file constructor.
 
@@ -265,9 +267,7 @@ class OutputFile(IO):
         :param path: file path
         """
         self.open_file = open_file
-        self.path = path
-        if not isinstance(self.path, Path):
-            self.path = Path(self.path)
+        self.path = path if isinstance(path, Path) else Path(path)
 
     def close(self):
         """Close the file"""
@@ -342,10 +342,10 @@ class OutputFile(IO):
         return self
 
     def __exit__(self,
-                 t: Optional[Type[BaseException]],
-                 value: Optional[BaseException],
-                 traceback: Optional[TracebackType],
-                 ) -> Optional[bool]:
+                 t: Type[BaseException] | None,
+                 value: BaseException | None,
+                 traceback: TracebackType | None,
+                 ) -> bool | None:
         """Context manager support. See IO.__exit__()."""
         return self.open_file.__exit__(t, value, traceback)
 

@@ -22,10 +22,11 @@ Jiig argument adapters, converters, etc..
 import base64
 import binascii
 import os
+from pathlib import Path
 from time import mktime
 from typing import Any
 
-from .registry import ArgumentAdapter
+from .types import ArgumentAdapter
 from .util.date_time import parse_date_time, parse_time_interval, apply_date_time_delta_string
 
 
@@ -96,51 +97,56 @@ def num_limit(minimum: float | None,
     return _number_range_inner
 
 
-def path_exists(value: str) -> str:
+def path_exists(value: str | Path) -> str:
     """
     Adapter that checks if a path exists.
 
     :param value: file or folder path
     :return: unchanged path
     """
-    if not os.path.exists(value):
+    if not os.path.exists(str(value)):
         raise ValueError(f'path "{value}" does not exist')
     return value
 
 
-def path_expand_user(value: str) -> str:
+def path_expand_user(value: str | Path) -> str | Path:
     """
     Adapter that expands a user path, e.g. that starts with "~/".
 
     :param value: path string
     :return: expanded path string
     """
+    if isinstance(value, Path):
+        return value.expanduser()
     return os.path.expanduser(value)
 
 
-def path_expand_environment(value: str) -> str:
+def path_expand_environment(value: str | Path) -> str | Path:
     """
     Adapter that expands a path with environment variables.
 
     :param value: path string
     :return: expanded path string
     """
-    return os.path.expandvars(value)
+    expanded = os.path.expandvars(str(value))
+    if isinstance(value, Path):
+        expanded = Path(expanded)
+    return expanded
 
 
-def path_is_file(value: str) -> str:
+def path_is_file(value: str | Path) -> str | Path:
     """
     Adapter that checks if a path is a file.
 
     :param value: path string
     :return: unchanged path
     """
-    if not os.path.isfile(value):
+    if not os.path.isfile(str(value)):
         raise ValueError(f'"{value}" is not a file')
     return value
 
 
-def path_is_folder(value: str) -> str:
+def path_is_folder(value: str | Path) -> str | Path:
     """
     Adapter that checks if a path is a folder.
 
@@ -152,13 +158,15 @@ def path_is_folder(value: str) -> str:
     return value
 
 
-def path_to_absolute(value: str) -> str:
+def path_to_absolute(value: str | Path) -> str | Path:
     """
     Adapter that makes a path absolute.
 
     :param value: path string
     :return: absolute path string
     """
+    if isinstance(value, Path):
+        return value.absolute()
     return os.path.abspath(value)
 
 

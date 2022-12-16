@@ -25,11 +25,17 @@ Make sure Jiig is installed and consider one of the following measures:
 ''')
     sys.exit(1)
 
+from jiig import fields
+from jiig.task import task
+from jiig.runtime import Runtime
+from jiig.tool import Tool
+from jiig.startup import main
 
-@jiig.task
+
+@task
 def calc(
-    runtime: jiig.Runtime,
-    blocks: jiig.f.text(repeat=(1, None)),
+    runtime: Runtime,
+    blocks: fields.text(repeat=(1, None)),
 ):
     """
     evaluate formula using Python interpreter
@@ -44,7 +50,7 @@ def calc(
         runtime.abort(f'Formula error: {exc}')
 
 
-@jiig.task(
+@task(
     cli={
         'options': {
             'upper': ('-u', '--upper'),
@@ -53,10 +59,10 @@ def calc(
     }
 )
 def case(
-    runtime: jiig.Runtime,
-    upper: jiig.f.boolean(),
-    lower: jiig.f.boolean(),
-    blocks: jiig.f.text(repeat=(1, None)),
+    runtime: Runtime,
+    upper: fields.boolean(),
+    lower: fields.boolean(),
+    blocks: fields.text(repeat=(1, None)),
 ):
     """
     convert text case (default is "smart" conversion)
@@ -81,10 +87,10 @@ def case(
     runtime.message(output_text)
 
 
-@jiig.task
+@task
 def words(
-    runtime: jiig.Runtime,
-    blocks: jiig.f.text(repeat=(1, None)),
+    runtime: Runtime,
+    blocks: fields.text(repeat=(1, None)),
 ):
     """
     count words using primitive whitespace splitting
@@ -97,8 +103,8 @@ def words(
 
 
 # noinspection PyUnusedLocal
-@jiig.task(tasks=(case, words, calc))
-def root(runtime: jiig.Runtime):
+@task(tasks=(case, words, calc))
+def root(runtime: Runtime):
     """
     various text manipulations
 
@@ -107,7 +113,7 @@ def root(runtime: jiig.Runtime):
     pass
 
 
-TOOL = jiig.Tool(
+TOOL = Tool(
     tool_name='extool',
     tool_root_folder=os.path.dirname(__file__),
     description='extool description.',
@@ -120,4 +126,4 @@ TOOL = jiig.Tool(
 
 
 if __name__ == '__main__':
-    jiig.main(TOOL)
+    main(TOOL)

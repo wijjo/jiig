@@ -22,8 +22,8 @@ from dataclasses import dataclass, field
 from typing import Sequence
 
 from ...util.log import abort
-from ...util.footnotes import NotesDict, NotesList
-from ...util.general import DefaultValue
+from ...util.default import DefaultValue
+from jiig.util.text.footnotes import NotesDict, NotesList
 from ...util.repetition import Repetition
 from ...util.help_formatter import HelpProvider, HelpFormatter
 

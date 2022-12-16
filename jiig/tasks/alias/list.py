@@ -23,7 +23,7 @@ from typing import Iterable, Iterator
 
 import jiig
 from jiig.util.alias_catalog import Alias
-from jiig.util.text import format_table
+from jiig.util.text.table import format_table
 
 
 @jiig.task(

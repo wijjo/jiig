@@ -47,11 +47,11 @@ def script(
     :param tool_folder: Generated tool output folder.
     """
     expand_folder(
-        os.path.join(runtime.tool.jiig_root_folder, 'templates/tool/script'),
+        os.path.join(runtime.paths.jiig_root, 'templates/tool/script'),
         tool_folder,
         overwrite=force,
         symbols={
-            'jiig_root': runtime.tool.jiig_root_folder,
+            'jiig_root': runtime.paths.jiig_root,
             'mytool': tool_name or os.path.basename(tool_folder),
         },
     )

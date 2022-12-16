@@ -41,7 +41,7 @@ def build(
     :param rebuild_venv: Force virtual environment rebuild.
     """
     runtime.heading(1, 'Build virtual environment')
-    build_virtual_environment(runtime.tool.venv_folder,
-                              packages=runtime.tool.pip_packages,
+    build_virtual_environment(runtime.paths.venv,
+                              packages=runtime.meta.pip_packages,
                               rebuild=rebuild_venv,
                               quiet=False)

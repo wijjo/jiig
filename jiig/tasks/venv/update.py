@@ -31,4 +31,4 @@ def update(runtime: jiig.Runtime):
     :param runtime: jiig Runtime API.
     """
     runtime.heading(1, 'Delete virtual environment')
-    update_virtual_environment(runtime.tool.venv_folder, packages=runtime.tool.pip_packages)
+    update_virtual_environment(runtime.paths.venv, packages=runtime.meta.pip_packages)

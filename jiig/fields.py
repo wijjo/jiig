@@ -21,10 +21,21 @@ Task field declaration functions.
 
 from typing import Type, Collection
 
-from .adapters import to_timestamp, to_interval, to_age, to_comma_list, \
-    to_int, to_float, to_bool, path_is_folder, path_to_absolute, path_exists, path_is_file
-from .registry import Field
-from .util.repetition import RepeatSpec
+from .adapters import (
+    path_exists,
+    path_is_file,
+    path_is_folder,
+    path_to_absolute,
+    to_age,
+    to_bool,
+    to_comma_list,
+    to_float,
+    to_int,
+    to_interval,
+    to_timestamp,
+)
+from .field import wrap_field
+from .util.types import RepeatSpec
 
 # Returned types need to handle List[...] when repeat is specified.
 FIELD_TEXT_TYPE = Type[str | list[str]]
@@ -45,7 +56,7 @@ def integer(repeat: RepeatSpec = None,
     :param choices: optional permitted values
     :return: field specification
     """
-    return Field.wrap(int, adapters=[to_int], repeat=repeat, choices=choices)
+    return wrap_field(int, adapters=[to_int], repeat=repeat, choices=choices)
 
 
 def number(repeat: RepeatSpec = None,
@@ -58,10 +69,7 @@ def number(repeat: RepeatSpec = None,
     :param choices: optional permitted values
     :return: field specification
     """
-    return Field.wrap(float | int,
-                      adapters=[to_float],
-                      repeat=repeat,
-                      choices=choices)
+    return wrap_field(float | int, adapters=[to_float], repeat=repeat, choices=choices)
 
 
 def text(repeat: RepeatSpec = None,
@@ -74,7 +82,7 @@ def text(repeat: RepeatSpec = None,
     :param choices: optional permitted values
     :return: field specification
     """
-    return Field.wrap(str, repeat=repeat, choices=choices)
+    return wrap_field(str, repeat=repeat, choices=choices)
 
 
 def boolean(repeat: RepeatSpec = None) -> FIELD_BOOL_TYPE:
@@ -84,7 +92,7 @@ def boolean(repeat: RepeatSpec = None) -> FIELD_BOOL_TYPE:
     :param repeat: optional repetition as count or minimum/maximum pair
     :return: field specification
     """
-    return Field.wrap(bool, adapters=[to_bool], repeat=repeat)
+    return wrap_field(bool, adapters=[to_bool], repeat=repeat)
 
 
 def filesystem_folder(absolute_path: bool = False,
@@ -100,7 +108,7 @@ def filesystem_folder(absolute_path: bool = False,
     adapters_list = [path_is_folder]
     if absolute_path:
         adapters_list.append(path_to_absolute)
-    return Field.wrap(str, adapters=adapters_list, repeat=repeat)
+    return wrap_field(str, adapters=adapters_list, repeat=repeat)
 
 
 def filesystem_file(absolute_path: bool = False,
@@ -116,7 +124,7 @@ def filesystem_file(absolute_path: bool = False,
     adapters_list = [path_is_file]
     if absolute_path:
         adapters_list.append(path_to_absolute)
-    return Field.wrap(str, adapters=adapters_list, repeat=repeat)
+    return wrap_field(str, adapters=adapters_list, repeat=repeat)
 
 
 def filesystem_object(absolute_path: bool = False,
@@ -136,7 +144,7 @@ def filesystem_object(absolute_path: bool = False,
         adapters_list.append(path_to_absolute)
     if exists:
         adapters_list.append(path_exists)
-    return Field.wrap(str, adapters=adapters_list, repeat=repeat)
+    return wrap_field(str, adapters=adapters_list, repeat=repeat)
 
 
 def age(repeat: RepeatSpec = None,
@@ -149,7 +157,7 @@ def age(repeat: RepeatSpec = None,
     :param choices: optional permitted values
     :return: field specification
     """
-    return Field.wrap(float, adapters=[to_age], repeat=repeat, choices=choices)
+    return wrap_field(float, adapters=[to_age], repeat=repeat, choices=choices)
 
 
 def timestamp(repeat: RepeatSpec = None) -> FIELD_FLOAT_TYPE:
@@ -159,7 +167,7 @@ def timestamp(repeat: RepeatSpec = None) -> FIELD_FLOAT_TYPE:
     :param repeat: optional repetition as count or minimum/maximum pair
     :return: field specification
     """
-    return Field.wrap(float, adapters=[to_timestamp], repeat=repeat)
+    return wrap_field(float, adapters=[to_timestamp], repeat=repeat)
 
 
 def interval(repeat: RepeatSpec = None,
@@ -172,7 +180,7 @@ def interval(repeat: RepeatSpec = None,
     :param choices: optional permitted values
     :return: field specification
     """
-    return Field.wrap(float, adapters=[to_interval], repeat=repeat, choices=choices)
+    return wrap_field(float, adapters=[to_interval], repeat=repeat, choices=choices)
 
 
 def comma_list(repeat: RepeatSpec = None) -> FIELD_TEXT_LIST_TYPE:
@@ -182,4 +190,4 @@ def comma_list(repeat: RepeatSpec = None) -> FIELD_TEXT_LIST_TYPE:
     :param repeat: optional repetition as count or minimum/maximum pair
     :return: field specification
     """
-    return Field.wrap(list[str], adapters=[to_comma_list], repeat=repeat)
+    return wrap_field(list[str], adapters=[to_comma_list], repeat=repeat)

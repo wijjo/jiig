@@ -1,12 +1,14 @@
 """Sample Jiig task module."""
 
-import jiig
+from jiig.task import task
+from jiig.runtime import Runtime
+from jiig import fields
 
 
-@jiig.task
+@task
 def calc(
-    runtime: jiig.Runtime,
-    blocks: jiig.f.text(repeat=(1, None)),
+    runtime: Runtime,
+    blocks: fields.text(repeat=(1, None)),
 ):
     """
     evaluate formula using Python interpreter

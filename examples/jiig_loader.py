@@ -10,12 +10,11 @@ import os
 import sys
 from pathlib import Path
 from subprocess import run
-from typing import Optional
 
 CACHE_PATH = Path(__file__).parent / '.jiig_path'
 
 
-def _validate_folder_path(folder_path_string: str) -> Optional[Path]:
+def _validate_folder_path(folder_path_string: str) -> Path | None:
     folder_path_string = folder_path_string.strip()
     folder_path = Path(folder_path_string)
     if (folder_path / 'jiig' / '__init__.py').is_file():
@@ -24,7 +23,7 @@ def _validate_folder_path(folder_path_string: str) -> Optional[Path]:
     return None
 
 
-def _check_cached_path() -> Optional[Path]:
+def _check_cached_path() -> Path | None:
     if CACHE_PATH.is_file():
         try:
             with open(CACHE_PATH, encoding='utf-8') as cache_file:
@@ -35,7 +34,7 @@ def _check_cached_path() -> Optional[Path]:
     return None
 
 
-def _check_jiig_program_path() -> Optional[Path]:
+def _check_jiig_program_path() -> Path | None:
     try:
         proc = run(['jiig', '--show-library-path'], encoding='utf-8', capture_output=True)
         if proc.returncode == 0:
@@ -55,7 +54,7 @@ def _check_jiig_program_path() -> Optional[Path]:
         return None
 
 
-def initialize_jiig() -> Optional[Path]:
+def initialize_jiig() -> Path | None:
     """
     Determine Jiig library path and add to Python path.
 

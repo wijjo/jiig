@@ -1,12 +1,14 @@
 """Sample Jiig task module."""
 
-import jiig
+from jiig import fields
+from jiig.task import task
+from jiig.runtime import Runtime
 
 
-@jiig.task
+@task
 def words(
-    runtime: jiig.Runtime,
-    blocks: jiig.f.text(repeat=(1, None)),
+    runtime: Runtime,
+    blocks: fields.text(repeat=(1, None)),
 ):
     """
     count words using primitive whitespace splitting

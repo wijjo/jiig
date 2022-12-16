@@ -70,7 +70,7 @@ def expand_tasks(runtime: jiig.Runtime,
         if not quiet:
             runtime.warning('No task names provided for expansion.')
         return
-    source_folder = os.path.join(runtime.tool.jiig_root_folder, 'templates/task')
+    source_folder = os.path.join(runtime.paths.jiig_root, 'templates/task')
     for task_name in task_names:
         if not quiet:
             runtime.message(f'Generating task "{task_name}".')

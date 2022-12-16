@@ -22,11 +22,12 @@ from dataclasses import dataclass
 from inspect import isclass
 from typing import Sequence, Type
 
+from ...runtime import RuntimePaths
 from ...util.alias_catalog import is_alias_name, open_alias_catalog
 from ...util.log import abort, log_message, ConsoleLogWriter
 from ...util.process import shell_command_string
 from ...util.python import import_module_path
-from ...util.text import plural
+from ...util.text.grammar import pluralize
 
 from ..driver import Driver, IMPLEMENTATION_CLASS_NAME
 from ..driver_options import DriverOptions
@@ -65,6 +66,7 @@ class CLIDriver(Driver):
     def __init__(self,
                  name: str,
                  description: str,
+                 paths: RuntimePaths,
                  options: DriverOptions = None,
                  ):
         """
@@ -72,10 +74,12 @@ class CLIDriver(Driver):
 
         :param name: tool name
         :param description: tool description
+        :param paths: runtime paths
         :param options: various driver options
         """
         super().__init__(name=name,
                          description=description,
+                         paths=paths,
                          options=options)
         self.hint_registry = CLIHintRegistry()
 
@@ -109,8 +113,16 @@ class CLIDriver(Driver):
             if getattr(pre_parse_results.data, option.dest, False)
         ]
         # Expand alias as needed to produce final argument list.
-        expanded_arguments = _expand_alias_as_needed(
-            self.name, pre_parse_results.trailing_arguments)
+        if not pre_parse_results.trailing_arguments:
+            expanded_arguments: list[str] = []
+        elif not is_alias_name(pre_parse_results.trailing_arguments[0]):
+            expanded_arguments = pre_parse_results.trailing_arguments
+        else:
+            with open_alias_catalog(self.name, self.paths.aliases) as catalog:
+                alias = catalog.get_alias(pre_parse_results.trailing_arguments[0])
+                if not alias:
+                    abort(f'Alias "{pre_parse_results.trailing_arguments[0]}" not found.')
+                expanded_arguments = alias.command + pre_parse_results.trailing_arguments[1:]
         return CLIInitializationData(expanded_arguments, cli_implementation)
 
     def _get_supported_global_options(self) -> list[CLIOption]:
@@ -168,7 +180,7 @@ class CLIDriver(Driver):
                         break
                 else:
                     if parse_results.trailing_arguments:
-                        argument_word = plural("argument", parse_results.trailing_arguments)
+                        argument_word = pluralize("argument", parse_results.trailing_arguments)
                         abort(f'Unexpected {argument_word} to command:',
                               shell_command_string(self.name, *initialization_data.final_arguments))
             except ValueError as exc:
@@ -265,18 +277,3 @@ class _CLITaskBuilder:
                                                   sub_task.visibility)
             sub_registrar = registrar.sub_registrar(sub_task.name)
             self._add_task_fields_and_subcommands(sub_registrar, sub_command, sub_task)
-
-
-def _expand_alias_as_needed(tool_name: str, trailing_arguments: list[str]) -> list[str]:
-    # Build the final arguments list, expanding an alias as required.
-    if not trailing_arguments:
-        final_arguments: list[str] = []
-    elif not is_alias_name(trailing_arguments[0]):
-        final_arguments = trailing_arguments
-    else:
-        with open_alias_catalog(tool_name) as catalog:
-            alias = catalog.get_alias(trailing_arguments[0])
-            if not alias:
-                abort(f'Alias "{trailing_arguments[0]}" not found.')
-            final_arguments = alias.command + trailing_arguments[1:]
-    return final_arguments

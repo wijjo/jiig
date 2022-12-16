@@ -18,6 +18,8 @@
 """Jiig tool sub-task imports."""
 
 import os
+
+# Avoid name conflict with task module in this package.
 import jiig
 
 from . import project, script, task
@@ -30,5 +32,5 @@ def root(runtime: jiig.Runtime):
 
     :param runtime: Jiig runtime API.
     """
-    if os.getcwd() == runtime.tool.jiig_root_folder:
+    if os.getcwd() == runtime.paths.jiig_root:
         runtime.abort('Please run this command from an application folder.')

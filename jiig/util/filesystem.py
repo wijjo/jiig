@@ -15,38 +15,55 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Path manipulation utilities."""
+"""Filesystem and path manipulation utilities."""
 
 import os
 import re
 import stat
-from contextlib import contextmanager
+from abc import ABC, abstractmethod
+from contextlib import contextmanager, AbstractContextManager
 from glob import glob
 from pathlib import Path
-from typing import Optional, Iterator, Any
+from typing import Iterator, Any, Sequence
 
 from thirdparty.gitignore_parser import gitignore_parser
 
+from .collections import make_list
 from .log import abort, log_message
-from .general import make_list
 from .options import OPTIONS
 from .process import run
 
+# noinspection RegExpRedundantClassElement
 REMOTE_PATH_REGEX = re.compile(r'^([\w\d.@-]+):([\w\d_-~/]+)$')
 GLOB_CHARACTERS_REGEX = re.compile(r'[*?\[\]]')
 
 
-def folder_path(path):
+def folder_path_string(path: str | Path) -> str:
+    """
+    Provide normalized path string, including trailing '/' for a folder.
+
+    :param path: path to normalize
+    :return: normalized path string
+    """
+    path = str(path)
     if not path.endswith('/'):
         path += '/'
     return path
 
 
-def is_remote_path(path: str) -> bool:
-    return bool(REMOTE_PATH_REGEX.match(path))
+def is_remote_path(path: str | Path) -> bool:
+    """
+    Check if path looks like a remote path.
+
+    :param path: path to check
+    :return: True if path is remote
+    """
+    return bool(REMOTE_PATH_REGEX.match(str(path)))
 
 
-def search_folder_stack_for_file(folder: str, name: str) -> Optional[str]:
+def search_folder_stack_for_file(folder: str | Path,
+                                 name: str,
+                                 ) -> Path | None:
     """
     Look up folder stack for a specific file or folder name.
 
@@ -54,23 +71,40 @@ def search_folder_stack_for_file(folder: str, name: str) -> Optional[str]:
     :param name: file or folder name to look for
     :return: found folder path or None if the name was not found
     """
-    check_folder = folder
+    check_folder = str(folder)
     while True:
         if os.path.exists(os.path.join(check_folder, name)):
-            return check_folder
+            return Path(check_folder)
         if check_folder in ['', os.path.sep]:
             return None
         check_folder = os.path.dirname(check_folder)
 
 
-def short_path(path, is_folder=None, real_path=False, is_local=False):
+def short_path(long_path: str | Path,
+               is_folder: bool = None,
+               real_path: bool = False,
+               is_local: bool = False,
+               ) -> str:
+    """
+    Shorten path, e.g. for display.
+
+    :param long_path: path to shorten
+    :param is_folder: consider it a folder if True
+    :param real_path: resolve real path if True
+    :param is_local: assume it is a local path if True
+    :return: shortened path
+    """
+    long_path = str(long_path)
     # Special case for remote paths.
-    if not is_local and is_remote_path(path):
+    if not is_local and is_remote_path(long_path):
         if is_folder:
-            return folder_path(path)
-        return path
+            return folder_path_string(long_path)
+        return long_path
     # Normal handling of local paths.
-    path = os.path.realpath(path) if real_path else os.path.abspath(path)
+    if real_path:
+        path = os.path.realpath(long_path)
+    else:
+        path = os.path.abspath(long_path)
     if path.endswith(os.path.sep):
         path = path[:-1]
     working_folder = os.getcwd()
@@ -85,148 +119,231 @@ def short_path(path, is_folder=None, real_path=False, is_local=False):
     if not path:
         path = '.'
     if is_folder or (is_folder is not None and os.path.isdir(path)):
-        path = folder_path(path)
+        path = folder_path_string(path)
     return path
 
 
-def delete_folder(path: str, quiet: bool = False):
-    path = short_path(path, is_folder=True)
-    if os.path.exists(path):
+def delete_folder(folder_path: str | Path, quiet: bool = False):
+    """
+    Delete folder and its contents.
+
+    :param folder_path: folder to delete path
+    :param quiet: suppress non-error messages if True
+    """
+    folder_path = str(folder_path)
+    short_folder_path = short_path(folder_path, is_folder=True)
+    if os.path.exists(folder_path):
         if not quiet:
-            log_message('Delete folder and contents.', path)
-        run(['rm', '-rf', path])
+            log_message('Delete folder and contents.', short_folder_path)
+        run(['rm', '-rf', short_folder_path])
 
 
-def delete_file(path: str, quiet: bool = False):
-    path = short_path(path)
-    if os.path.exists(path):
+def delete_file(file_path: str | Path, quiet: bool = False):
+    """
+    Delete file.
+
+    :param file_path: file to delete path
+    :param quiet: suppress non-error messages if True
+    """
+    file_path = str(file_path)
+    if os.path.exists(file_path):
         if not quiet:
-            log_message('Delete file.', path)
-        run(['rm', '-f', path])
+            log_message('Delete file.', short_path(file_path))
+        run(['rm', '-f', file_path])
 
 
-def is_glob_pattern(path: str) -> bool:
+def is_glob_pattern(path: str | Path) -> bool:
     """
     Check if input path looks like a glob pattern (contains * ? [ ]).
 
     :param path: input path to check for glob characters
     :return: True if path contains any glob characters
     """
-    return GLOB_CHARACTERS_REGEX.search(path) is not None
+    return GLOB_CHARACTERS_REGEX.search(str(path)) is not None
 
 
-def create_folder(path: str | Path,
+def create_folder(folder_path: str | Path,
                   delete_existing: bool = False,
                   quiet: bool = False,
                   ):
     """
     Create folder.
 
-    :param path: folder path
+    :param folder_path: folder path
     :param delete_existing: delete existing folder if True
-    :param quiet: suppress messages if True
+    :param quiet: suppress non-error messages if True
     """
-    path = short_path(path, is_folder=True)
+    short_folder_path = short_path(folder_path)
     if delete_existing:
-        delete_folder(path, quiet=quiet)
-    if not os.path.exists(path):
+        delete_folder(folder_path, quiet=quiet)
+    if not os.path.exists(folder_path):
         if not quiet:
-            log_message('Create folder.', folder_path(path))
-        run(['mkdir', '-p', path], quiet=quiet)
-    elif not os.path.isdir(path):
-        abort('Path is not a folder', path)
+            log_message('Create folder.', short_folder_path)
+        run(['mkdir', '-p', short_folder_path], quiet=quiet)
+    elif not os.path.isdir(folder_path):
+        abort('Path is not a folder', short_folder_path)
 
 
-def check_file_exists(path: str):
-    if not os.path.exists(path):
-        abort('File does not exist.', path)
-    if not os.path.isfile(path):
-        abort('Path is not a file.', path)
+def check_file_exists(file_path: str | Path):
+    """
+    Make sure a file exists.
+
+    Abort if the file is missing.
+
+    :param file_path: path of file to check
+    """
+    if not os.path.exists(file_path):
+        abort('File does not exist.', short_path(file_path))
+    if not os.path.isfile(file_path):
+        abort('Path is not a file.', short_path(file_path))
 
 
-def check_folder_exists(path: str):
-    if not os.path.exists(path):
-        abort('Folder does not exist.', path)
-    if not os.path.isdir(path):
-        abort('Path is not a folder.', path)
+def check_folder_exists(folder_path: str | Path):
+    """
+    Make sure a folder exists.
+
+    Abort if the folder is missing.
+
+    :param folder_path: path of folder to check
+    """
+    if not os.path.exists(folder_path):
+        abort('Folder does not exist.', short_path(folder_path, is_folder=True))
+    if not os.path.isdir(folder_path):
+        abort('Path is not a folder.', short_path(folder_path, is_folder=True))
 
 
-def check_file_not_exists(path: str):
-    if os.path.exists(path):
-        if os.path.isdir(path):
-            abort('File path already exists as a folder.', path)
-        abort('File already exists.', path)
+def check_file_not_exists(file_path: str | Path):
+    """
+    Make sure a file does not already exist.
+
+    Abort if something exists at that path.
+
+    :param file_path: path of file to check
+    """
+    if os.path.exists(file_path):
+        if os.path.isdir(file_path):
+            abort('File path already exists as a folder.', short_path(file_path))
+        abort('File already exists.', short_path(file_path))
 
 
-def check_folder_not_exists(path: str):
-    if os.path.exists(path):
-        if not os.path.isdir(path):
-            abort('Folder path already exists as a file.', path)
-        abort('Folder already exists.', path)
+def check_folder_not_exists(folder_path: str | Path):
+    """
+    Make sure a folder does not already exist.
+
+    Abort if something exists at that path.
+
+    :param folder_path: path of folder to check
+    """
+    if os.path.exists(folder_path):
+        if not os.path.isdir(folder_path):
+            abort('Folder path already exists as a file.', short_path(folder_path))
+        abort('Folder already exists.', short_path(folder_path))
 
 
-def copy_folder(src_path: str,
-                dst_path: str,
+def copy_folder(source_folder_path: str | Path,
+                target_folder_path: str | Path,
                 merge: bool = False,
-                quiet: bool = False):
-    src_folder_path = short_path(src_path, is_folder=True)
-    dst_folder_path = short_path(dst_path, is_folder=True)
+                quiet: bool = False,
+                ):
+    """
+    Copy source folder to destination using rsync or cp as appropriate.
+
+    :param source_folder_path: source folder path
+    :param target_folder_path: target folder path
+    :param merge: add files to existing target folder if True
+    :param quiet: suppress non-error messages if True
+    """
     if not OPTIONS.dry_run:
-        check_folder_exists(src_folder_path)
+        check_folder_exists(source_folder_path)
     if not merge:
-        delete_folder(dst_path, quiet=quiet)
-    create_folder(os.path.dirname(dst_path), quiet=quiet)
+        delete_folder(target_folder_path, quiet=quiet)
+    create_folder(os.path.dirname(target_folder_path), quiet=quiet)
+    short_source_folder_path = short_path(source_folder_path, is_folder=True)
+    short_target_folder_path = short_path(target_folder_path, is_folder=True)
     if not quiet:
         log_message('Folder copy.',
-                    source=folder_path(src_folder_path),
-                    target=folder_path(dst_folder_path))
-    if os.path.isdir(dst_folder_path):
-        run(['rsync', '-aq', src_folder_path, dst_folder_path])
+                    source=short_source_folder_path,
+                    target=short_target_folder_path)
+    if os.path.isdir(target_folder_path):
+        run(['rsync', '-aq', short_source_folder_path, short_target_folder_path])
     else:
-        run(['cp', '-a', src_folder_path, dst_folder_path])
+        run(['cp', '-a', short_source_folder_path, short_target_folder_path])
 
 
-def copy_file(src_path: str,
-              dst_path: str,
+def copy_file(source_file_path: str | Path,
+              target_file_path: str | Path,
               overwrite: bool = False,
-              quiet: bool = False):
-    """Copy a file to a fully-specified file path, not a folder."""
-    _copy_or_move_file(src_path, dst_path, move=False, overwrite=overwrite, quiet=quiet)
+              quiet: bool = False,
+              ):
+    """
+    Copy file to fully-specified file path, not a folder.
+
+    :param source_file_path: source file path
+    :param target_file_path: target file path
+    :param overwrite: overwrite existing files if True
+    :param quiet: suppress non-error messages if True
+    """
+    _copy_or_move_file(source_file_path,
+                       target_file_path,
+                       move=False,
+                       overwrite=overwrite,
+                       quiet=quiet)
 
 
-def copy_files(src_glob: str,
-               dst_path: str,
+def copy_files(source_file_pattern: str | Path,
+               target_folder_path: str,
                allow_empty: bool = False,
-               quiet: bool = False):
-    src_paths = glob(src_glob)
-    if not src_paths and not allow_empty:
-        abort('File copy source is empty.', src_glob)
-    create_folder(dst_path, quiet=quiet)
+               quiet: bool = False,
+               ):
+    """
+    Copy files using glob patterns to destination folder.
+
+    :param source_file_pattern: source file glob pattern
+    :param target_folder_path: target folder path
+    :param allow_empty: suppress error for empty source file list if True
+    :param quiet: suppress non-error messages if True
+    """
+    source_paths = glob(str(source_file_pattern))
+    short_target_folder_path = short_path(target_folder_path, is_folder=True)
+    if not source_paths and not allow_empty:
+        abort('File copy source is empty.', source_file_pattern)
+    create_folder(target_folder_path, quiet=quiet)
     if not quiet:
         log_message('File copy.',
-                    source=short_path(src_glob),
-                    target=short_path(dst_path, is_folder=True))
-    for src_path in src_paths:
-        run(['cp', short_path(src_path), short_path(dst_path, is_folder=True)])
+                    source=short_path(source_file_pattern),
+                    target=short_target_folder_path)
+    for source_path in source_paths:
+        run(['cp', short_path(source_path), short_target_folder_path])
 
 
-def move_file(src_path: str,
-              dst_path: str,
+def move_file(source_file_path: str,
+              target_file_path: str,
               overwrite: bool = False,
-              quiet: bool = False):
-    """Move a file to a fully-specified file path, not a folder."""
-    _copy_or_move_file(src_path, dst_path, move=True, overwrite=overwrite, quiet=quiet)
+              quiet: bool = False,
+              ):
+    """
+    Move a file to a fully-specified file path, not a folder.
+
+    :param source_file_path: source file path
+    :param target_file_path: target file path
+    :param overwrite: overwrite target if True
+    :param quiet: suppress non-error messages if True
+    """
+    _copy_or_move_file(source_file_path,
+                       target_file_path,
+                       move=True,
+                       overwrite=overwrite,
+                       quiet=quiet)
 
 
-def _copy_or_move_file(src_path: str,
-                       dst_path: str,
+def _copy_or_move_file(src_path: str | Path,
+                       dst_path: str | Path,
                        move: bool = False,
                        overwrite: bool = False,
-                       quiet: bool = False):
-    src_path_short = short_path(src_path, is_folder=False)
-    dst_path_short = short_path(dst_path, is_folder=False)
+                       quiet: bool = False,
+                       ):
     if not OPTIONS.dry_run:
-        check_file_exists(src_path_short)
+        check_file_exists(src_path)
     if overwrite:
         # If overwriting is allowed a file (only) can be clobbered.
         if os.path.exists(dst_path) and not OPTIONS.dry_run:
@@ -234,51 +351,70 @@ def _copy_or_move_file(src_path: str,
     else:
         # If overwriting is prohibited don't clobber anything.
         if not OPTIONS.dry_run:
-            check_file_not_exists(dst_path_short)
+            check_file_not_exists(dst_path)
     parent_folder = os.path.dirname(dst_path)
     if not os.path.exists(parent_folder):
         create_folder(parent_folder, quiet=quiet)
     if move:
-        run(['mv', '-f', src_path_short, dst_path_short])
+        run(['mv', '-f', short_path(src_path), short_path(dst_path)])
     else:
-        run(['cp', '-af', src_path_short, dst_path_short])
+        run(['cp', '-af', short_path(src_path), short_path(dst_path)])
 
 
-def move_folder(src_path: str,
-                dst_path: str,
+def move_folder(source_folder_path: str | Path,
+                target_folder_path: str | Path,
                 overwrite: bool = False,
-                quiet: bool = False):
-    """Move a folder to a fully-specified folder path, not a parent folder."""
-    src_path_short = short_path(src_path, is_folder=True)
-    dst_path_short = short_path(dst_path, is_folder=True)
+                quiet: bool = False,
+                ):
+    """
+    Move a folder to a fully-specified folder path, not a parent folder.
+
+    :param source_folder_path: source folder path
+    :param target_folder_path: target folder path
+    :param overwrite: overwrite target if True
+    :param quiet: suppress non-error messages if True
+    """
+    short_source_folder_path = short_path(source_folder_path, is_folder=True)
+    short_target_folder_path = short_path(target_folder_path, is_folder=True)
     if not OPTIONS.dry_run:
-        check_folder_exists(src_path_short)
+        check_folder_exists(source_folder_path)
     if overwrite:
-        delete_folder(dst_path, quiet=quiet)
+        delete_folder(target_folder_path, quiet=quiet)
     else:
         if not OPTIONS.dry_run:
-            check_folder_not_exists(dst_path_short)
-    parent_folder = os.path.dirname(dst_path)
-    if not os.path.exists(parent_folder):
-        create_folder(parent_folder, quiet=quiet)
-    run(['mv', '-f', src_path_short, dst_path_short])
+            check_folder_not_exists(target_folder_path)
+    parent_folder_path = os.path.dirname(target_folder_path)
+    if not os.path.exists(parent_folder_path):
+        create_folder(parent_folder_path, quiet=quiet)
+    run(['mv', '-f', short_source_folder_path, short_target_folder_path])
 
 
-def sync_folders(src_folder: str,
-                 dst_folder: str,
-                 exclude: list = None,
-                 check_contents: bool = False,
-                 show_files: bool = False,
-                 quiet: bool = False):
+def synchronize_folders(source_folder_path: str | Path,
+                        target_folder_path: str | Path,
+                        exclude: list = None,
+                        check_contents: bool = False,
+                        show_files: bool = False,
+                        quiet: bool = False,
+                        ):
+    """
+    Synchronize folders using rsync.
+
+    :param source_folder_path: source folder path
+    :param target_folder_path: target folder path
+    :param exclude: optional exclusions (rsync --exclude options)
+    :param check_contents: compare file contents if True (rsync -c option)
+    :param show_files: display synchronized files (rsync -v option)
+    :param quiet: suppress non-error messages
+    """
     # Add the trailing slash for rsync. This works for remote paths too.
-    src_folder = folder_path(src_folder)
-    dst_folder = folder_path(dst_folder)
+    source_folder_path_string = folder_path_string(source_folder_path)
+    target_folder_path_string = folder_path_string(target_folder_path)
     if not OPTIONS.dry_run:
-        check_folder_exists(src_folder)
+        check_folder_exists(source_folder_path_string)
     if not quiet:
         log_message('Folder sync.',
-                    source=src_folder,
-                    target=dst_folder,
+                    source=source_folder_path_string,
+                    target=target_folder_path_string,
                     exclude=exclude or [])
     cmd_args = ['rsync']
     if OPTIONS.dry_run:
@@ -291,133 +427,182 @@ def sync_folders(src_folder: str,
     if exclude:
         for excluded in exclude:
             cmd_args.extend(['--exclude', excluded])
-    cmd_args.extend([src_folder, dst_folder])
+    cmd_args.extend([source_folder_path_string, target_folder_path_string])
     run(cmd_args)
 
 
 @contextmanager
-def temporary_working_folder(folder: Optional[str], quiet: bool = False):
+def temporary_working_folder(folder_path: str | Path | None,
+                             quiet: bool = False,
+                             ) -> AbstractContextManager[Path]:
     """
     Change work folder and restore when done.
 
     Treats an empty or None folder, or when folder is the current work folder, a
     do-nothing operation. But at least the caller doesn't have to check.
+
+    :param folder_path: path of folder to become the working folder
+    :param quiet: suppress non-error messages
+    :return: saved working folder path string
     """
-    restore_folder = os.getcwd()
-    if folder and os.path.realpath(folder) != restore_folder:
-        log_message('Change working directory.', folder, debug=quiet)
-        os.chdir(folder)
-    yield restore_folder
-    if folder and os.path.realpath(folder) != restore_folder:
-        log_message('Restore working directory.', restore_folder, debug=quiet)
-        os.chdir(restore_folder)
+    restore_folder_path = Path(os.getcwd())
+    if folder_path and os.path.realpath(folder_path) != restore_folder_path:
+        log_message('Change working directory.', str(folder_path), debug=quiet)
+        os.chdir(folder_path)
+    yield restore_folder_path
+    if folder_path and os.path.realpath(folder_path) != restore_folder_path:
+        log_message('Restore working directory.', str(restore_folder_path), debug=quiet)
+        os.chdir(restore_folder_path)
 
 
-def get_folder_stack(folder: str) -> list[str]:
-    """
-    Get a list of folders from top-most down to the one provided.
+class FileFilter(ABC):
+    """Abstract base class for file filters."""
+    def __init__(self, source_folder_path: str | Path):
+        """
+        File filter constructor.
 
-    TODO: This needs a little work for Windows compatibility!
+        :param source_folder_path: source folder path
+        """
+        if not isinstance(source_folder_path, Path):
+            source_folder_path = Path(source_folder_path)
+        self.source_folder = source_folder_path
 
-    :param folder: bottom-most folder
-    :return: top-to-bottom folder list
-    """
-    folders = []
-    while True:
-        head, tail = os.path.split(folder)
-        if not tail:
-            break
-        folders.append(folder)
-        folder = head
-    return list(reversed(folders))
+    @abstractmethod
+    def accept(self, path: str | Path) -> bool:
+        """
+        Required override to accept or reject a path.
 
-
-def resolve_paths_abs(root: str, folders: Optional[list[str]]) -> Iterator[str]:
-    """Generate folder sequence with absolute paths."""
-    if folders:
-        for folder in folders:
-            if os.path.isabs(folder):
-                yield folder
-            else:
-                yield os.path.join(root, folder)
-
-
-class FileFilter:
-    def __init__(self, source_folder: str):
-        self.source_folder = source_folder
-
-    def accept(self, path: str) -> bool:
-        raise NotImplementedError
+        :param path: path to check
+        :return: True if the path is accepted
+        """
+        ...
 
 
 class ExcludesFilter(FileFilter):
-    def __init__(self, source_folder: str, excludes: list[str]):
-        if excludes:
-            self.matcher = gitignore_parser.prepare_ignore_patterns(excludes, source_folder)
-        else:
-            self.matcher = None
-        super().__init__(source_folder)
+    """File filter supporting .gitignore-style exclusions."""
+    def __init__(self,
+                 source_folder_path: str | Path,
+                 exclusion_patterns: str | Sequence[str] | None,
+                 ):
+        """
+        ExcludesFilter constructor.
 
-    def accept(self, path: str) -> bool:
-        if not self.matcher:
+        :param source_folder_path: source folder path
+        :param exclusion_patterns: .gitignore style exclusion pattern(s)
+        """
+        exclusion_patterns = make_list(exclusion_patterns)
+        if exclusion_patterns:
+            self.match_function = gitignore_parser.parse_gitignore_patterns(
+                exclusion_patterns, source_folder_path)
+        else:
+            self.match_function = None
+        super().__init__(source_folder_path)
+
+    def accept(self, path: str | Path) -> bool:
+        """
+        Required override to accept or reject a path.
+
+        :param path: path to check
+        :return: True if the path is accepted
+        """
+        if not self.match_function:
             return True
-        return not self.matcher(path)
+        return not self.match_function(str(path))
 
 
 class GitignoreFilter(FileFilter):
-    def __init__(self,  source_folder: str):
-        super().__init__(source_folder)
+    """File filter supporting exclusions declared in ~/.gitignore."""
+    def __init__(self, source_folder_path: str | Path):
+        """
+        GitignoreFilter constructor.
+
+        :param source_folder_path: source folder path
+        """
+        super().__init__(source_folder_path)
         gitignore_path = os.path.join(self.source_folder, '.gitignore')
         if os.path.isfile(gitignore_path):
-            self.matcher = gitignore_parser.parse_gitignore(gitignore_path)
+            self.matcher = gitignore_parser.parse_gitignore_file(gitignore_path)
         else:
             self.matcher = None
 
-    def accept(self, path: str) -> bool:
+    def accept(self, path: str | Path) -> bool:
+        """
+        Required override to accept or reject a path.
+
+        :param path: path to check
+        :return: True if the path is accepted
+        """
         if not self.matcher:
             return True
-        return not self.matcher(path)
+        return not self.matcher(str(path))
 
 
-def iterate_files(source_folder: str) -> Iterator[str]:
-    discard_length = len(source_folder)
-    if not source_folder.endswith(os.path.sep):
+def iterate_files(source_folder_path: str | Path,
+                  ) -> Iterator[Path]:
+    """
+    Files iteration.
+
+    :param source_folder_path: source folder path
+    :return: found Path iterator
+    """
+    source_folder_path_string = str(source_folder_path)
+    discard_length = len(source_folder_path_string)
+    if not source_folder_path_string.endswith(os.path.sep):
         discard_length += 1
-    for dir_path, _sub_dir_paths, file_names in os.walk(source_folder):
+    for dir_path, _sub_dir_paths, file_names in os.walk(source_folder_path):
         relative_dir_name = dir_path[discard_length:]
         for file_name in file_names:
-            yield os.path.join(relative_dir_name, file_name)
+            yield Path(os.path.join(relative_dir_name, file_name))
 
 
-def iterate_git_pending(source_folder: str) -> Iterator[str]:
-    with temporary_working_folder(source_folder, quiet=True):
+def iterate_git_pending(source_folder_path: str | Path,
+                        ) -> Iterator[Path]:
+    """
+    Git pending files iteration.
+
+    :param source_folder_path: source folder path
+    :return: found Path iterator
+    """
+    with temporary_working_folder(source_folder_path, quiet=True):
         git_proc = run(['git', 'status', '-s', '-uno'],
-                       capture=True, run_always=True, quiet=True)
+                       capture=True,
+                       run_always=True,
+                       quiet=True)
         for line in git_proc.stdout.split(os.linesep):
             path = line[3:]
             if os.path.isfile(path):
-                yield path
+                yield Path(path)
 
 
-def iterate_filtered_files(source_folder: str,
+def iterate_filtered_files(source_folder_path: str | Path,
                            excludes: list[str] = None,
                            pending: bool = False,
-                           gitignore: bool = False):
+                           gitignore: bool = False,
+                           ) -> Iterator[Path]:
+    """
+    Filtered files iteration.
+
+    :param source_folder_path: source folder path
+    :param excludes: optional .gitignore exclusion patterns
+    :param pending: iterate pending Git commits
+    :param gitignore: apply ~/.gitignore exclusions
+    :return: found Path iterator
+    """
     if pending:
         file_iterator_function = iterate_git_pending
     else:
         file_iterator_function = iterate_files
     file_filters: list[FileFilter] = []
     if excludes:
-        file_filters.append(ExcludesFilter(source_folder, excludes))
+        file_filters.append(ExcludesFilter(source_folder_path, excludes))
     if gitignore:
-        file_filters.append(GitignoreFilter(source_folder))
-    for path in file_iterator_function(source_folder):
+        file_filters.append(GitignoreFilter(source_folder_path))
+    for path in file_iterator_function(source_folder_path):
         if all((file_filter.accept(path) for file_filter in file_filters)):
             yield path
 
 
-def find_system_program(name: str) -> Optional[str]:
+def find_system_program(name: str) -> Path | None:
     """
     Search system PATH for named program.
 
@@ -427,11 +612,13 @@ def find_system_program(name: str) -> Optional[str]:
     for folder in os.environ['PATH'].split(os.pathsep):
         path = os.path.join(folder, name)
         if os.path.isfile(path) and (os.stat(path).st_mode & stat.S_IEXEC):
-            return path
+            return Path(path)
     return None
 
 
-def choose_program_alternative(*programs: Any, required: bool = False) -> Optional[list]:
+def choose_program_alternative(*programs: Any,
+                               required: bool = False,
+                               ) -> list[str] | None:
     """
     Search system PATH for one or more alternative programs, optionally with arguments.
 
@@ -448,7 +635,9 @@ def choose_program_alternative(*programs: Any, required: bool = False) -> Option
     return None
 
 
-def make_relative_path(path: str, start: str = None) -> str:
+def make_relative_path(path: str | Path,
+                       start: str | Path = None,
+                       ) -> Path:
     """
     Construct a relative path.
 
@@ -461,7 +650,7 @@ def make_relative_path(path: str, start: str = None) -> str:
     """
     rel_path = os.path.relpath(path, start=start)
     if rel_path == '.':
-        return rel_path[1:]
+        return Path(rel_path[1:])
     if rel_path.startswith('./'):
-        return rel_path[2:]
-    return rel_path
+        return Path(rel_path[2:])
+    return Path(rel_path)

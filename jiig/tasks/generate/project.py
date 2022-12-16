@@ -57,11 +57,11 @@ def project(
     if not tool_name:
         tool_name = os.path.basename(tool_folder)
     expand_folder(
-        os.path.join(runtime.tool.jiig_root_folder, 'templates/tool/project'),
+        os.path.join(runtime.paths.jiig_root, 'templates/tool/project'),
         tool_folder,
         overwrite=force,
         symbols={
-            'jiig_root': runtime.tool.jiig_root_folder,
+            'jiig_root': runtime.paths.jiig_root,
             'mytool': tool_name,
             'task_imports': tasks_list,
             'task_references': f'({tasks_list}{trailing_comma})',

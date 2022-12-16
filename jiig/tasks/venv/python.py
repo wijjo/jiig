@@ -40,5 +40,5 @@ def python(
     :param trailing_arguments: Trailing CLI arguments.
     """
     python_path = runtime.format_path('{venv_folder}/bin/python')
-    env = {'PYTHONPATH': os.path.pathsep.join(runtime.tool.library_folders)}
+    env = {'PYTHONPATH': runtime.paths.library_path}
     os.execle(python_path, python_path, *trailing_arguments, env)

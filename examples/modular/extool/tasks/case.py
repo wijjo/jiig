@@ -1,9 +1,11 @@
 """Sample Jiig task module."""
 
-import jiig
+from jiig import fields
+from jiig.task import task
+from jiig.runtime import Runtime
 
 
-@jiig.task(
+@task(
     cli={
         'options': {
             'upper': ('-u', '--upper'),
@@ -12,10 +14,10 @@ import jiig
     }
 )
 def case(
-    runtime: jiig.Runtime,
-    upper: jiig.f.boolean(),
-    lower: jiig.f.boolean(),
-    blocks: jiig.f.text(repeat=(1, None)),
+    runtime: Runtime,
+    upper: fields.boolean(),
+    lower: fields.boolean(),
+    blocks: fields.text(repeat=(1, None)),
 ):
     """
     convert text case (default is "smart" conversion)

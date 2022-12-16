@@ -20,7 +20,7 @@
 from dataclasses import dataclass, field
 from typing import Sequence
 
-from ...util.general import DefaultValue
+from ...util.default import DefaultValue
 from ...util.repetition import Repetition
 
 

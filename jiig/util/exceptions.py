@@ -24,11 +24,11 @@ import sys
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 
 @dataclass
 class Package:
+    """Python package data."""
     name: str
     folder: Path
 
@@ -71,7 +71,7 @@ class ExceptionStackItem:
 @dataclass
 class ExceptionStack:
     items: list[ExceptionStackItem]
-    package_path: Optional[str]
+    package_path: str | None
 
 
 def get_exception_stack(skip_external_frames: bool = False,
@@ -125,7 +125,7 @@ def get_exception_stack(skip_external_frames: bool = False,
             stack_item.path = string_file_name
     # Pass 3: Optionally trim frames not in top level package (if
     # skip_external_frames is True).
-    package: Optional[Package] = None
+    package: Package | None = None
     if stack_items and skip_external_frames:
         for item_idx, item in enumerate(stack_items):
             item_package = package_for_path(item.path)
@@ -160,6 +160,6 @@ def format_exception(exc: Exception,
         if stack:
             item = stack.items[0]
             parts.append(f'{os.path.basename(item.path)}.{item.line}')
-    parts.append(exc.__class__.__name__)
+    parts.append(f'exception[{exc.__class__.__name__}]')
     parts.append(str(exc))
     return ': '.join(parts)

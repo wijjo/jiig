@@ -233,6 +233,12 @@ def pipe(command: list) -> list[str]:
 
 
 def escape_line_endings(input_string: str) -> str:
+    """
+    Escape line ending characters.
+
+    :param input_string: string to scan for line endings
+    :return: string with escaped line endings
+    """
     return input_string.replace('\n', r'\n').replace('\r', r'\r')
 
 

@@ -33,7 +33,7 @@ from jiig.util.python import import_module_path
 @jiig.task
 def unittest(
     runtime: jiig.Runtime,
-    tests: jiig.f.text(repeat=(None, None)),
+    tests: jiig.fields.text(repeat=(None, None)),
 ):
     """
     Run unit tests using Python standard library unittest module.
@@ -41,10 +41,10 @@ def unittest(
     :param runtime: jiig Runtime API.
     :param tests: Test names to run, or all tests if omitted.
     """
-    check_folder_exists(runtime.tool.test_folder)
+    check_folder_exists(runtime.paths.test)
     module_map = {
         os.path.splitext(os.path.basename(file_path))[0]: file_path
-        for file_path in glob(os.path.join(runtime.tool.test_folder, 'test*.py'))
+        for file_path in glob(os.path.join(runtime.paths.test, 'test*.py'))
     }
     module_names_to_run = []
     if tests:

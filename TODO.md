@@ -1,5 +1,9 @@
 # Improvements
 
+* [ ] Finish modernizations:
+  * [ ] Replace Optional, List, Dict, Set, Text, etc. inspection types.
+  * [ ] Use Path instead of path strings everywhere.
+
 * [ ] Convert Tool to use registry.
     * [ ] Use registered tool reference in Jiig tool script.
 

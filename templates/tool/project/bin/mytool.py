@@ -11,29 +11,16 @@ restart in it or activate the virtual environment prior to running this script.
 import os
 import sys
 
-try:
-    import jiig
-except ImportError:
-    sys.stderr.write('''\
-ERROR: Unable to import "jiig" module.
-
-Make sure Jiig is installed and consider one of the following measures:
-
-- Set the PYTHONPATH environment variable to include the Jiig root.
-- Set sys.path inside the script to include the Jiig root. 
-- Install the `jiig` library folder under an existing Python library root.
-''')
-    sys.exit(1)
-
 
 def main():
     # Add Jiig root to Python path so that Jiig modules can be loaded.
     # Alternatively, can use PYTHONPATH or any other supported mechanism for
     # extending the library load path.
     sys.path.insert(0, 'jiig_root')
-    import jiig
-    jiig.main(
-        jiig.Tool(
+    from jiig import startup
+    from jiig.tool import Tool
+    startup.main(
+        Tool(
             tool_name='mytool',
             tool_root_folder=os.path.dirname(os.path.dirname(__file__)),
             description='mytool description.',

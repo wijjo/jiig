@@ -20,7 +20,6 @@
 import datetime
 import time
 from dataclasses import dataclass
-from typing import Optional
 
 from .log import log_error, log_warning
 
@@ -31,6 +30,7 @@ DATE_TIME_DELTA_LETTERS = DATE_DELTA_LETTERS + TIME_DELTA_LETTERS
 
 @dataclass
 class DateTimeDelta:
+    """Date/Time delta data."""
     years: int
     months: int
     weeks: int
@@ -40,7 +40,7 @@ class DateTimeDelta:
     seconds: int
 
 
-def parse_date_time_delta(delta_string: Optional[str],
+def parse_date_time_delta(delta_string: str | None,
                           negative: bool = False,
                           default_letter: str = None,
                           date_only: bool = False,
@@ -130,7 +130,7 @@ def parse_date_time_delta(delta_string: Optional[str],
                          seconds=values.get('S', 0) * multiplier)
 
 
-def apply_date_time_delta_string(delta_string: Optional[str],
+def apply_date_time_delta_string(delta_string: str | None,
                                  negative: bool = False,
                                  start_time: time.struct_time = None,
                                  default_letter: str = None,
@@ -187,9 +187,9 @@ def apply_date_time_delta(delta: DateTimeDelta,
     return result_datetime.timetuple()
 
 
-def parse_date_time(date_time_string: Optional[str],
+def parse_date_time(date_time_string: str | None,
                     quiet: bool = False,
-                    ) -> Optional[time.struct_time]:
+                    ) -> time.struct_time | None:
     """
     Flexible parsing of date and or time strings.
 
@@ -216,8 +216,8 @@ def parse_date_time(date_time_string: Optional[str],
         if not quiet:
             log_error(f'Too many parts in date/time string "{date_time_string}".')
         return None
-    parsed_date: Optional[datetime.date] = None
-    parsed_time: Optional[datetime.time] = None
+    parsed_date: datetime.date | None = None
+    parsed_time: datetime.time | None = None
     try:
         for part_string in parts:
             if part_string.find('-') != -1:
@@ -251,7 +251,7 @@ def parse_date_time(date_time_string: Optional[str],
     return datetime.datetime.combine(parsed_date, parsed_time).timetuple()
 
 
-def parse_time_interval(interval_string: Optional[str]) -> Optional[int]:
+def parse_time_interval(interval_string: str | None) -> int | None:
     """
     Parse time interval with same syntax as parse_date_time_delta() accepts.
 

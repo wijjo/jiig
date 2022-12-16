@@ -16,19 +16,19 @@
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-Scripter script.
+Shell script builder.
 """
 
 import os
 from contextlib import contextmanager
 from typing import ContextManager, Sequence
 
-from ..util.general import make_list, AttrDictReadOnly
-from ..util.text import trim_text_blocks
+from .collections import AttributeDictionary, make_list
+from .text.blocks import trim_text_blocks
 
 
 class Script:
-    """Used to build a script piecemeal and then execute it."""
+    """Used to build a shell script piecemeal and then execute it."""
 
     indent_spaces = 4
 
@@ -75,7 +75,7 @@ class Script:
         :param location: optional temporary working folder
         :param messages: optional before, after, or skip messages
         """
-        action_messages = AttrDictReadOnly(messages or {})
+        action_messages = AttributeDictionary.new(messages or {}, read_only=True)
         if predicate:
             self._add(f'if {predicate}; then')
             self.indent_level += 1
@@ -114,7 +114,7 @@ class Script:
         :param messages: optional success or failure status messages
         """
         # TODO: Handle message quoting/escaping for echo statements.
-        action_messages = AttrDictReadOnly(messages or {})
+        action_messages = AttributeDictionary.new(messages or {}, read_only=True)
         commands = make_list(command_string_or_sequence)
         if commands:
             self._add(*commands)

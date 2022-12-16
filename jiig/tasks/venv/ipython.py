@@ -46,7 +46,7 @@ def ipython(
         runtime.message('Install iPython in virtual environment.')
         run([pip_path, 'install', 'ipython'] + trailing_arguments)
     try:
-        env = {'PYTHONPATH': os.path.pathsep.join(runtime.tool.library_folders)}
+        env = {'PYTHONPATH': runtime.paths.library_path}
         os.execle(ipython_path, ipython_path, env)
     except Exception as exc:
         runtime.abort(f'Failed to execute "ipython" command.',

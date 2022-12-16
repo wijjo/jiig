@@ -19,7 +19,7 @@
 
 from typing import Any, Sequence
 
-from ..util.general import DefaultValue
+from ..util.default import DefaultValue
 from ..util.repetition import Repetition
 
 
