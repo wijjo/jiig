@@ -25,10 +25,10 @@ from typing import Self
 from jiig.constants import TOP_TASK_LABEL, SUB_TASK_LABEL, TOP_TASK_DEST_NAME
 from jiig.driver import DriverInitializationData
 from jiig.driver.driver import Driver, DriverOptions
+from jiig.internal.configuration.tool import ToolConfiguration
+from jiig.util.class_resolver import ClassResolver
 from jiig.util.options import OPTIONS
 from jiig.util.log import set_log_writer, log_message
-
-from jiig.internal.configuration.tool import ToolConfiguration
 
 
 @dataclass
@@ -68,7 +68,11 @@ class PreparedDriver:
             top_task_dest_name=TOP_TASK_DEST_NAME,
             supported_global_options=supported_global_options,
         )
-        driver: Driver = tool_config.driver_registration.implementation(
+
+        driver_resolver = ClassResolver(Driver, 'driver')
+        driver_registration = driver_resolver.resolve(tool_config.driver)
+
+        driver: Driver = driver_registration.subclass(
             tool_config.meta.tool_name,
             tool_config.meta.description,
             tool_config.paths,

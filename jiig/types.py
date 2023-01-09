@@ -27,5 +27,4 @@ TaskReference = str | ModuleType | TaskFunction
 SubTaskList = Sequence[TaskReference]
 SubTaskDict = dict[str, TaskReference]
 SubTaskCollection = SubTaskList | SubTaskDict
-TaskImplementation = TaskFunction
 ArgumentAdapter = Callable[..., Any]

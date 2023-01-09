@@ -40,7 +40,7 @@ from jiig.util.options import OPTIONS
 
 from ..preparation.application import PreparedApplication
 from ..preparation.runtime import PreparedRuntime
-from ..registration.tasks import AssignedTask
+from ..task import RuntimeTask
 
 
 class ArgumentNameError(RuntimeError):
@@ -54,10 +54,10 @@ class _ArgumentDataPreparer:
         self.prepared_data = {}
         self.errors: list[str] = []
 
-    def prepare_argument_data(self, assigned_task: AssignedTask):
+    def prepare_argument_data(self, task: RuntimeTask):
         # Convert raw argument data to prepared data.
         # Handle lower and upper case attribute names in raw data.
-        for registered_field in assigned_task.fields:
+        for registered_field in task.fields:
             value = None
             has_attribute = hasattr(self.raw_data, registered_field.name)
             if has_attribute:
@@ -90,7 +90,7 @@ class _ArgumentDataPreparer:
                     if OPTIONS.debug:
                         label = ':'.join(
                             [
-                                assigned_task.full_name,
+                                task.full_name,
                                 arg_name,
                                 f'adapter={adapter_name}',
                             ],
@@ -141,9 +141,9 @@ class Runner:
                     if field.name in data_preparer.prepared_data
                 }
                 # Add task function to callables?
-                if isfunction(task.implementation):
+                if isfunction(task.task_function):
                     run_name = f'task "{task.name}" {task.full_name}'
-                    run_function = task.implementation
+                    run_function = task.task_function
                     run_calls.append((run_name, run_function, task_field_data))
             # Invoke run callable stack.
             for run_name, run_function, run_kwargs in run_calls:

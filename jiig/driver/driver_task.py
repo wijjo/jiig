@@ -31,6 +31,7 @@ from .driver_field import DriverField
 class DriverTask:
     """Task data fed to driver."""
     name: str
+    full_name: str
     description: str
     sub_tasks: list['DriverTask']
     fields: list[DriverField]
@@ -41,6 +42,7 @@ class DriverTask:
 
     def add_sub_task(self,
                      name: str,
+                     full_name: str,
                      description: str,
                      notes: NotesList,
                      footnotes: NotesDict,
@@ -51,6 +53,7 @@ class DriverTask:
         Add sub-task data.
 
         :param name: sub-task name
+        :param full_name: fully-qualified sub-task name
         :param description: sub-task description
         :param notes: task notes list
         :param footnotes: task footnotes dictionary
@@ -58,7 +61,15 @@ class DriverTask:
         :param hints: raw hint dictionary
         :return: new sub-task
         """
-        sub_task = DriverTask(name, description, [], [], notes, footnotes, visibility, hints)
+        sub_task = DriverTask(name,
+                              full_name,
+                              description,
+                              [],
+                              [],
+                              notes,
+                              footnotes,
+                              visibility,
+                              hints)
         self.sub_tasks.append(sub_task)
         return sub_task
 

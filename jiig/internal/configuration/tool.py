@@ -20,16 +20,13 @@
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Self
+from types import ModuleType
+from typing import Any, Self, Type, Callable
 
 from jiig import constants
-from jiig.driver import CLIDriver
+from jiig.driver import Driver, CLIDriver
 from jiig.runtime import Runtime, RuntimeMetadata, RuntimePaths
 from jiig.tool import Tool
-
-from ..registration.contexts import CONTEXT_REGISTRY, ContextRegistrationRecord
-from ..registration.drivers import DRIVER_REGISTRY, DriverRegistrationRecord
-from ..registration.tasks import TASK_REGISTRY, AssignedTask
 
 
 @dataclass
@@ -38,14 +35,14 @@ class ToolConfiguration:
     options: Tool.Options
     meta: RuntimeMetadata
     paths: RuntimePaths
-    runtime_registration: ContextRegistrationRecord
-    driver_registration: DriverRegistrationRecord
-    assigned_root_task: AssignedTask
+    runtime: Type[Runtime] | str | ModuleType
+    driver: Type[Driver] | str | ModuleType
     driver_variant: str
     extra_symbols: dict[str, Any]
     venv_interpreter: str
     venv_active: bool
     venv_required: bool
+    root_task: str | ModuleType | Callable | None
 
     @classmethod
     def prepare(cls, tool: Tool) -> Self:
@@ -53,13 +50,6 @@ class ToolConfiguration:
 
         if tool.tool_root_folder not in sys.path:
             sys.path.insert(0, tool.tool_root_folder)
-
-        runtime_registration = CONTEXT_REGISTRY.resolve(
-            tool.runtime or Runtime, required=True)
-        driver_registration = DRIVER_REGISTRY.resolve(
-            tool.driver or CLIDriver, required=True)
-        assigned_root_task = TASK_REGISTRY.resolve_assigned_task(
-            tool.root_task, '(root)', 2, required=True)
 
         jiig_library_folder = _make_path(tool.jiig_library_folder, constants.JIIG_ROOT)
 
@@ -101,36 +91,18 @@ class ToolConfiguration:
         venv_active = sys.executable == venv_interpreter
         venv_required = meta.pip_packages or options.venv_required
 
-        # Add built-in tasks.
-        visibility = 2 if options.hide_builtin_tasks else 1
-        root_task_names = set(
-            (sub_task.name for sub_task in assigned_root_task.sub_tasks))
-
-        def _add_if_needed(name: str, task_ref: str):
-            if not root_task_names.intersection({name, f'{name}[s]', f'{name}[h]'}):
-                assigned_task = TASK_REGISTRY.resolve_assigned_task(task_ref, name, visibility)
-                if assigned_task is not None:
-                    assigned_root_task.sub_tasks.append(assigned_task)
-
-        if not options.disable_help:
-            _add_if_needed('help', 'jiig.tasks.help')
-        if not options.disable_alias:
-            _add_if_needed('alias', 'jiig.tasks.alias')
-        if venv_required:
-            _add_if_needed('venv', 'jiig.tasks.venv')
-
         return cls(
             options=options,
             meta=meta,
             paths=paths,
-            runtime_registration=runtime_registration,
-            driver_registration=driver_registration,
-            assigned_root_task=assigned_root_task,
+            runtime=tool.runtime or Runtime,
+            driver=tool.driver or CLIDriver,
             driver_variant=tool.driver_variant or constants.DEFAULT_DRIVER_VARIANT,
             extra_symbols=tool.extra_symbols or {},
             venv_interpreter=venv_interpreter,
             venv_active=venv_active,
             venv_required=venv_required,
+            root_task=tool.root_task,
         )
 
 

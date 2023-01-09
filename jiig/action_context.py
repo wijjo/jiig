@@ -20,7 +20,6 @@ Context for text expansion and external command execution environment.
 """
 
 import os
-import sys
 from pathlib import Path
 from typing import Self
 
@@ -52,13 +51,6 @@ class ActionContext(Context):
         self.misc = ActionContextMiscAPI(self)
         # Convenient access to Jiig runtime options.
         self.options = OPTIONS
-
-    def __init_subclass__(cls, /, **kwargs):
-        """Self-register Runtime subclasses."""
-        super().__init_subclass__(**kwargs)
-        # Hide self-registration locally to avoid global internal dependency.
-        from .internal.registration.contexts import CONTEXT_REGISTRY, ContextRegistrationRecord
-        CONTEXT_REGISTRY.register(ContextRegistrationRecord(cls, sys.modules[cls.__module__]))
 
     def __enter__(self) -> Self:
         """

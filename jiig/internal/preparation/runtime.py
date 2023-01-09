@@ -2,13 +2,15 @@
 from dataclasses import dataclass
 from typing import Self
 
+from jiig.action_context import ActionContext
 from jiig.driver import Driver, DriverTask
+from jiig.internal.configuration.tool import ToolConfiguration
 from jiig.runtime import Runtime, RuntimeHelpGenerator
+from jiig.util.class_resolver import ClassResolver
 from jiig.util.log import abort
 
 from .application import PreparedApplication
 from .driver import PreparedDriver
-from jiig.internal.configuration.tool import ToolConfiguration
 
 
 class HelpGenerator(RuntimeHelpGenerator):
@@ -38,7 +40,10 @@ class PreparedRuntime:
                 prepared_application: PreparedApplication,
                 ) -> Self:
 
-        runtime_class = tool_config.runtime_registration.implementation
+        context_resolver = ClassResolver(ActionContext, 'runtime')
+        runtime_registration = context_resolver.resolve(tool_config.runtime)
+
+        runtime_class = runtime_registration.subclass
         assert issubclass(runtime_class, Runtime)
         try:
             runtime_instance = runtime_class(

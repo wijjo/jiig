@@ -39,7 +39,7 @@ class Field:
     """
 
     element_type: Any
-    """scalar element type, without List or Optional type wrappers"""
+    """scalar element type"""
     description: str
     """field description"""
     field_type: Any
@@ -62,7 +62,7 @@ def wrap_field(element_type: Any,
     """
     Create Field and wrap in Annotated hint.
 
-    :param element_type: scalar element type, without List or Optional type wrappers
+    :param element_type: scalar element type
     :param description: field description
     :param field_type: field type (defaults to element_type if missing)
     :param adapters: field adapter function chain

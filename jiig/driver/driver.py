@@ -18,7 +18,6 @@
 """Base driver class."""
 
 from abc import ABC, abstractmethod
-from inspect import isabstract
 from typing import Sequence
 
 from ..runtime import RuntimePaths
@@ -61,15 +60,6 @@ class Driver(ABC):
         self.options = options or DriverOptions()
         self.enabled_global_options: list[str] = []
         self.phase = 'construction'
-
-    def __init_subclass__(cls, /, **kwargs):
-        """Self-register Driver subclasses (only)."""
-        super().__init_subclass__(**kwargs)
-        if not isabstract(cls):
-            # Import internal dependency locally so that this module could be
-            # imported by the root package, if desired.
-            from jiig.internal.registration.drivers import DRIVER_REGISTRY
-            DRIVER_REGISTRY.register(cls)
 
     def initialize_driver(self,
                           command_line_arguments: Sequence[str],

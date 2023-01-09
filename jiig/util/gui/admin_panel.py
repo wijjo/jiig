@@ -39,16 +39,17 @@ class AdminPanel:
 
     def __init__(self, title: str = None):
         self.title = title or 'Administration Panel'
-        self.heading: Optional[str] = None
+        self.heading: str | None
         self.need_root = False
         self.bind_escape_key = False
-        self.log_path: Optional[str] = None
+        self.log_path: str | None = None
         self.actions: list[str] = []
-        self.default_action: Optional[str] = None
+        self.default_action: str | None = None
+        self.heading: str | None = None
         self.debug = False
         self.dry_run = False
-        self.window: Optional[Gui.Window] = None
-        self.password: Optional[str] = None
+        self.window: Gui.Window | None = None
+        self.password: str | None = None
         self.handlers: dict[str, HandlerFunction] = {}
 
     def set_need_root(self, value: bool = False):
@@ -62,7 +63,7 @@ class AdminPanel:
         if handler:
             self.add_handler(name, handler)
 
-    def set_default_action(self, default_action: Optional[str]):
+    def set_default_action(self, default_action: str | None):
         self.default_action = default_action
 
     def set_heading(self, heading: str):

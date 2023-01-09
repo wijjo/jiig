@@ -76,10 +76,10 @@ class Tool:
     tool_root_folder: str
     """Tool base (root) folder."""
 
-    root_task: str | ModuleType | Callable
+    root_task: str | ModuleType | Callable | None
     """Task reference to root of hierarchy."""
 
-    # === Optional members. These either have default values or can be derived.
+    # === Members that either have default values or can be derived.
 
     driver: type | str | ModuleType = None
     """Driver class reference."""
@@ -167,8 +167,6 @@ class Tool:
         :return: Tool object based on tool module data
         :param defaults: optional defaults that may be used for missing attributes
         """
-        # Hide this internal dependency locally.
-        from jiig.internal.registration.tasks import TASK_REGISTRY
         try:
             # Convert tool options from a dictionary to a ToolOptions dataclass object.
             if 'TOOL_OPTIONS' in symbols:
@@ -179,7 +177,7 @@ class Tool:
                     log_warning('Ignoring TOOL_OPTIONS, because it is not a dictionary.')
                     del symbols['TOOL_OPTIONS']
             # Now convert all the relevant symbols to a Tool dataclass object.
-            tool: Tool = symbols_to_dataclass(
+            return symbols_to_dataclass(
                 symbols,
                 Tool,
                 required=['tool_name', 'tool_root_folder'],
@@ -189,11 +187,6 @@ class Tool:
                 from_uppercase=True,
                 defaults=defaults,
             )
-            if tool.root_task is None:
-                tool.root_task = TASK_REGISTRY.guess_root_task(tool.tool_name)
-                if tool.root_task is None:
-                    abort('Root task could not be guessed.')
-            return tool
         except (TypeError, ValueError) as symbol_exc:
             abort(str(symbol_exc))
 
