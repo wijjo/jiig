@@ -1,7 +1,7 @@
 # Jiig
 
 Jiig is a framework and tool kit for simplifying the creation of shell tools and
-various other kinds of programs.
+potentially other kinds of programs.
 
 
 ## Advantages
@@ -21,30 +21,29 @@ various other kinds of programs.
 
 ## Program structure
 
-* User-selected driver to interpret metadata as a user interface.
-* Tool definition, either as a special tool script or a Tool object.
-    * Tool metadata.
-    * Root (top level) Task module or function reference.
+* A user-selectable driver interprets metadata to produce a user interface.
 * Decorated @task functions.
-    * Task function annotated parameters.
-    * Optional child sub-task references in @task call.
-    * Optional CLI hints, e.g. option flags, in @task call.
+    * Declares a function that implements a "task", which provides a type-safe
+      function that can be invoked by any user interface implementation. 
+    * Task function arguments are annotated by field declarations which can
+      specify documentation, validation, and type conversion.
+* Tool configuration file, "jiig.yaml" specifies the following:
+    * Tool metadata, including description, author, copyright, etc..
+    * Task tree maps registered task functions to a user interface, e.g. a text- 
+      based command line interface. 
 
-Task functions can have pure "business" logic, because field data validation and
-type conversion is handled externally.
-
-But when fields and business logic do need to change in concert they are likely
-found in the same file, the same function, and probably the same editor screen.
-
+Task function code can be focused on pure "business" logic, since field data
+validation and type conversion is handled externally. For example, an argument 
+could require an existing file path.
+-
 
 ## User interface
 
-The initial release supports argparse-based command line interfaces (CLIs). But
-user interfaces (UIs) are modular, and implemented by drivers that convert field
-data and UI-specific hints into the concrete user interface.
+The initial Jiig release supports argparse-based command line interfaces (CLIs).
+But user interfaces (UIs) are modular, and are implemented by drivers that convert
+field data and UI-specific hints into a concrete user interface.
 
-It will be possible in the future to extend field hints and add drivers to
-support UI alternatives like the following.
+Future drivers could support UI alternatives like the following:
 
 * ReST API based on tasks, fields, and ReST-specific hints.
 * Simple dialog-based GUIs that map tasks and fields to windows and controls,
@@ -60,7 +59,7 @@ and maintains a clean separation from core "business" logic.
 early Jiig-based tool example.
 
 The framework is designed to make it easy to build from scratch, i.e. without
-needing a code generator.
+needing a code generator, aided by a fully-typed API.
 
 ### Simple and flexible command line interface
 
@@ -79,58 +78,44 @@ The command line interface driver is designed to support multiple
 implementations, but for now only the standard Python "argparse" library is
 supported.
 
-A Tool sub-class defines the top level of meta-data and tasks. Tasks are pulled
-in by referencing Task sub-classes or modules in lists declared in Tool and Task
-classes.
-
-### Modular structure
-
-Task modules are ordinary modules, except they need to have a specially named
-Task sub-class called "TaskClass". Which tasks get integrated into the tool is
-solely determined by whether or not they are referenced in active task lists.
+The tool configuration file, "jiig.yaml", maps the full task structure to a user
+interface.
 
 ### Main tool script and execution model
 
-Jiig tool scripts can use `jiig` as the top "shebang" command line. In this case
-Jiig becomes the script interpreter. Such tool scripts do not run Python
-directly. The final Python interpreter is pulled in by Jiig and configured to
-provide the correct runtime environment, including the library path.
-
-The main tool script can declare tool/project meta-data and task functions using
-the @task decorator.
+Jiig tool scripts can use `jiig` as the top "shebang" command line. This causes
+Jiig to become the script interpreter. Such tool scripts run Python indirectly.
+The advantage is that Jiig can provide a fully-initialized virtual environment,
+plus a library load path that allows access to Jiig and tool modules.
 
 ### Dependencies and the virtual environment
 
-Jiig itself has no external dependencies beyond Python (version 3.x).
+Jiig and Jiig-based tools always run from a virtual environment with all
+dependencies satisfied. Both Jiig and the tool can specify Pip package
+requirements for the virtual environment.
 
-Jiig-based tools depend on `jiig` being available in the path.
+Jiig-based tools that use Jiig as the script interpreter rely on `jiig` being
+available in the system execution path.
 
-Tool-specific dependencies can be handled by a virtual environment by defining a
-list of Pip-installed package that get automatically included when the virtual
-environment is created or updated. The environment can be updated at any
-time, e.g. to handle dependency changes.
+### Utility library
 
-### Utility functions
-
-The Jiig library provides useful utility functions and classes for running
-external commands, and for supporting other common shell command needs.
+Jiig provides a utility library ("jiig.util") with a rich variety of useful
+functions and classes, including external command execution, a variety of text
+manipulations, command line aliases, filesystem access, logging, and more.
 
 ## Documentation and type inspection
 
-There is no API documentation yet, but all or most significant modules, classes,
-and functions have useful doc strings.
-
-The programming interface is also very well-typed. So an IDE like PyCharm or
-VS-Code with appropriate plug-ins can provide a lot of assistance.
+There is no API documentation yet, but abundant doc strings and type hints
+assist while programming in an IDE.
 
 ## Aliases
 
 Aliases allow users to capture and retrieve commonly-used partial or complete
 tasks, arguments, and options. They are saved for the user as special names that
-can be used instead of normal task commands.
+can be substitute for normal task commands.
 
-The feature is available through the `alias` task command, and may be inherited
-by any Jiig-based tool.
+The feature is available through the `alias` task command, and the functionality
+may be inherited by any Jiig-based tool.
 
 ### Alias names
 

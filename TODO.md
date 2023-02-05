@@ -1,8 +1,5 @@
 # Improvements
 
-* [ ] Convert Tool to use registry.
-    * [ ] Use registered tool reference in Jiig tool script.
-
 * [ ] Add task function support for delayed clean-up?
     * [X] Support `runtime.when_done(function)`? 
     * [ ] Or add chained decorator, similar to @property getter/setter pairs.
@@ -20,19 +17,8 @@
 
 # Fixes
 
-## Rationalize (and limit) the tasks that tools inherit from Jiig? 
-
-Jiig should probably handle all tasks not directly related to a tool's problem
-domain.
-
-To allow the `jiig` command to manipulate a tool it may need access to a tool's
-configuration, e.g. the tool script file, and virtual environment. Tool
-manipulation tasks need an option or argument that identifies a tool in a way
-that its files can be located.
-
-Perhaps only `help` should be inherited, in order to keep the tool task list
-"clean". Specifically, tasks like `alias` and `venv` should probably move to the
-`jiig` command and not be inherited.
+Improve util.python.import_module_path()'s error handling. Decide whether or not
+to raise exceptions, etc.
 
 # Planned Features
 
@@ -51,12 +37,7 @@ Test virtual environment creation/management, etc..
 
 ## Documentation
 
-Implement something like Pdoc3 to capture API documentation from doc strings.
-This may require a virtual environment. It could be a separate Jiig build tool.
-Incorporate higher level framework reference documentation from other files,
-e.g. from .rst files.
-
-Should also write a tutorial.
+Write a tutorial.
 
 ## History
 
