@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2022, Steven Cooper
+# Copyright (C) 2021-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -25,11 +25,7 @@ import jiig
 from jiig.util.process import run
 
 
-@jiig.task(
-    cli={
-        'trailing': 'trailing_arguments',
-    },
-)
+@jiig.task
 def ipython(
     runtime: jiig.Runtime,
     trailing_arguments: jiig.f.text(repeat=(1, None)),

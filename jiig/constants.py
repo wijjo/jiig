@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2022, Steven Cooper
+# Copyright (C) 2021-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -22,11 +22,12 @@ from pathlib import Path
 
 HOME_FOLDER_PATH = Path(os.environ['HOME'])
 JIIG_ROOT = Path(__file__).parent.parent
+JIIG_CONFIGURATION_NAME = 'jiig.yaml'
 JIIG_VENV_ROOT = HOME_FOLDER_PATH / '.jiig-venv'
 DEFAULT_AUTHOR = '(unknown author)'
 DEFAULT_COPYRIGHT = '(unknown copyright)'
-DEFAULT_TOOL_DESCRIPTION = '(no description, e.g. in tool script or class doc string)'
-DEFAULT_DRIVER_VARIANT = 'argparse'
+DEFAULT_TOOL_DESCRIPTION = '(no tool description)'
+DEFAULT_VERSION = '(unknown version)'
 DEFAULT_DOC_FOLDER = Path('doc')
 DEFAULT_TEST_FOLDER = Path('tests')
 DEFAULT_ALIASES_PATH = HOME_FOLDER_PATH / '.jiig-aliases'
@@ -34,3 +35,4 @@ DEFAULT_BUILD_FOLDER = Path('build')
 SUB_TASK_LABEL = 'SUB_TASK'
 TOP_TASK_LABEL = 'TASK'
 TOP_TASK_DEST_NAME = 'TASK'
+CORE_PIP_PACKAGES = ['PyYAML']

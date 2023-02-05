@@ -1,4 +1,4 @@
-# Copyright (C) 2020-2022, Steven Cooper
+# Copyright (C) 2020-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -20,7 +20,6 @@ Global option flags for util library.
 """
 
 import os
-from typing import Collection
 
 
 def _env_boolean(name: str) -> bool:
@@ -181,21 +180,6 @@ class Options:
         :param text: updated string
         """
         self._column_separator = text
-
-    def from_strings(self, option_strings: Collection[str]):
-        """
-        Update boolean options based on strings.
-
-        All boolean options are updated. I.e. missing strings set the
-        corresponding option to False.
-
-        :param option_strings: strings representing enabled options
-        """
-        self._debug = 'debug' in option_strings
-        self._dry_run = 'dry_run' in option_strings
-        self._verbose = 'verbose' in option_strings
-        self._pause = 'pause' in option_strings
-        self._keep_files = 'keep_files' in option_strings
 
     def copy(self, other: 'Options'):
         """

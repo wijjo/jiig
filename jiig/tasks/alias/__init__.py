@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2022, Steven Cooper
+# Copyright (C) 2021-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -15,21 +15,4 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Jiig alias sub-task imports.
-"""
-
-import jiig
-
-from . import delete, description, list, rename, set, show
-
-
-# noinspection PyUnusedLocal
-@jiig.task(tasks=(delete, description, list, rename, set, show))
-def root(runtime: jiig.Runtime):
-    """
-    Create and manage task command aliases.
-
-    :param runtime: Jiig runtime API.
-    """
-    pass
+"""Create and manage task command aliases."""

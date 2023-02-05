@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2022, Steven Cooper
+# Copyright (C) 2021-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -31,13 +31,7 @@ def _module_path(module):
     return os.path.join('html', *module.url().split('/')[1:])
 
 
-@jiig.task(
-    cli={
-        'options': {
-            'force': ('-f', '--force'),
-        },
-    },
-)
+@jiig.task
 def html(
     runtime: jiig.Runtime,
     force: jiig.f.boolean(),

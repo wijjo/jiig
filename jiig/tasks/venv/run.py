@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2022, Steven Cooper
+# Copyright (C) 2021-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -24,11 +24,7 @@ import os
 import jiig
 
 
-@jiig.task(
-    cli={
-        'trailing': 'trailing_arguments',
-    },
-)
+@jiig.task
 def run(
     runtime: jiig.Runtime,
     command: jiig.f.text(),

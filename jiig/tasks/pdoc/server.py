@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2022, Steven Cooper
+# Copyright (C) 2021-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -23,13 +23,7 @@ import jiig
 
 
 # noinspection PyUnusedLocal
-@jiig.task(
-    cli={
-        'options': {
-            'port': ('-p', '--port'),
-        },
-    },
-)
+@jiig.task
 def server(
     runtime: jiig.Runtime,
     port: jiig.f.integer(),

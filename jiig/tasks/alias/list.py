@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2022, Steven Cooper
+# Copyright (C) 2021-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -26,13 +26,7 @@ from jiig.util.alias_catalog import Alias
 from jiig.util.text.table import format_table
 
 
-@jiig.task(
-    cli={
-        'options': {
-            'expand_names': ('-e', '--expand-names'),
-        }
-    }
-)
+@jiig.task
 def list_(
     runtime: jiig.Runtime,
     expand_names: jiig.f.boolean(),

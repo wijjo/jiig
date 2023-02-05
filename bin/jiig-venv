@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (C) 2020-2022, Steven Cooper
+# Copyright (C) 2020-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -32,8 +32,8 @@ def jiig_env_main():
     if len(sys.argv) != 2:
         sys.stderr.write(f'{script_name} requires the tool script path.')
         sys.exit(1)
-    jiig_root_folder = os.path.dirname(os.path.dirname(os.path.realpath(sys.argv[1])))
-    sys.path.insert(0, jiig_root_folder)
+    jiig_root = os.path.dirname(os.path.dirname(os.path.realpath(sys.argv[1])))
+    sys.path.insert(0, jiig_root)
     tool_script_path = os.path.realpath(sys.argv[1])
     tool_symbols = {}
     with open(file=tool_script_path) as tool_script_file:

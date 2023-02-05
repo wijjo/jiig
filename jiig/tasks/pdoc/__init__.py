@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2022, Steven Cooper
+# Copyright (C) 2021-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -15,19 +15,4 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Jiig pdoc sub-task imports."""
-
-import jiig
-
-from . import html, pdf, server
-
-
-# noinspection PyUnusedLocal
-@jiig.task(tasks=(html, pdf, server))
-def root(runtime: jiig.Runtime):
-    """
-    Pdoc3 documentation tasks.
-
-    :param runtime: Jiig runtime API.
-    """
-    pass
+"""Pdoc3 documentation tasks."""

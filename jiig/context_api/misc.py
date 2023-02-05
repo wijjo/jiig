@@ -1,5 +1,5 @@
 """ActionContext misc. API."""
-# Copyright (C) 2021-2022, Steven Cooper
+# Copyright (C) 2021-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -54,6 +54,8 @@ class ActionContextMiscAPI:
 
         Reads source template configuration, if found to determine what kind of
         special handling may be needed.
+
+        See jiig.util.template_expansion.expand_folder() for more information.
 
         :param source_root: template source root folder path
         :param target_root: base target folder

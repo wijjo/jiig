@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2022, Steven Cooper
+# Copyright (C) 2021-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -24,10 +24,10 @@ import sys
 from pprint import pformat
 from typing import Any, Self
 
-from jiig.util.collections import AttributeDictionary
-from jiig.util.log import log_heading, log_warning, log_error, log_message, abort
-from jiig.util.options import OPTIONS
-from jiig.util.text.blocks import trim_text_blocks
+from .util.collections import AttributeDictionary
+from .util.log import log_heading, log_warning, log_error, log_message, abort
+from .util.options import OPTIONS
+from .util.text.blocks import trim_text_blocks
 
 
 class Context:

@@ -1,4 +1,4 @@
-# Copyright (C) 2020-2022, Steven Cooper
+# Copyright (C) 2020-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -19,7 +19,8 @@
 Task field declaration functions.
 """
 
-from typing import Type, Collection
+from dataclasses import dataclass
+from typing import Type, Collection, Any, Annotated
 
 from .adapters import (
     path_exists,
@@ -34,7 +35,10 @@ from .adapters import (
     to_interval,
     to_timestamp,
 )
-from .field import wrap_field
+from .types import ArgumentAdapter
+from .util.collections import make_list
+from .util.default import DefaultValue
+from .util.repetition import Repetition, repetition_from_spec
 from .util.types import RepeatSpec
 
 # Returned types need to handle List[...] when repeat is specified.
@@ -44,6 +48,66 @@ FIELD_INT_TYPE = Type[int | list[int]]
 FIELD_FLOAT_TYPE = Type[float | list[float]]
 FIELD_NUMBER_TYPE = Type[int | float | list[int | float]]
 FIELD_TEXT_LIST_TYPE = Type[list[str] | list[list[str]]]
+
+
+@dataclass
+class Field:
+    """
+    Field specification derived from type annotation.
+
+    Use wrap_field(), instead of creating directly.
+    """
+    element_type: Any
+    """scalar element type"""
+    description: str
+    """field description"""
+    field_type: Any
+    """field type (defaults to element_type if missing)"""
+    adapters: list[ArgumentAdapter] | None
+    """optional field adapter function chain"""
+    repeat: Repetition | None
+    """optional field repetition data"""
+    choices: list | None
+    """optional value choices"""
+
+
+@dataclass
+class TaskField:
+    """Data extracted from task dataclass or task function signature."""
+    name: str
+    description: str
+    element_type: Any
+    field_type: Any
+    default: DefaultValue | None
+    repeat: Repetition | None
+    choices: list | None
+    adapters: list[ArgumentAdapter]
+
+
+def wrap_field(element_type: Any,
+               description: str = None,
+               field_type: Any = None,
+               adapters: Collection[ArgumentAdapter] = None,
+               repeat: RepeatSpec = None,
+               choices: Collection = None,
+               ) -> Any:
+    """
+    Create Field and wrap in Annotated hint.
+
+    :param element_type: scalar element type
+    :param description: field description
+    :param field_type: field type (defaults to element_type if missing)
+    :param adapters: field adapter function chain
+    :param repeat: optional repeat specification as count or minimum/maximum pair
+    :param choices: optional value choices
+    """
+    field = Field(element_type,
+                  description=description or '(no field description)',
+                  field_type=field_type if field_type is not None else element_type,
+                  adapters=make_list(adapters, allow_none=True),
+                  repeat=repetition_from_spec(repeat) if repeat is not None else None,
+                  choices=make_list(choices, allow_none=True))
+    return Annotated[field.field_type, field]
 
 
 def integer(repeat: RepeatSpec = None,

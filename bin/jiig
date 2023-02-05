@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (C) 2020-2022, Steven Cooper
+# Copyright (C) 2020-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -33,57 +33,6 @@ import sys
 from pathlib import Path
 
 
-def jiig_main(jiig_root_folder: str | Path,
-              runner_args: list[str],
-              cli_args: list[str],
-              ):
-    """
-    Main function for Jiig itself.
-
-    :param jiig_root_folder: Jiig root folder
-    :param runner_args: runner arguments
-    :param cli_args: command line arguments
-    """
-    import jiig
-    jiig.main(
-        jiig.Tool(
-            tool_name='jiig',
-            tool_root_folder=str(jiig_root_folder),
-            root_task='jiig.tasks',
-            project_name='Jiig',
-            description='Jiig tool.',
-            version='0.5',
-            author='Steve Cooper',
-            copyright='2021, Steve Cooper',
-            pip_packages=['pdoc3', 'PySimpleGUI'],
-            doc_api_packages=['jiig'],
-            doc_api_packages_excluded=[
-                'jiig.driver.cli.impl',
-                'jiig.tasks',
-            ],
-        ),
-        runner_args=runner_args,
-        cli_args=cli_args,
-    )
-
-
-def tool_main(runner_args: list[str],
-              cli_args: list[str],
-              ):
-    """
-    Main function for Jiig-based tools.
-
-    :param runner_args: runner arguments
-    :param cli_args: command line arguments
-    """
-    import jiig
-    jiig.main(
-        jiig.Tool.from_script(runner_args[1]),
-        runner_args=runner_args,
-        cli_args=cli_args,
-    )
-
-
 def main():
     """
     Jiig script main.
@@ -97,13 +46,13 @@ def main():
     option is always available for explicit use in the shebang line.
     """
     # Make sure it can load Jiig modules.
-    jiig_root_folder = Path(__file__).resolve().parent.parent
-    if jiig_root_folder not in sys.path:
-        sys.path.insert(0, str(jiig_root_folder))
+    jiig_root = Path(__file__).resolve().parent.parent
+    if str(jiig_root) not in sys.path:
+        sys.path.insert(0, str(jiig_root))
     args = sys.argv
     # Intercept special option to display library path.
     if len(args) > 1 and args[1] == '--show-library-path':
-        print(jiig_root_folder)
+        print(jiig_root)
         sys.exit(0)
     if len(args) > 1 and args[1] == '-r':
         is_tool = True
@@ -118,10 +67,11 @@ def main():
         # Otherwise it should be in the path.
         else:
             is_tool = os.path.dirname(args[1]) in os.environ['PATH'].split(os.pathsep)
+    import jiig
     if is_tool:
-        tool_main(args[:2], args[2:])
+        jiig.tool_main(args[:2], args[2:])
     else:
-        jiig_main(jiig_root_folder, args[:1], args[1:])
+        jiig.jiig_main(jiig_root, args[:1], args[1:])
 
 
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-# Copyright (C) 2020-2022, Steven Cooper
+# Copyright (C) 2020-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -24,10 +24,11 @@ import os
 import sys
 import traceback
 from dataclasses import fields, is_dataclass, MISSING
+from importlib import import_module
+from inspect import isclass, isfunction, ismodule, signature
 from pathlib import Path
-from inspect import isclass, isfunction, signature
 from types import ModuleType
-from typing import Type, Any, TypeVar, get_type_hints, get_args, Callable, IO
+from typing import Type, Any, TypeVar, get_type_hints, get_args, Callable, IO, Iterable
 
 from .default import DefaultValue
 from .filesystem import delete_folder, short_path
@@ -103,6 +104,51 @@ def import_module_path(module_path: str | Path,
     module_spec.loader.exec_module(module)
     sys.modules[module_name] = module
     return module
+
+
+class ModuleReferenceResolver:
+    """Resolve module references and report errors."""
+
+    unresolved_count = 0
+
+    @classmethod
+    def resolve(cls,
+                reference: str | ModuleType | None,
+                ) -> ModuleType | None:
+        """
+        Resolve module reference to an imported module.
+
+        Dump the Python path when the first import error is encountered.
+
+        :param reference: module reference as string or already-imported module
+        :return: imported module or None if the reference could not be resolved
+        """
+        if reference is None:
+            return None
+        if ismodule(reference):
+            return reference
+        if isinstance(reference, str):
+            try:
+                return import_module(reference)
+            except ModuleNotFoundError as exc:
+                cls.unresolved_count += 1
+                if cls.unresolved_count == 1:
+                    log_warning(f'Python path - see import error(s) below:', *sys.path)
+                log_error('Failed to import module.',
+                          exc,
+                          reference=reference,
+                          exception_traceback=True,
+                          exception_traceback_skip=2,
+                          skip_non_source_frames=True)
+                return None
+            except Exception as exc:
+                log_error('Failed to load task module.',
+                          exc,
+                          reference=reference,
+                          exception_traceback=True,
+                          exception_traceback_skip=2,
+                          skip_non_source_frames=True)
+                return None
 
 
 def import_modules_from_folder(folder: str | Path,
@@ -226,9 +272,9 @@ def build_virtual_environment(venv_folder: str | Path,
             if not quiet:
                 log_message('Virtual environment already exists.', venv_short_path)
             if packages:
-                install_missing_virtual_environment_packages(venv_folder,
-                                                             packages,
-                                                             quiet=quiet)
+                install_missing_pip_packages(packages,
+                                             venv_folder=venv_folder,
+                                             quiet=quiet)
             return
         delete_folder(venv_folder)
     log_message('Create virtual environment', venv_short_path)
@@ -247,32 +293,31 @@ def build_virtual_environment(venv_folder: str | Path,
         run([pip_path, 'install'] + packages)
 
 
-def install_missing_virtual_environment_packages(venv_folder: str | Path,
-                                                 packages: list[str],
-                                                 quiet: bool = False,
-                                                 ):
+def install_missing_pip_packages(packages: Iterable[str],
+                                 venv_folder: str | Path = None,
+                                 quiet: bool = False,
+                                 ):
     """
-    Install missing virtual environment packages.
+    Install missing Pip packages.
 
-    :param venv_folder: virtual environment folder path
+    if a virtual environment is specified uses a different/more efficient
+    method, rather than executing "pip list".
+
     :param packages: packages needed
+    :param venv_folder: optional virtual environment folder path
     :param quiet: suppress non-error messages if True
     """
     if not packages:
         return
-    if not isinstance(venv_folder, Path):
-        venv_folder = Path(venv_folder)
-    pip_path = venv_folder / 'bin' / 'pip'
-    result = run([pip_path, 'list'],
-                 capture=True,
-                 quiet=quiet,
-                 run_always=True)
-    installed = set()
-    for line in result.stdout.split(os.linesep)[2:]:
-        columns = line.split(maxsplit=1)
-        if len(columns) == 2:
-            installed.add(columns[0].lower())
-    new_packages = list(filter(lambda p: p.lower() not in installed, packages))
+    if venv_folder is None:
+        installed = pip_installed_packages()
+        pip_path = 'pip'
+    else:
+        if not isinstance(venv_folder, Path):
+            venv_folder = Path(venv_folder)
+        installed = virtual_environment_installed_packages(venv_folder)
+        pip_path = venv_folder / 'bin' / 'pip'
+    new_packages = list(filter(lambda p: p not in installed, packages))
     if not new_packages:
         return
     pip_args = [pip_path, 'install']
@@ -280,6 +325,61 @@ def install_missing_virtual_environment_packages(venv_folder: str | Path,
         pip_args.append('-q')
     pip_args.extend(new_packages)
     run(pip_args)
+
+
+def pip_installed_packages(pip_path: Path | str | None = None,
+                           quiet: bool = False,
+                           ) -> list[str]:
+    """
+    Get installed package list by executing "pip list".
+
+    :param pip_path: optional path to pip executable
+    :param quiet: suppress non-error messages if True
+    """
+    if pip_path is None:
+        pip_path = 'pip'
+    result = run([str(pip_path), 'list'],
+                 capture=True,
+                 quiet=quiet,
+                 run_always=True)
+    installed: list[str] = []
+    for line in result.stdout.split(os.linesep)[2:]:
+        columns = line.split(maxsplit=1)
+        if len(columns) == 2:
+            installed.append(columns[0].lower())
+    return installed
+
+
+def virtual_environment_installed_packages(venv_folder: Path | str,
+                                           quiet: bool = False,
+                                           ) -> list[str]:
+    """
+    Get installed package list directly from virtual environment.
+
+    Loads <venv>/lib/<python>/site-packages/pydeps/
+
+    :param venv_folder: optional virtual environment folder path
+    :param quiet: suppress non-error messages if True
+    """
+    if not isinstance(venv_folder, Path):
+        venv_folder = Path(venv_folder)
+    lib_folder = venv_folder / 'lib'
+    site_packages: Path | None = None
+    lib_sub_folders = list(lib_folder.glob('python*'))
+    if lib_sub_folders:
+        site_packages_path = lib_folder / lib_sub_folders[0] / 'site-packages'
+        if site_packages_path.is_dir():
+            site_packages = site_packages_path
+    if site_packages is None:
+        # Panic and fall back to using the pip command.
+        log_error(f'Unable to find virtual environment site-packages.',
+                  venv_folder=venv_folder)
+        return pip_installed_packages(pip_path=venv_folder / 'bin' / 'pip',
+                                      quiet=quiet)
+    return [
+        str(dist_info.name).split('-', maxsplit=1)[0]
+        for dist_info in site_packages.glob('*.dist-info')
+    ]
 
 
 def update_virtual_environment(venv_folder: str | Path,
@@ -316,6 +416,7 @@ def symbols_to_dataclass(symbols: dict,
                          protected: list[str] = None,
                          overflow: str = None,
                          defaults: dict = None,
+                         ignore_extra_symbols: bool = False,
                          ) -> T_dataclass:
     """
     Populate dataclass from symbols.
@@ -332,12 +433,13 @@ def symbols_to_dataclass(symbols: dict,
     :param protected: list of unwanted dataclass field names
     :param overflow: optional dataclass field name to receive unexpected symbols
     :param defaults: optional defaults that may be used for missing attributes
+    :param ignore_extra_symbols: ignore unexpected symbols if True
     :return: populated dataclass instance
     :raise ValueError: if conversion fails due to bad input data
     :raise TypeError: if conversion fails due to bad output type
     """
     if not isclass(dc_type) or not is_dataclass(dc_type):
-        raise AttributeError(f'module_to_dataclass() target is not a dataclass.')
+        raise AttributeError(f'symbols_to_dataclass() target is not a dataclass.')
 
     def _is_wanted(item_name: str, item_value: Any) -> bool:
         if item_name.startswith('_'):
@@ -400,7 +502,7 @@ def symbols_to_dataclass(symbols: dict,
             output_symbols.setdefault(overflow, {})[name] = input_symbols[name]
         else:
             unknown_keys.append(name)
-    if unknown_keys:
+    if unknown_keys and not ignore_extra_symbols:
         log_warning(f'Unknown {pluralize("key", unknown_keys)} in {dc_type.__name__} source'
                     f' dictionary: {" ".join(sorted(unknown_keys))}', symbols)
 

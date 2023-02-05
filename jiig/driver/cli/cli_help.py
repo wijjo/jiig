@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2022, Steven Cooper
+# Copyright (C) 2021-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -18,26 +18,22 @@
 """Help provider for tool data."""
 
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Sequence
 
-from ...util.log import abort
-from ...util.default import DefaultValue
+from jiig.fields import TaskField
+from jiig.runtime_task import RuntimeTask, get_task_stack
+from jiig.util.default import DefaultValue
+from jiig.util.help_formatter import HelpProvider, HelpFormatter
+from jiig.util.log import abort
+from jiig.util.repetition import Repetition
 from jiig.util.text.footnotes import NotesDict, NotesList
-from ...util.repetition import Repetition
-from ...util.help_formatter import HelpProvider, HelpFormatter
-
-from ..driver_task import DriverTask, DriverField
-
-from .cli_hints import CLIHintRegistry
-from .global_options import GLOBAL_OPTIONS
 
 
 @dataclass
 class CLIHelpProviderOptions:
     top_task_label: str = 'task'
     sub_task_label: str = 'sub-task'
-    supported_global_options: list[str] = field(default_factory=list)
 
 
 class CLIHelpProvider(HelpProvider):
@@ -45,14 +41,16 @@ class CLIHelpProvider(HelpProvider):
     def __init__(self,
                  tool_name: str,
                  tool_description: str,
-                 root_task: DriverTask,
-                 hint_registry: CLIHintRegistry,
+                 root_task: RuntimeTask,
+                 options_by_task: dict[str, dict[str, list[str]]],
+                 trailing_by_task: dict[str, str],
                  options: CLIHelpProviderOptions = None,
                  ):
         self.tool_name = tool_name
         self.tool_description = tool_description
         self.root_task = root_task
-        self.hint_registry = hint_registry
+        self.options_by_task = options_by_task
+        self.trailing_by_task = trailing_by_task
         self.options = options or CLIHelpProviderOptions()
 
     def format_help(self, *names: str, show_hidden: bool = False) -> str:
@@ -117,8 +115,8 @@ class CLIHelpProvider(HelpProvider):
                      tool_name: str,
                      names: Sequence[str],
                      description: str,
-                     fields: list[DriverField],
-                     sub_tasks: list[DriverTask],
+                     fields: list[TaskField],
+                     sub_tasks: list[RuntimeTask],
                      notes: NotesList,
                      footnotes_list: Sequence[NotesDict],
                      task_label: str,
@@ -135,11 +133,12 @@ class CLIHelpProvider(HelpProvider):
 
         # Add flagged options, if any (tasks only).
         task_receives_trailing = False
-        hint_registrar = self.hint_registry.registrar(*names)
+        full_name = '.'.join(names)
+        options_by_field = self.options_by_task.get(full_name, {})
         for option_field in fields:
-            if not task_receives_trailing and hint_registrar.trailing_field:
+            if not task_receives_trailing and full_name in self.trailing_by_task:
                 task_receives_trailing = True
-            flags = hint_registrar.options_by_field.get(option_field.name)
+            flags = options_by_field.get(option_field.name)
             if flags is not None:
                 if option_field.repeat is None:
                     repeat = None
@@ -156,18 +155,10 @@ class CLIHelpProvider(HelpProvider):
                                      default=default,
                                      choices=option_field.choices,
                                      is_boolean=option_field.element_type is bool)
-        # Add global options only when displaying top level help.
-        if not names:
-            for global_option in GLOBAL_OPTIONS:
-                if global_option.name in self.options.supported_global_options:
-                    formatter.add_option(flags=global_option.flags,
-                                         name=global_option.name,
-                                         description=global_option.description,
-                                         is_boolean=True)
 
         # Add positional arguments.
         for positional_field in fields:
-            if positional_field.name not in hint_registrar.options_by_field:
+            if positional_field.name not in options_by_field:
                 if positional_field.repeat is None:
                     repeat = None
                 else:
@@ -185,8 +176,9 @@ class CLIHelpProvider(HelpProvider):
 
         # Add help for sub-tasks.
         for active_sub_task in sorted(sub_tasks, key=lambda t: t.name):
-            hint_sub_registrar = hint_registrar.sub_registrar(active_sub_task.name)
-            sub_task_receives_trailing = bool(hint_sub_registrar.trailing_field)
+            sub_task_full_name = '.'.join([full_name, active_sub_task.name])
+            sub_task_receives_trailing = bool(
+                self.trailing_by_task.get(sub_task_full_name))
             if show_hidden or active_sub_task.visibility != 2:
                 formatter.add_command(
                     active_sub_task.name,
@@ -199,8 +191,9 @@ class CLIHelpProvider(HelpProvider):
 
         return formatter.format_help(receives_trailing_arguments=task_receives_trailing)
 
-    def _resolve_task_stack(self, names: Sequence[str]) -> list[DriverTask] | None:
+    def _resolve_task_stack(self, names: Sequence[str]) -> list[RuntimeTask] | None:
         try:
-            return self.root_task.resolve_task_stack(names)
+            # Return the stack without the root task.
+            return get_task_stack(self.root_task, names)[1:]
         except ValueError as exc:
             abort(str(exc))

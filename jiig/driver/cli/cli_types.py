@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2022, Steven Cooper
+# Copyright (C) 2021-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -17,19 +17,15 @@
 
 """Simple CLI types."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Sequence
 
-from ...util.default import DefaultValue
-from ...util.repetition import Repetition
-
-
-class CLIError(Exception):
-    pass
+from jiig.util.default import DefaultValue
+from jiig.util.repetition import Repetition
 
 
 @dataclass
-class CLIOption:
+class CLIOptionArgument:
     """Data for CLI command option."""
     name: str
     description: str
@@ -41,15 +37,7 @@ class CLIOption:
 
 
 @dataclass
-class CLIOptions:
-    """CLI processing options."""
-    capture_trailing: bool = False
-    raise_exceptions: bool = False
-    global_options: list[CLIOption] = field(default_factory=list)
-
-
-@dataclass
-class CLIPositional:
+class CLIPositionalArgument:
     """Data for CLI positional argument."""
     name: str
     description: str
@@ -58,21 +46,23 @@ class CLIPositional:
     choices: Sequence = None
 
 
-@dataclass
-class CLIPreliminaryResults:
-    """Results from preliminary CLI argument parsing."""
-    # Attributes received from options.
-    data: object
-    # Trailing arguments, following any options.
-    trailing_arguments: list[str]
+class CLICommand:
+    """CLI command."""
+    def __init__(self,
+                 name: str,
+                 description: str,
+                 visibility: int,
+                 ):
+        """
+        Command constructor.
 
-
-@dataclass
-class CLIResults:
-    """Results from full CLI argument parsing."""
-    # Attributes received from options and arguments.
-    data: object
-    # Command names.
-    names: list[str]
-    # Trailing arguments, if requested, following any options.
-    trailing_arguments: list[str] | None
+        :param name: command name
+        :param description: command description
+        :param visibility: 0=normal, 1=secondary, 2=hidden
+        """
+        self.name = name
+        self.description = description
+        self.visibility = visibility
+        self.positionals: list[CLIPositionalArgument] = []
+        self.options: list[CLIOptionArgument] = []
+        self.sub_commands: list[CLICommand] = []

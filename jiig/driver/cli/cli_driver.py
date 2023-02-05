@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2022, Steven Cooper
+# Copyright (C) 2021-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -17,42 +17,64 @@
 
 """Command line parser driver."""
 
-import os
-from dataclasses import dataclass
 from inspect import isclass
-from typing import Sequence, Type
+from typing import Sequence
 
-from ...runtime import RuntimePaths
-from ...util.alias_catalog import is_alias_name, open_alias_catalog
-from ...util.log import abort, log_message, ConsoleLogWriter
-from ...util.process import shell_command_string
-from ...util.python import import_module_path
-from ...util.text.grammar import pluralize
+from jiig.runtime_task import RuntimeTask, get_task_stack
+from jiig.util.collections import make_list
+from jiig.util.log import abort, log_message, log_error, ConsoleLogWriter
+from jiig.util.text.grammar import pluralize
 
-from ..driver import Driver, IMPLEMENTATION_CLASS_NAME
+from ..driver import Driver, DriverPreliminaryAppData, DriverAppData
 from ..driver_options import DriverOptions
-from ..driver_task import DriverTask
-from ..driver_types import DriverInitializationData, DriverApplicationData
 
-from .cli_command import CLICommand
-from .cli_help import CLIHelpProvider, CLIHelpProviderOptions
-from .cli_hints import CLIHintRegistry, CLITaskHintRegistrar, CLI_HINT_ROOT_NAME
-from .cli_implementation import CLIImplementation
-from .cli_types import CLIOptions, CLIOption
-from .global_options import GLOBAL_OPTIONS
+from .cli_parser import Parser
+from .cli_help import (
+    CLIHelpProvider,
+    CLIHelpProviderOptions,
+)
+from .cli_types import (
+    CLIOptionArgument,
+    CLIPositionalArgument,
+    CLICommand,
+)
+
+CLI_HINT_OPTIONS = 'cli_options'
+CLI_HINT_TRAILING = 'cli_trailing'
 
 
-@dataclass
-class CLIInitializationData(DriverInitializationData):
-    cli_implementation: CLIImplementation
-
-
-@dataclass
-class CLIApplicationData(DriverApplicationData):
-    # Command names.
-    names: list[str]
-    # Trailing arguments, if requested, following any options.
-    trailing_arguments: list[str] | None
+CLI_GLOBAL_OPTIONS = [
+    CLIOptionArgument(
+        'debug',
+        'enable debug mode for additional diagnostics',
+        ['--debug'],
+        is_boolean=True,
+    ),
+    CLIOptionArgument(
+        'dry_run',
+        'display actions without executing them (dry run)',
+        ['--dry-run'],
+        is_boolean=True,
+    ),
+    CLIOptionArgument(
+        'verbose',
+        'display additional (verbose) messages',
+        ['-v', '--verbose'],
+        is_boolean=True,
+    ),
+    CLIOptionArgument(
+        'pause',
+        'pause before significant activity',
+        ['--pause'],
+        is_boolean=True,
+    ),
+    CLIOptionArgument(
+        'keep_files',
+        'keep (do not delete) temporary files',
+        ['--keep-files'],
+        is_boolean=True,
+    ),
+]
 
 
 class CLIDriver(Driver):
@@ -61,12 +83,9 @@ class CLIDriver(Driver):
 
     Note that this driver is stateful, and assumes a particular calling sequence.
     """
-    supported_task_hints: list[str] = [CLI_HINT_ROOT_NAME]
-
     def __init__(self,
                  name: str,
                  description: str,
-                 paths: RuntimePaths,
                  options: DriverOptions = None,
                  ):
         """
@@ -74,125 +93,90 @@ class CLIDriver(Driver):
 
         :param name: tool name
         :param description: tool description
-        :param paths: runtime paths
         :param options: various driver options
         """
         super().__init__(name=name,
                          description=description,
-                         paths=paths,
                          options=options)
-        self.hint_registry = CLIHintRegistry()
+        self.cli_parser = Parser(self.options.top_task_dest_name)
+        self.global_options = [
+            global_option
+            for global_option in CLI_GLOBAL_OPTIONS
+            if global_option.name in options.global_option_names
+        ]
+        # Populated later.
+        self.trailing_by_task: dict[str, str] = {}
+        self.options_by_task: dict[str, dict[str, list[str]]] = {}
 
     def on_initialize_driver(self,
                              command_line_arguments: Sequence[str],
-                             ) -> CLIInitializationData:
+                             ) -> DriverPreliminaryAppData:
         """
         Driver initialization.
 
         :param command_line_arguments: command line argument list
-        :return: driver initialization data
+        :return: preliminary argument list
         """
-        variant = self.options.variant
-        if variant is None:
-            variant = 'argparse'
-        module_path = os.path.join(os.path.dirname(__file__), 'impl', variant + '.py')
-        parser_module = import_module_path(module_path)
-        implementation_class: Type[CLIImplementation] = getattr(
-            parser_module, IMPLEMENTATION_CLASS_NAME, None)
-        if implementation_class is None:
-            raise RuntimeError(f'{parser_module.__name__} missing'
-                               f' {IMPLEMENTATION_CLASS_NAME} class.')
-        cli_implementation = implementation_class()
-        cli_implementation.top_task_dest_name = self.options.top_task_dest_name
-        options = CLIOptions(raise_exceptions=self.options.raise_exceptions,
-                             global_options=self._get_supported_global_options())
-        pre_parse_results = cli_implementation.on_pre_parse(command_line_arguments, options)
-        # Scrape up enabled global option names from parse result data attributes.
-        self.enabled_global_options: list[str] = [
-            option.name for option in GLOBAL_OPTIONS
-            if getattr(pre_parse_results.data, option.dest, False)
-        ]
-        # Expand alias as needed to produce final argument list.
-        if not pre_parse_results.trailing_arguments:
-            expanded_arguments: list[str] = []
-        elif not is_alias_name(pre_parse_results.trailing_arguments[0]):
-            expanded_arguments = pre_parse_results.trailing_arguments
-        else:
-            with open_alias_catalog(self.name, self.paths.aliases) as catalog:
-                alias = catalog.get_alias(pre_parse_results.trailing_arguments[0])
-                if not alias:
-                    abort(f'Alias "{pre_parse_results.trailing_arguments[0]}" not found.')
-                expanded_arguments = alias.command + pre_parse_results.trailing_arguments[1:]
-        return CLIInitializationData(expanded_arguments, cli_implementation)
-
-    def _get_supported_global_options(self) -> list[CLIOption]:
-        return [CLIOption(option.name, option.description, option.flags, is_boolean=True)
-                for option in GLOBAL_OPTIONS
-                if option.name in self.options.supported_global_options]
+        data, additional_arguments = self.cli_parser.pre_parse(
+            command_line_arguments,
+            raise_exceptions=self.options.raise_exceptions,
+            options=self.global_options,
+        )
+        return DriverPreliminaryAppData(data, additional_arguments)
 
     def on_initialize_application(self,
-                                  initialization_data: CLIInitializationData,
-                                  root_task: DriverTask,
-                                  ) -> CLIApplicationData:
+                                  arguments: list[str],
+                                  root_task: RuntimeTask,
+                                  ) -> DriverAppData:
         """
-        Required application initialization call-back.
+        Required arguments initialization call-back.
 
-        :param initialization_data: driver initialization data
+        NB: Slightly dishonest, because the returned data object may get updated
+        with trailing arguments in on_initialize_tasks().
+
+        :param arguments: argument list
         :param root_task: root task
         :return: driver application data
         """
-
-        builder = _CLITaskBuilder(root_task, self.hint_registry)
-        builder.build()
-
-        options = CLIOptions(capture_trailing=True,
-                             raise_exceptions=False,
-                             global_options=self._get_supported_global_options())
-        parse_results = initialization_data.cli_implementation.on_parse(
-            initialization_data.final_arguments,
+        root_command = CLICommand(root_task.name,
+                                  root_task.description,
+                                  root_task.visibility)
+        self._add_task_tree(
+            [],
+            root_command,
+            root_task,
+            additional_options=self.global_options,
+        )
+        data, names, additional_arguments = self.cli_parser.parse(
+            arguments,
             self.name,
             self.phase,
-            builder.root_command,
-            options,
+            root_command,
+            capture_trailing=True,
+            raise_exceptions=False,
         )
-
-        # Make sure global options have values, even if disabled.
-        for global_option in GLOBAL_OPTIONS:
-            if global_option.name not in self.options.supported_global_options:
-                setattr(parse_results.data, global_option.dest, False)
-
-        # Resolve the task stack. Handle an application with no commands.
-        task_stack: list[DriverTask] = []
-        if parse_results.names:
-            try:
-                task_stack = root_task.resolve_task_stack(parse_results.names)
-                hint_registrar = self.hint_registry.registrar(*parse_results.names)
-                if task_stack is None:
-                    abort(f'Failed to resolve command.', ' '.join(parse_results.names))
-                for field in task_stack[-1].fields:
-                    if field.name == hint_registrar.trailing_field:
-                        if field.repeat is None:
-                            abort(f'Field assigned to trailing arguments must repeat.',
-                                  task=task_stack[-1].name,
-                                  field=field.name)
-                        # Inject trailing arguments attribute into data object.
-                        setattr(parse_results.data, field.name, parse_results.trailing_arguments)
-                        break
-                else:
-                    if parse_results.trailing_arguments:
-                        argument_word = pluralize("argument", parse_results.trailing_arguments)
-                        abort(f'Unexpected {argument_word} to command:',
-                              shell_command_string(self.name, *initialization_data.final_arguments))
-            except ValueError as exc:
-                abort(str(exc))
-
-        return CLIApplicationData(task_stack,
-                                  parse_results.data,
-                                  parse_results.names,
-                                  parse_results.trailing_arguments)
+        full_name = '.'.join(names)
+        # Resolve task stack.
+        task_stack = get_task_stack(root_task, names)
+        # Inject trailing arguments into argument data object as needed.
+        trailing_field_name = self.trailing_by_task.get(full_name)
+        for field in task_stack[-1].fields:
+            if field.name == trailing_field_name:
+                if field.repeat is None:
+                    abort(f'Field assigned to trailing arguments must repeat.',
+                          task=task_stack[-1].name,
+                          field=field.name)
+                setattr(data, field.name, additional_arguments)
+                break
+        else:
+            if additional_arguments:
+                argument_word = pluralize(
+                    "argument", additional_arguments)
+                abort(f'Unexpected {argument_word} to command:', full_name)
+        return DriverAppData(data, names, additional_arguments, task_stack)
 
     def on_provide_help(self,
-                        root_task: DriverTask,
+                        root_task: RuntimeTask,
                         names: list[str],
                         show_hidden: bool):
         """
@@ -205,12 +189,12 @@ class CLIDriver(Driver):
         options = CLIHelpProviderOptions(
             top_task_label=self.options.top_task_label,
             sub_task_label=self.options.sub_task_label,
-            supported_global_options=self.options.supported_global_options,
         )
         provider = CLIHelpProvider(self.name,
                                    self.description,
                                    root_task,
-                                   self.hint_registry,
+                                   self.options_by_task,
+                                   self.trailing_by_task,
                                    options=options)
         text = provider.format_help(*names, show_hidden=show_hidden)
         if text:
@@ -224,56 +208,65 @@ class CLIDriver(Driver):
         """
         return ConsoleLogWriter()
 
-
-class _CLITaskBuilder:
-
-    def __init__(self, root_task: DriverTask, registry: CLIHintRegistry):
-        self.root_task = root_task
-        self.root_command = CLICommand(root_task.name,
-                                       root_task.description,
-                                       root_task.visibility)
-        self._registry = registry
-
-    def build(self):
-        self._add_task_fields_and_subcommands(
-            self._registry.registrar(),
-            self.root_command,
-            self.root_task,
-        )
-
-    @staticmethod
-    def _add_task_fields(registrar: CLITaskHintRegistrar,
-                         command: CLICommand,
-                         task: DriverTask):
-        registrar.set_hints(task.hints)
+    def _add_task_tree(self,
+                       names: list[str],
+                       command: CLICommand,
+                       task: RuntimeTask,
+                       additional_options: list[CLIOptionArgument] = None,
+                       ):
+        full_name = '.'.join(names)
+        if task.driver_hints:
+            option_hints = task.driver_hints.get(CLI_HINT_OPTIONS)
+            if option_hints:
+                if isinstance(option_hints, dict):
+                    for field_name, raw_flags in option_hints.items():
+                        flag_list = make_list(raw_flags, sep=',')
+                        if flag_list:
+                            if full_name not in self.options_by_task:
+                                self.options_by_task[full_name] = {}
+                            self.options_by_task[full_name][field_name] = flag_list
+                else:
+                    log_error(f'hints[{CLI_HINT_OPTIONS}] is not a dictionary.',
+                              option_hints)
+            trailing_field = task.driver_hints.get(CLI_HINT_TRAILING)
+            if trailing_field:
+                self.trailing_by_task[full_name] = trailing_field
+        option_names: set[str] = set()
+        options_by_field = self.options_by_task.get(full_name, {})
         for field in task.fields:
-            if field.name in registrar.options_by_field:
+            if field.name in options_by_field:
                 is_boolean = isclass(field.element_type) and issubclass(field.element_type, bool)
-                command.add_option(field.name,
-                                   field.description,
-                                   registrar.options_by_field[field.name],
-                                   is_boolean=is_boolean,
-                                   repeat=field.repeat,
-                                   default=field.default,
-                                   choices=field.choices)
+                option = CLIOptionArgument(
+                    field.name,
+                    field.description,
+                    options_by_field[field.name],
+                    is_boolean=is_boolean,
+                    repeat=field.repeat,
+                    default=field.default,
+                    choices=field.choices,
+                )
+                command.options.append(option)
+                option_names.add(field.name)
+        if additional_options:
+            for additional_option in additional_options:
+                if additional_option.name not in option_names:
+                    command.options.append(additional_option)
+        trailing_field_name = self.trailing_by_task.get(full_name)
         for field in task.fields:
-            if field.name not in registrar.options_by_field:
+            if field.name not in options_by_field:
                 # Trailing argument capture is handled separately.
-                if field.name != registrar.trailing_field:
-                    command.add_positional(field.name,
-                                           field.description or '(no description)',
-                                           repeat=field.repeat,
-                                           default=field.default,
-                                           choices=field.choices)
-
-    def _add_task_fields_and_subcommands(self,
-                                         registrar: CLITaskHintRegistrar,
-                                         command: CLICommand,
-                                         task: DriverTask):
-        self._add_task_fields(registrar, command, task)
+                if field.name != trailing_field_name:
+                    positional = CLIPositionalArgument(
+                        field.name,
+                        field.description or '(no description)',
+                        repeat=field.repeat,
+                        default=field.default,
+                        choices=field.choices,
+                    )
+                    command.positionals.append(positional)
         for sub_task in task.sub_tasks:
-            sub_command = command.add_sub_command(sub_task.name,
-                                                  sub_task.description,
-                                                  sub_task.visibility)
-            sub_registrar = registrar.sub_registrar(sub_task.name)
-            self._add_task_fields_and_subcommands(sub_registrar, sub_command, sub_task)
+            sub_command = CLICommand(sub_task.name,
+                                     sub_task.description,
+                                     sub_task.visibility)
+            command.sub_commands.append(sub_command)
+            self._add_task_tree(names + [sub_task.name], sub_command, sub_task)

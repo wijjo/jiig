@@ -1,4 +1,4 @@
-# Copyright (C) 2020-2022, Steven Cooper
+# Copyright (C) 2020-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -25,6 +25,7 @@ from typing import Any, Callable, Sequence, Self
 def make_list(value: Any,
               strings: bool = False,
               allow_none: bool = False,
+              sep: str = None,
               ) -> list | None:
     """
     Coerce a sequence or non-sequence to a list.
@@ -32,6 +33,7 @@ def make_list(value: Any,
     :param value: item to make into a list
     :param strings: convert to text strings if True
     :param allow_none: return None if value is None if True, otherwise empty list
+    :param sep: split string value using this separator if not None
     :return: resulting list or None if value is None
     """
     def _fix(items: list) -> list:
@@ -44,6 +46,8 @@ def make_list(value: Any,
         return _fix(value)
     if isinstance(value, tuple):
         return _fix(list(value))
+    if sep and isinstance(value, str):
+        return value.split(sep)
     return _fix([value])
 
 

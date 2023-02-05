@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2022, Steven Cooper
+# Copyright (C) 2021-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -23,8 +23,6 @@ from dataclasses import dataclass, field
 @dataclass
 class DriverOptions:
     """Options governing Jiig driver behavior."""
-    variant: str = None
-    """Driver implementation variant name (default provided if missing)."""
     raise_exceptions: bool = False
     """Raise exceptions if True."""
     top_task_label: str = 'TASK'
@@ -33,5 +31,5 @@ class DriverOptions:
     """Label used in help for sub-tasks."""
     top_task_dest_name: str = 'TASK'
     """Top task destination name"""
-    supported_global_options: list[str] = field(default_factory=list)
-    """List of global option names to be made available to the user."""
+    global_option_names: list[str] = field(default_factory=list)
+    """Supported global option names."""

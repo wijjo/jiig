@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2022, Steven Cooper
+# Copyright (C) 2021-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -22,14 +22,7 @@ Alias set task.
 import jiig
 
 
-@jiig.task(
-    cli={
-        'options': {
-            'description': ('-d', '--description'),
-        },
-        'trailing': 'command_arguments',
-    },
-)
+@jiig.task
 def set_(
     runtime: jiig.Runtime,
     description: jiig.f.text(),

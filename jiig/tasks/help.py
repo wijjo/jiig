@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2022, Steven Cooper
+# Copyright (C) 2021-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -22,21 +22,14 @@ Help task.
 import jiig
 
 
-@jiig.task(
-    cli={
-        'options': {
-            'all_tasks': ('-a', '--all'),
-
-        }
-    },
-)
+@jiig.task
 def help_(
     runtime: jiig.Runtime,
     all_tasks: jiig.f.boolean(),
     help_names: jiig.f.text(repeat=(None, None)),
 ):
     """
-    Display tool help or task help (if task name(s) are provided).
+    Display tool or task-specific help.
 
     :param runtime: jiig Runtime API.
     :param all_tasks: Show all tasks, including hidden ones.

@@ -1,4 +1,4 @@
-# Copyright (C) 2022, Steven Cooper
+# Copyright (C) 2023, Steven Cooper
 #
 # This file is part of Jiig.
 #

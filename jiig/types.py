@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2022, Steven Cooper
+# Copyright (C) 2021-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -24,6 +24,7 @@ from typing import Callable, Sequence, Any
 # no syntax for variable keyword arguments.
 TaskFunction = Callable
 TaskReference = str | ModuleType | TaskFunction
+ModuleReference = str | ModuleType
 SubTaskList = Sequence[TaskReference]
 SubTaskDict = dict[str, TaskReference]
 SubTaskCollection = SubTaskList | SubTaskDict

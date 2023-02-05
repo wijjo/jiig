@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2022, Steven Cooper
+# Copyright (C) 2021-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -15,15 +15,4 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Jiig top level task imports."""
-
-import jiig
-
-from . import alias, generate, help, pdoc, unittest, venv
-
-
-@jiig.task(tasks=(generate, venv),
-           secondary=(alias, help, pdoc),
-           hidden=(unittest,))
-def root(_runtime: jiig.Runtime):
-    pass
+"""Jiig tasks."""

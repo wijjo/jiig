@@ -1,4 +1,4 @@
-# Copyright (C) 2020-2022, Steven Cooper
+# Copyright (C) 2020-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -131,7 +131,7 @@ class _HelpLabeledListFormatter:
                 label = item.label
             text_lines = wrap(item.text.strip(), width=text_width)
             if not text_lines:
-                yield label
+                yield line_format.format(label, '')
             else:
                 yield line_format.format(label, text_lines[0])
                 for text_line in text_lines[1:]:
@@ -180,7 +180,7 @@ class HelpFormatter:
         """
         self.program_name = program_name or '(no name)'
         self.command_names = command_names
-        self.description = description or '(no description)'
+        self.description = description
         self.sub_commands_label = sub_commands_label
         self.primary_commands: list[HelpCommandData] = []
         self.secondary_commands: list[HelpCommandData] = []
@@ -318,10 +318,8 @@ class HelpFormatter:
             parts.extend([self.sub_commands_label, '...'])
         yield ' '.join(parts)
 
-    def _format_help_text(self, help_text: str | None) -> str:
+    def _format_help_text(self, help_text: str) -> str:
         help_text = help_text.strip() if help_text else ''
-        if not help_text:
-            return '(no help available)'
         start_idx = len(self.footnote_builder.modified_body_paragraphs)
         self.footnote_builder.parse(help_text)
         paragraphs = self.footnote_builder.modified_body_paragraphs[start_idx:]
@@ -341,8 +339,8 @@ class HelpFormatter:
                 name = f'{command_data.name} ...'
             else:
                 name = command_data.name
-            two_column_formatter.add_pair(
-                name, self._format_help_text(command_data.help_text))
+            help_text = self._format_help_text(command_data.help_text)
+            two_column_formatter.add_pair(name, help_text)
         commands_heading = self.sub_commands_label
         if self.primary_commands:
             two_column_formatter.start_block(heading=commands_heading)
@@ -362,8 +360,11 @@ class HelpFormatter:
         if arguments:
             two_column_formatter.start_block(heading='ARGUMENT')
             for argument in arguments:
-                two_column_formatter.add_pair(
-                    argument.name, self._format_help_text(argument.description))
+                description = argument.description
+                if description is None:
+                    description = '(no argument description)'
+                two_column_formatter.add_pair(argument.name,
+                                              self._format_help_text(description))
         yield two_column_formatter.format_block()
 
     def _format_table_options(self,
@@ -373,14 +374,17 @@ class HelpFormatter:
         if options:
             two_column_formatter.start_block(heading='OPTION')
             for option in options:
+                description = option.description
+                if description is None:
+                    description = '(no option description)'
                 if option.is_boolean:
                     two_column_formatter.add_pair(
                         f'{"|".join(option.flags)}',
-                        self._format_help_text(option.description))
+                        self._format_help_text(description))
                 else:
                     two_column_formatter.add_pair(
                         f'{"|".join(option.flags)} {option.name}',
-                        self._format_help_text(option.description))
+                        self._format_help_text(description))
         yield two_column_formatter.format_block()
 
     def _format_epilog(self, max_width: int) -> str:

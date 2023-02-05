@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2022, Steven Cooper
+# Copyright (C) 2021-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -15,21 +15,4 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Jiig venv sub-task imports."""
-
-import jiig
-
-from . import build, ipython, pip, python, run, update
-
-
-@jiig.task(tasks=(build, ipython, pip, python, run, update))
-def root(runtime: jiig.Runtime):
-    """
-    Manage the tool virtual environment.
-
-    :param runtime: Jiig runtime API.
-    """
-    if not runtime.meta.pip_packages and not runtime.options.venv_required:
-        runtime.abort(f'A virtual environment is not required.')
-    if not runtime.paths.venv:
-        runtime.abort(f'Virtual environment folder (venv_folder) is not set.')
+"""Manage the tool virtual environment."""

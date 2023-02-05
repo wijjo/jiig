@@ -1,4 +1,4 @@
-# Copyright (C) 2020-2022, Steven Cooper
+# Copyright (C) 2020-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -29,6 +29,7 @@ from .messages import format_message_lines
 
 MESSAGES_ISSUED_ONCE: set[str] = set()
 LINES_WRITTEN = 0
+EXCEPTION_COUNT = 0
 
 
 class LogWriter:
@@ -131,6 +132,8 @@ def log_message(text: Any, *args, **kwargs):
             break
     # Dump a traceback stack if DEBUG and an exception is being reported.
     if has_exception:
+        global EXCEPTION_COUNT
+        EXCEPTION_COUNT += 1
         if OPTIONS.debug:
             exc_lines = traceback.format_exc().split(os.linesep)
             if exc_lines:
@@ -153,11 +156,13 @@ def log_message(text: Any, *args, **kwargs):
                         lines.append(f'{item.location_string}: {item.text}')
                 if lines:
                     log_message(f'Exception stack{note}:', *lines, tag=tag, is_error=True)
-        if not OPTIONS.debug:
+        if not OPTIONS.debug and EXCEPTION_COUNT == 1:
             if OPTIONS.is_initialized:
                 log_message('(enable debug option for more information)', tag=tag)
             else:
-                log_message(f'(set JIIG_DEBUG=1 for more information)', tag=tag)
+                log_message(f'(set JIIG_DEBUG=1 or enable debug option'
+                            f' for more information)',
+                            tag=tag)
 
 
 def abort(text: Any, *args, **kwargs):
@@ -208,19 +213,20 @@ def log_error(text: Any, *args, **kwargs):
     log_message(text, *args, **kwargs)
 
 
-def log_heading(heading: str, level: int = 0):
+def log_heading(heading: str, level: int = 0, is_error: bool = False):
     """
     Display, and in the future log, a heading message to delineate blocks.
 
     :param heading: heading text
     :param level: heading level 0-n
+    :param is_error: log to stderr instead of stdout if True
     """
     decoration = f'=====' if level <= 1 else f'---'
     if heading:
         line = ' '.join([decoration, heading, decoration])
     else:
         line = decoration
-    _LOG_WRITER.write_line(line, extra_space=True)
+    _LOG_WRITER.write_line(line, extra_space=True, is_error=is_error)
 
 
 def log_block_begin(level: int, heading: str):

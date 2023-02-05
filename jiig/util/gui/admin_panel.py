@@ -1,4 +1,4 @@
-# Copyright (C) 2020-2022, Steven Cooper
+# Copyright (C) 2020-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -22,7 +22,11 @@ import sys
 from dataclasses import dataclass
 from typing import Callable, Any
 
-import PySimpleGUI as Gui
+try:
+    import PySimpleGUI as Gui
+except ImportError:
+    sys.stderr.write(f'PySimpleGUI is not available in the Python environment.{os.linesep}')
+    sys.exit(1)
 
 
 @dataclass
@@ -34,7 +38,6 @@ class ActionButtonSpec:
 HandlerFunction = Callable[['AdminPanel', Any], None]
 
 
-# noinspection PyUnresolvedReferences
 class AdminPanel:
 
     def __init__(self, title: str = None):

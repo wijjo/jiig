@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2022, Steven Cooper
+# Copyright (C) 2021-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -19,12 +19,12 @@
 
 import sys
 from dataclasses import dataclass
-from importlib import import_module
 from inspect import isclass, ismodule
 from types import ModuleType
 from typing import TypeVar, Type, Generic
 
-from jiig.util.log import abort, log_error, log_message
+from .log import abort, log_error
+from .python import ModuleReferenceResolver
 
 
 ST = TypeVar('ST')
@@ -37,6 +37,12 @@ class ClassResolver(Generic[ST]):
     class ResolvedClass:
         """Successful class resolution data."""
         subclass: Type[ST]
+        module: ModuleType
+
+    @dataclass
+    class ResolvedInstance:
+        """Successful instance resolution data."""
+        instance: ST
         module: ModuleType
 
     def __init__(self,
@@ -53,44 +59,58 @@ class ClassResolver(Generic[ST]):
         self.base_class_type_name = '.'.join([base_class_type.__module__,
                                               base_class_type.__name__]),
         self.name = name
+        self.module_resolver = ModuleReferenceResolver()
 
-    def resolve(self,
-                reference: Type[ST] | str | ModuleType,
-                ) -> ResolvedClass:
+    def resolve_class(self,
+                      reference: Type[ST] | str | ModuleType,
+                      ) -> ResolvedClass:
         found_class: Type[ST] | None = None
         # Resolve class type directly?
         if isclass(reference):
             if issubclass(reference, self.base_class_type):
                 found_class = reference
-        # Resolve string (module package name) reference to module?
-        elif isinstance(reference, str):
-            try:
-                reference = import_module(reference)
-            except ModuleNotFoundError as exc:
-                log_message(f'Python path: {sys.path}')
-                log_error(f'Failed to import {self.name} module: {reference}',
-                          exc,
-                          exception_traceback=True,
-                          exception_traceback_skip=2,
-                          skip_non_source_frames=True)
-            except Exception as exc:
-                log_error(f'Failed to load {self.name} module: {reference}',
-                          exc,
-                          exception_traceback=True,
-                          exception_traceback_skip=2,
-                          skip_non_source_frames=True)
-        # Resolve module to first declared subclass in that module?
-        if ismodule(reference):
-            for module_attr_name, module_attr in reference.__dict__.items():
-                if not module_attr_name.startswith('_') and isclass(module_attr):
-                    if module_attr.__module__ == reference.__name__:
-                        if issubclass(module_attr, self.base_class_type):
-                            found_class = module_attr
-                            break
-            else:
-                log_error(f'Module has no {self.name}: {reference.__package__}')
+        else:
+            # Resolve string (module package name) reference to module?
+            if isinstance(reference, str):
+                reference = self.module_resolver.resolve(reference)
+            # Resolve module to first declared subclass in that module?
+            if reference is not None and ismodule(reference):
+                for module_attr_name, module_attr in reference.__dict__.items():
+                    if not module_attr_name.startswith('_') and isclass(module_attr):
+                        if module_attr.__module__ == reference.__name__:
+                            if issubclass(module_attr, self.base_class_type):
+                                found_class = module_attr
+                                break
+                else:
+                    log_error(f'Module has no {self.name}: {reference.__package__}')
         if found_class is None:
             abort(f'Failed to resolve reference as {self.name} class:',
                   target=str(reference),
                   type=self.base_class_type_name)
         return self.ResolvedClass(found_class, sys.modules[found_class.__module__])
+
+    def resolve_instance(self,
+                         reference: ST | str | ModuleType,
+                         ) -> ResolvedInstance:
+        found_instance: ST | None = None
+        if isinstance(reference, self.base_class_type):
+            found_instance = reference
+        else:
+            # Resolve string (module package name) reference to module?
+            if isinstance(reference, str):
+                reference = self.module_resolver.resolve(reference)
+            # Resolve module to first declared subclass in that module?
+            if reference is not None and ismodule(reference):
+                for module_attr_name, module_attr in reference.__dict__.items():
+                    if (not module_attr_name.startswith('_')
+                            and isinstance(module_attr, self.base_class_type)):
+                        found_instance = module_attr
+                        break
+                else:
+                    log_error(f'Module has no {self.base_class_type.__name__} instance.')
+        if found_instance is None:
+            abort(f'Failed to resolve reference as {self.name} instance:',
+                  target=str(reference),
+                  type=self.base_class_type_name)
+        return self.ResolvedInstance(
+            found_instance, sys.modules[found_instance.__class__.__module__])

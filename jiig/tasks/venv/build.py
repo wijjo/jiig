@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2022, Steven Cooper
+# Copyright (C) 2021-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -23,13 +23,7 @@ import jiig
 from jiig.util.python import build_virtual_environment
 
 
-@jiig.task(
-    cli={
-        'options': {
-            'rebuild_venv': ('-r', '--rebuild'),
-        }
-    }
-)
+@jiig.task
 def build(
     runtime: jiig.Runtime,
     rebuild_venv: jiig.f.boolean(),

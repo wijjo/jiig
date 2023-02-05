@@ -1,4 +1,4 @@
-# Copyright (C) 2020-2022, Steven Cooper
+# Copyright (C) 2020-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -18,78 +18,338 @@
 """
 Jiig task decorator and discovery.
 """
-
+import os
 import sys
+import textwrap
 from dataclasses import dataclass
-from inspect import ismodule
+from inspect import isfunction, ismodule
 from types import ModuleType
+from typing import Sequence, Self, TypeVar, Type, Any
 
-from .types import TaskFunction, TaskReference, SubTaskCollection, SubTaskDict
-from .util.log import abort
-from .util.text.footnotes import NotesSpec, NotesDict
+from .types import TaskFunction, TaskReference, ModuleReference
+from .util.collections import make_list
+from .util.log import log_error, log_message, log_heading
+from .util.text.footnotes import NotesSpec, NotesList, NotesDict
+
+T_task_or_group = TypeVar('T_task_or_group')
 
 
-class _HintRegistry:
+class _BaseTask:
 
-    _supported_task_hints: set[str] = set()
-    _used_task_hints: set[str] = set()
-    _supported_field_hints: set[str] = set()
-    _used_field_hints: set[str] = set()
+    dump_indent = '   '
 
-    def add_supported_task_hints(self, *names: str):
+    @staticmethod
+    def shorten_notes(notes: NotesList | NotesDict | None) -> str:
+        if notes is None:
+            return ''
+        return textwrap.shorten(str(notes)[1:-1], 40)
+
+    @classmethod
+    def format_dump(cls,
+                    name: str,
+                    indent: str | None,
+                    **members,
+                    ) -> str:
+        heading = f'{cls.__name__}["{name}"]:'
+        member_strings = [
+            f'{member_name}={member_value}'
+            for member_name, member_value in members.items()
+        ]
+        member_text = textwrap.indent(os.linesep.join(member_strings), cls.dump_indent)
+        return textwrap.indent(os.linesep.join([heading, member_text]), indent or '')
+
+
+class Task(_BaseTask):
+    """
+    Task specification.
+
+    For clarity, requires only keyword arguments.
+    """
+    def __init__(self,
+                 *,
+                 name: str,
+                 impl: TaskReference | None = None,
+                 visibility: int = 0,
+                 description: str | None = None,
+                 notes: NotesSpec | None = None,
+                 footnotes: NotesDict | None = None,
+                 **hints,
+                 ):
         """
-        Register supported task hint name(s).
+        Task constructor.
 
-        :param names: task hint name(s)
+        :param name: task name
+        :param impl: optional Task implementation reference (default: the name
+                     is a module in the containing TaskGroup package)
+        :param visibility: 0=normal, 1=secondary, 2=hidden
+        :param description: optional description
+        :param notes: optional notes as string or string list
+        :param footnotes: optional footnotes dictionary
+        :param hints: optional driver hints (avoid collisions with other keywords)
         """
-        for name in names:
-            self._supported_task_hints.add(name)
+        self.name = name
+        self.visibility = visibility
+        self.impl: TaskReference | None = impl
+        self.description: str | None = description
+        self.notes: NotesList | None = make_list(notes, allow_none=True)
+        self.footnotes: NotesDict | None = footnotes
+        self.hints: dict = hints
 
-    def add_used_task_hints(self, *names: str):
+    def copy(self, visibility: int = None) -> Self:
         """
-        Register used task hint name(s).
+        Copy this task.
 
-        :param names: task hint name(s)
+        :param visibility: optional visibility override
+        :return: task copy
         """
-        for name in names:
-            self._used_task_hints.add(name)
+        task_copy = Task(
+            name=self.name,
+            task=self.impl,
+            visibility=visibility if visibility is not None else self.visibility,
+            description=self.description,
+            notes=self.notes.copy() if self.notes is not None else None,
+            footnotes=self.footnotes.copy() if self.footnotes is not None else None,
+            **self.hints,
+        )
+        return task_copy
 
-    def get_bad_task_hints(self) -> list[str]:
+    @classmethod
+    def from_raw_data(cls, name: str, raw_data: Any) -> Self:
         """
-        Get task hints that are used, but unsupported.
+        Task creation based in raw input data (should be dictionary).
 
-        :return: bad task hints list
+        :param name: task name
+        :param raw_data: raw input data
+        :return: Task object
         """
-        return list(sorted(self._used_task_hints.difference(self._supported_task_hints)))
+        converter = _TaskTreeElementConverter(raw_data)
+        return cls(
+             name=name,
+             impl=converter.get_impl(),
+             visibility=converter.get_visibility(),
+             description=converter.get_description(),
+             notes=converter.get_notes(),
+             footnotes=converter.get_footnotes(),
+             **converter.get_hints(),
+         )
 
-    def add_supported_field_hints(self, *names: str):
+    def dump(self, indent: str = None) -> str:
         """
-        Register supported field hint name(s).
+        Format data as text block for logging.
 
-        :param names: field hint name(s)
+        :param indent: indent string if nested
+        :return: formatted text block
         """
-        for name in names:
-            self._supported_field_hints.add(name)
+        return self.format_dump(
+            self.name,
+            indent,
+            visibility=self.visibility,
+            impl=self.impl,
+            description=f'"{self.description}"',
+            notes=f'"{self.shorten_notes(self.notes)}"',
+            footnotes=f'"{self.shorten_notes(self.footnotes)}"',
+        )
 
-    def add_used_field_hints(self, *names: str):
+
+class TaskGroup(_BaseTask):
+    """
+    Group of tasks and or nested task groups.
+
+    For clarity, requires only keyword arguments.
+    """
+    def __init__(self,
+                 *,
+                 name: str,
+                 sub_tasks: Sequence[Task | Self],
+                 package: ModuleReference | None = None,
+                 description: str = None,
+                 visibility: int = 0,
+                 notes: NotesSpec | None = None,
+                 footnotes: NotesDict | None = None,
+                 **hints,
+                 ):
         """
-        Register used field hint name(s).
+        TaskGroup constructor.
 
-        :param names: field hint name(s)
+        Task group description is required because there is nowhere else to get
+        it. There is no associated function or object with a doc string.
+
+        :param name: task group name
+        :param sub_tasks: nested sub-tasks and or sub-groups
+        :param package: optional package containing task modules - allows simple
+                        name task implementation references
+        :param description: optional description (default: task package description)
+        :param visibility: 0=normal, 1=secondary, 2=hidden
+        :param notes: optional notes as string or string list
+        :param footnotes: optional footnotes dictionary
+        :param hints: optional driver hints (avoid collisions with other keywords)
         """
-        for name in names:
-            self._used_field_hints.add(name)
+        self.name = name
+        self.visibility = visibility
+        self.package = package
+        self.description = description
+        self.names: set[str] = set()
+        self.groups: list[TaskGroup] = _scrub_sub_tasks(self.name,
+                                                        sub_tasks,
+                                                        self.names,
+                                                        TaskGroup)
+        self.tasks: list[Task] = _scrub_sub_tasks(self.name,
+                                                  sub_tasks,
+                                                  self.names,
+                                                  Task)
+        self.notes: NotesList | None = make_list(notes, allow_none=True)
+        self.footnotes: NotesDict | None = footnotes
+        self.hints: dict = hints
 
-    def get_bad_field_hints(self) -> list[str]:
+    def copy(self, visibility: int = None) -> Self:
         """
-        Get field hints that are used, but unsupported.
+        Copy this task group.
 
-        :return: bad field hints list
+        :param visibility: optional visibility override
+        :return: task group copy
         """
-        return list(sorted(self._used_field_hints.difference(self._supported_field_hints)))
+        group_copy = TaskGroup(
+            name=self.name,
+            sub_tasks=[],
+            package=self.package,
+            description=self.description,
+            visibility=visibility if visibility is not None else self.visibility,
+            notes=self.notes.copy() if self.notes is not None else None,
+            footnotes=self.footnotes.copy() if self.footnotes is not None else None,
+            **self.hints,
+        )
+        group_copy.tasks = self.tasks.copy()
+        group_copy.groups = self.groups.copy()
+        group_copy.names = self.names.copy()
+        return group_copy
+
+    @classmethod
+    def from_raw_data(cls, name: str, raw_data: Any) -> Self:
+        """
+        TaskGroup creation based in raw input data (should be dictionary).
+
+        Recursively creates contained TaskGroup and Task objects.
+
+        :param name: task group name
+        :param raw_data: raw input data
+        :return: TaskGroup object
+        """
+        converter = _TaskTreeElementConverter(raw_data)
+        return cls(
+            name=name,
+            sub_tasks=converter.get_sub_tasks(),
+            package=converter.get_package(),
+            description=converter.get_description(),
+            visibility=converter.get_visibility(),
+            notes=converter.get_notes(),
+            footnotes=converter.get_footnotes(),
+            **converter.get_hints(),
+        )
+
+    def dump(self, indent: str = None) -> str:
+        """
+        Format data as text block for logging.
+
+        :param indent: indent string if nested
+        :return: formatted text block
+        """
+        if indent is None:
+            indent = ''
+        group_dump = self.format_dump(
+            self.name,
+            indent,
+            package=f'"{self.package}"',
+            description=f'"{self.description}"',
+            visibility=self.visibility,
+            notes=f'"{self.shorten_notes(self.notes)}"',
+            footnotes=f'"{self.shorten_notes(self.footnotes)}"',
+        )
+        sub_task_dumps: list[str] = [
+            sub_task.dump(indent + self.dump_indent)
+            for sub_task in self.tasks
+        ]
+        sub_group_dumps: list[str] = [
+            sub_group.dump(indent + self.dump_indent)
+            for sub_group in self.groups
+        ]
+        return (os.linesep * 2).join([group_dump] + sub_task_dumps + sub_group_dumps)
 
 
-HINT_REGISTRY = _HintRegistry()
+class TaskTree(TaskGroup):
+    """
+    Application task tree.
+
+    For clarity, requires only keyword arguments.
+    """
+    def __init__(self,
+                 *,
+                 name: str,
+                 sub_tasks: Sequence[Task | TaskGroup],
+                 package: ModuleReference | None = None,
+                 ):
+        """
+        TaskGroup constructor.
+
+        :param name: task tree name
+        :param sub_tasks: nested sub-tasks and or sub-groups
+        :param package: optional package containing top level task modules -
+                        allows simple name task implementation references
+        """
+        super().__init__(name=name,
+                         sub_tasks=sub_tasks,
+                         package=package,
+                         description='root task',
+                         visibility=2)
+
+    def copy(self, visibility: int = None) -> Self:
+        """
+        Copy this task group.
+
+        :param visibility: optional visibility override
+        :return: task group copy
+        """
+        tree_copy = TaskTree(
+            name=self.name,
+            sub_tasks=[],
+            package=self.package,
+        )
+        tree_copy.tasks = self.tasks.copy()
+        tree_copy.groups = self.groups.copy()
+        tree_copy.names = self.names.copy()
+        return tree_copy
+
+    @classmethod
+    def from_raw_data(cls, name: str, raw_data: Any) -> Self:
+        """
+        TaskTree creation based in raw input data (should be dictionary).
+
+        Recursively creates contained TaskGroup and Task objects.
+
+        :param name: task tree name
+        :param raw_data: raw input data
+        :return: TaskTree object
+        """
+        converter = _TaskTreeElementConverter(raw_data)
+
+        task_tree = cls(
+            name=name,
+            sub_tasks=converter.get_sub_tasks(),
+            package=converter.get_package(),
+        )
+        hints = converter.get_hints()
+        if hints:
+            log_error('Ignoring unexpected task tree hint keys:', *sorted(hints.keys()))
+        return task_tree
+
+    def log_dump_all(self, heading: str = None):
+        """
+        Dump task tree to log, e.g. console.
+
+        :param heading: optional heading text
+        """
+        log_heading(heading or 'task tree', is_error=True)
+        log_message(self.dump(), is_error=True)
+        log_heading('', is_error=True)
 
 
 @dataclass
@@ -99,39 +359,28 @@ class RegisteredTask:
     module: ModuleType
     full_name: str
     description: str | None
-    primary_tasks: SubTaskDict | None
-    secondary_tasks: SubTaskDict | None
-    hidden_tasks: SubTaskDict | None
     notes: NotesSpec | None
     footnotes: NotesDict | None
-    driver_hints: dict
 
 
 TASKS_BY_FUNCTION_ID: dict[int, RegisteredTask] = {}
 TASKS_BY_MODULE_ID: dict[int, RegisteredTask] = {}
 
 
-def task(naked_task_function: TaskFunction = None,
-         /,
-         description: str = None,
-         tasks: SubTaskCollection = None,
-         secondary: SubTaskCollection = None,
-         hidden: SubTaskCollection = None,
-         notes: NotesSpec = None,
-         footnotes: NotesDict = None,
-         **driver_hints,
-         ) -> TaskFunction:
+def task(
+    naked_task_function: TaskFunction = None,
+    /,
+    description: str = None,
+    notes: NotesSpec = None,
+    footnotes: NotesDict = None,
+) -> TaskFunction:
     """
     Task function decorator.
 
     :param naked_task_function: not used explicitly, only non-None for naked @task functions
     :param description: task description (default: parsed from doc string)
-    :param tasks: optional sub-task reference(s) as sequence or dictionary
-    :param secondary: optional secondary sub-task reference(s) as sequence or dictionary
-    :param hidden: optional hidden sub-task reference(s) as sequence or dictionary
     :param notes: optional note or notes text
     :param footnotes: optional footnotes dictionary
-    :param driver_hints: driver hint dictionary
     :return: wrapper task function
     """
     if naked_task_function is None:
@@ -139,13 +388,9 @@ def task(naked_task_function: TaskFunction = None,
         def _task_function_wrapper(task_function: TaskFunction) -> TaskFunction:
             _register_task_function(
                 task_function=task_function,
-                description=description,
-                primary_tasks=tasks,
-                secondary_tasks=secondary,
-                hidden_tasks=hidden,
-                notes=notes,
-                footnotes=footnotes,
-                driver_hints=driver_hints,
+                task_description=description,
+                task_notes=notes,
+                task_footnotes=footnotes,
             )
             return task_function
 
@@ -158,58 +403,192 @@ def task(naked_task_function: TaskFunction = None,
 
 def _register_task_function(
         task_function: TaskFunction,
-        description: str | None = None,
-        primary_tasks: SubTaskCollection | None = None,
-        secondary_tasks: SubTaskCollection | None = None,
-        hidden_tasks: SubTaskCollection | None = None,
-        notes: NotesSpec = None,
-        footnotes: NotesDict = None,
-        driver_hints: dict | None = None,
+        task_description: str | None = None,
+        task_notes: NotesSpec = None,
+        task_footnotes: NotesDict = None,
 ):
     # task_function.__module__ may be None, e.g. for tasks in a Jiig script.
     module_name = getattr(task_function, '__module__')
     if module_name == 'builtins':
         module_name = '<tool>'
-    module = sys.modules.get(module_name) if module_name else None
+    module = sys.modules.get(module_name)
     registered_task = RegisteredTask(
         task_function=task_function,
         module=module,
         full_name=f'{module_name}.{task_function.__name__}()',
-        description=description,
-        primary_tasks=_make_sub_tasks_map(primary_tasks),
-        secondary_tasks=_make_sub_tasks_map(secondary_tasks),
-        hidden_tasks=_make_sub_tasks_map(hidden_tasks),
-        notes=notes,
-        footnotes=footnotes,
-        driver_hints=driver_hints or {},
+        description=task_description,
+        notes=task_notes,
+        footnotes=task_footnotes,
     )
     TASKS_BY_FUNCTION_ID[id(task_function)] = registered_task
     if module is not None:
         TASKS_BY_MODULE_ID[id(registered_task.module)] = registered_task
-    if driver_hints:
-        HINT_REGISTRY.add_used_task_hints(*driver_hints.keys())
 
 
-def _get_default_task_name(reference: TaskReference) -> str:
-    if ismodule(reference):
-        return reference.__name__.split('.')[-1]
-    if isinstance(reference, str):
-        return reference.split('.')[-1]
-    name = reference.__name__
-    # Strip trailing underscore, which can be used to avoid collisions with built-ins.
-    if name.endswith('_'):
-        name = name[:-1]
-    return name
+def _scrub_sub_tasks(parent_name: str,
+                     sub_tasks: Sequence[Task | TaskGroup],
+                     names: set[str],
+                     filter_type: Type[T_task_or_group],
+                     ) -> list[T_task_or_group]:
+    scrubbed: list[T_task_or_group] = []
+    for sub_task in sub_tasks:
+        if isinstance(sub_task, filter_type):
+            if sub_task.name not in names:
+                names.add(sub_task.name)
+                scrubbed.append(sub_task)
+            else:
+                log_error(f'Ignoring repeated sub-task name in task group'
+                          f' "{parent_name}": {sub_task.name}')
+    return scrubbed
 
 
-def _make_sub_tasks_map(raw_tasks: SubTaskCollection | None) -> SubTaskDict | None:
-    # None?
-    if raw_tasks is None:
+class _TaskTreeElementConverter:
+    unnamed_count = 0
+
+    def __init__(self, raw_data: Any):
+        self.keys_used: list[str] = []
+        if isinstance(raw_data, dict):
+            self.raw_data = raw_data
+        elif raw_data is None:
+            self.raw_data = {}
+        else:
+            log_error('Task tree element data is not a dictionary.')
+            self.raw_data = {}
+
+    def _get_raw_data(self, name: str) -> Any | None:
+        if name not in self.keys_used:
+            self.keys_used.append(name)
+        return self.raw_data.get(name)
+
+    def get_name(self) -> str:
+        """
+        Convert raw data to name, with handling of unnamed elements.
+
+        :return: name
+        """
+        raw_data = self._get_raw_data('name')
+        if not raw_data:
+            self.unnamed_count += 1
+            return f'unnamed_{self.unnamed_count}'
+        return str(raw_data)
+
+    def get_description(self) -> str | None:
+        """
+        Convert raw data to description.
+
+        :return: description or None
+        """
+        raw_data = self._get_raw_data('description')
+        if raw_data is None:
+            return None
+        if not isinstance(raw_data, str):
+            return str(raw_data)
+        return raw_data
+
+    def get_visibility(self) -> int:
+        """
+        Convert raw data to visibility.
+
+        :return: visibility
+        """
+        raw_data = self._get_raw_data('visibility')
+        if raw_data is None:
+            return 0
+        if not isinstance(raw_data, int) or raw_data < 0 or raw_data > 2:
+            log_error(f'Bad visibility value: {raw_data}')
+            return 0
+        return raw_data
+
+    def get_notes(self) -> NotesList | None:
+        """
+        Convert raw data to notes.
+
+        :return: notes list or None
+        """
+        raw_data = self._get_raw_data('notes')
+        if raw_data is None:
+            return None
+        if isinstance(raw_data, list):
+            return raw_data
+        if isinstance(raw_data, str):
+            return [raw_data]
+        if isinstance(raw_data, tuple):
+            return list(raw_data)
+        return [str(raw_data)]
+
+    def get_footnotes(self) -> NotesDict | None:
+        """
+        Convert raw data to footnotes.
+
+        :return: footnotes dictionary or None
+        """
+        raw_data = self._get_raw_data('footnotes')
+        if raw_data is None:
+            return None
+        if isinstance(raw_data, dict):
+            return {
+                name: str(value)
+                for name, value in raw_data.items()
+            }
+        log_error('Bad footnotes data:', raw_data)
         return None
-    # Already a dictionary?
-    if isinstance(raw_tasks, dict):
-        return raw_tasks
-    # Convert sequence to dictionary using default names based on references.
-    if isinstance(raw_tasks, (list, tuple)):
-        return {_get_default_task_name(reference): reference for reference in raw_tasks}
-    abort('Assigned tasks are neither a sequence nor a dictionary.', raw_tasks)
+
+    def get_hints(self) -> dict:
+        """
+        Extract hints from raw data based on unused dictionary keys.
+
+        :return: hints dictionary
+        """
+        return {
+            name: value
+            for name, value in self.raw_data.items()
+            if name not in self.keys_used
+        }
+
+    def get_sub_tasks(self) -> list[Task | TaskGroup]:
+        """
+        Convert raw data to sub_tasks list.
+
+        :return: sub-tasks list
+        """
+        raw_data = self._get_raw_data('sub_tasks')
+        if raw_data is None:
+            return []
+        if not isinstance(raw_data, dict):
+            log_error('Sub-tasks raw data is not a dictionary.')
+            return []
+        sub_tasks: list[Task | TaskGroup] = []
+        for name, raw_item_data in raw_data.items():
+            if isinstance(raw_item_data, dict) and 'sub_tasks' in raw_item_data:
+                sub_tasks.append(TaskGroup.from_raw_data(name, raw_item_data))
+            else:
+                sub_tasks.append(Task.from_raw_data(name, raw_item_data))
+        return sub_tasks
+
+    def get_package(self) -> ModuleReference | None:
+        """
+        Convert raw data to package module reference.
+
+        :return: package module reference or None
+        """
+        raw_data = self._get_raw_data('package')
+        if raw_data is None:
+            return None
+        if not isinstance(raw_data, str) and not ismodule(raw_data):
+            log_error(f'Bad package module reference: {raw_data}')
+            return None
+        return raw_data
+
+    def get_impl(self) -> TaskReference | None:
+        """
+        Convert raw data to task reference.
+
+        :return: task reference or None
+        """
+        raw_data = self._get_raw_data('impl')
+        if raw_data is None:
+            return None
+        if not isinstance(raw_data, str) and not ismodule(raw_data) and not isfunction(raw_data):
+            log_error(f'Bad task implementation reference: {raw_data}')
+            return None
+        return raw_data

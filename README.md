@@ -59,9 +59,8 @@ and maintains a clean separation from core "business" logic.
 `Tzar` (https://github.com/wijjo/tzar), also created by the Jiig author, is an
 early Jiig-based tool example.
 
-It includes some code generation capability to help get started quickly. But the
-framework is designed to make it easy to build from scratch, i.e. without
-needing generated code.
+The framework is designed to make it easy to build from scratch, i.e. without
+needing a code generator.
 
 ### Simple and flexible command line interface
 
@@ -115,12 +114,6 @@ time, e.g. to handle dependency changes.
 
 The Jiig library provides useful utility functions and classes for running
 external commands, and for supporting other common shell command needs.
-
-### Limited code generation
-
-The `tool` sub-command can generate a tool project or basic tool script.
-
-The `task` sub-command can generate a basic task module.
 
 ## Documentation and type inspection
 
@@ -208,12 +201,4 @@ are substituted and used internally.
 
 ## Getting started
 
-Use the "jiig tool project" or "jiig tool script" command to create either a
-multi-folder/multi-file project or a stand-alone script. Follow the comments and
-generated code for hints about how to proceed.
-
-The "jiig task create" command can add a new task to an existing project, but it
-needs to be given the task library folder.
-
-Use the "help" task get more information on how to use the Jiig command line
-interface.
+You can base a new project on examples provided with this library.

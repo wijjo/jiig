@@ -1,4 +1,4 @@
-# Copyright (C) 2020-2022, Steven Cooper
+# Copyright (C) 2020-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -24,8 +24,8 @@ Jiig library.
 from .action_context import ActionContext
 from .context import Context
 from .runtime import Runtime
-from .startup import main
-from .task import task
+from .startup import main, jiig_main, tool_main
+from .task import task, Task, TaskGroup, TaskTree
 from .tool import Tool
 from .util.options import OPTIONS
 from .util.script import Script

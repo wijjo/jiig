@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2022, Steven Cooper
+# Copyright (C) 2021-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -19,4 +19,4 @@
 Public CLI parsing modules and interface.
 """
 
-from .cli_driver import CLIDriver
+from .cli_driver import CLIDriver, CLI_HINT_OPTIONS, CLI_HINT_TRAILING

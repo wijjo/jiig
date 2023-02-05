@@ -46,7 +46,7 @@ Create more unit tests to exercise the Jiig utility library.
 Add tests to validate the tool infrastructure using a specially-designed tool
 with an assortment of fake tasks.
 
-Test code generation, virtual environment creation/management, etc..
+Test virtual environment creation/management, etc..
 
 
 ## Documentation

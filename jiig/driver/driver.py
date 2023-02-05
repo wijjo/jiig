@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2022, Steven Cooper
+# Copyright (C) 2021-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -18,16 +18,39 @@
 """Base driver class."""
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Sequence
 
-from ..runtime import RuntimePaths
-from ..util.log import LogWriter
+from jiig.runtime_task import RuntimeTask
+from jiig.util.log import LogWriter, log_message
 
-from .driver_task import DriverTask
-from .driver_types import DriverApplicationData, DriverInitializationData
 from .driver_options import DriverOptions
 
-IMPLEMENTATION_CLASS_NAME = 'Implementation'
+
+@dataclass
+class DriverPreliminaryAppData:
+    """
+    Preliminary application initialization data.
+
+    E.g. for early access to global options.
+    """
+    # Attributes received from options.
+    data: object
+    # Additional arguments, not present as data attributes.
+    additional_arguments: list[str]
+
+
+@dataclass
+class DriverAppData:
+    """Data provided by driver application initialization."""
+    # Attributes received from options and arguments.
+    data: object
+    # Command names.
+    names: list[str]
+    # Additional arguments, not present as data attributes.
+    additional_arguments: list[str]
+    # Task stack.
+    task_stack: list[RuntimeTask]
 
 
 class Driver(ABC):
@@ -36,14 +59,9 @@ class Driver(ABC):
 
     Automatically registers concrete subclasses.
     """
-
-    supported_task_hints: list[str] = []
-    supported_field_hints: list[str] = []
-
     def __init__(self,
                  name: str,
                  description: str,
-                 paths: RuntimePaths,
                  options: DriverOptions = None,
                  ):
         """
@@ -51,24 +69,21 @@ class Driver(ABC):
 
         :param name: tool name
         :param description: tool description
-        :param paths: runtime paths
         :param options: various driver options
         """
         self.name = name
         self.description = description
-        self.paths = paths
         self.options = options or DriverOptions()
-        self.enabled_global_options: list[str] = []
         self.phase = 'construction'
 
     def initialize_driver(self,
                           command_line_arguments: Sequence[str],
-                          ) -> DriverInitializationData:
+                          ) -> DriverPreliminaryAppData:
         """
         Driver initialization.
 
         :param command_line_arguments: command line arguments
-        :return: driver initialization data
+        :return: preliminary app data
         """
         self.phase = 'driver-initialization'
         return self.on_initialize_driver(command_line_arguments)
@@ -76,45 +91,47 @@ class Driver(ABC):
     @abstractmethod
     def on_initialize_driver(self,
                              command_line_arguments: Sequence[str],
-                             ) -> DriverInitializationData:
+                             ) -> DriverPreliminaryAppData:
         """
         Required driver initialization call-back.
 
         :param command_line_arguments: command line arguments
-        :return: driver initialization data
+        :return: preliminary app data
         """
         ...
 
     def initialize_application(self,
-                               initialization_data: DriverInitializationData,
-                               root_task: DriverTask
-                               ) -> DriverApplicationData:
+                               arguments: list[str],
+                               root_task: RuntimeTask
+                               ) -> DriverAppData:
         """
-        Application initialization.
+        Driver application initialization.
 
-        :param initialization_data: application initialization data
+        :param arguments: argument list
         :param root_task: root task
         :return: driver application data
         """
         self.phase = 'application-initialization'
-        return self.on_initialize_application(initialization_data, root_task)
+        driver_app_data = self.on_initialize_application(arguments, root_task)
+        log_message('Application initialized.', debug=True)
+        return driver_app_data
 
     @abstractmethod
     def on_initialize_application(self,
-                                  initialization_data: DriverInitializationData,
-                                  root_task: DriverTask,
-                                  ) -> DriverApplicationData:
+                                  arguments: list[str],
+                                  root_task: RuntimeTask,
+                                  ) -> DriverAppData:
         """
-        Required application initialization call-back.
+        Required arguments initialization call-back.
 
-        :param initialization_data: driver initialization data
+        :param arguments: argument list
         :param root_task: root task
         :return: driver application data
         """
         ...
 
     def provide_help(self,
-                     root_task: DriverTask,
+                     root_task: RuntimeTask,
                      *names: str,
                      show_hidden: bool = False):
         """
@@ -128,7 +145,7 @@ class Driver(ABC):
 
     @abstractmethod
     def on_provide_help(self,
-                        root_task: DriverTask,
+                        root_task: RuntimeTask,
                         names: list[str],
                         show_hidden: bool):
         """

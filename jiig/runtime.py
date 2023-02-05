@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2022, Steven Cooper
+# Copyright (C) 2021-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -26,8 +26,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator, Callable
 
-from .action_context import ActionContext
 from .context import Context
+from .action_context import ActionContext
 from .util.alias_catalog import AliasCatalog, open_alias_catalog
 from .util.network import resolve_ip_address, get_client_name
 
@@ -65,7 +65,6 @@ class RuntimeMetadata:
 @dataclass
 class RuntimePaths:
     """Runtime folder paths."""
-    jiig_library: Path
     jiig_root: Path
     tool_root: Path
     libraries: list[Path]
@@ -133,13 +132,12 @@ class Runtime(ActionContext):
             copyright=meta.copyright,
             description=meta.description,
             doc_folder=paths.doc,
-            jiig_library_folder=paths.jiig_library,
-            jiig_root_folder=paths.jiig_root,
+            jiig_root=paths.jiig_root,
             pip_packages=meta.pip_packages,
             project_name=meta.project_name,
             sub_task_label=meta.sub_task_label,
             tool_name=meta.tool_name,
-            tool_root_folder=paths.tool_root,
+            tool_root=paths.tool_root,
             top_task_label=meta.top_task_label,
             venv_folder=paths.venv,
             version=meta.version,
