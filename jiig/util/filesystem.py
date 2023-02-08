@@ -26,7 +26,7 @@ from glob import glob
 from pathlib import Path
 from typing import Iterator, Any, Sequence
 
-from thirdparty.gitignore_parser import gitignore_parser
+from .thirdparty.gitignore_parser import gitignore_parser
 
 from .collections import make_list
 from .log import abort, log_message
@@ -549,7 +549,8 @@ def iterate_files(source_folder_path: str | Path,
     discard_length = len(source_folder_path_string)
     if not source_folder_path_string.endswith(os.path.sep):
         discard_length += 1
-    for dir_path, _sub_dir_paths, file_names in os.walk(source_folder_path):
+    # Top-down traversal allows preempting descents into rejected folders.
+    for dir_path, _sub_dir_paths, file_names in os.walk(source_folder_path, topdown=True):
         relative_dir_name = dir_path[discard_length:]
         for file_name in file_names:
             yield Path(os.path.join(relative_dir_name, file_name))
@@ -576,7 +577,6 @@ def iterate_git_pending(source_folder_path: str | Path,
 
 def iterate_filtered_files(source_folder_path: str | Path,
                            excludes: list[str] = None,
-                           pending: bool = False,
                            gitignore: bool = False,
                            ) -> Iterator[Path]:
     """
@@ -584,22 +584,36 @@ def iterate_filtered_files(source_folder_path: str | Path,
 
     :param source_folder_path: source folder path
     :param excludes: optional .gitignore exclusion patterns
-    :param pending: iterate pending Git commits
     :param gitignore: apply ~/.gitignore exclusions
     :return: found Path iterator
     """
-    if pending:
-        file_iterator_function = iterate_git_pending
-    else:
-        file_iterator_function = iterate_files
     file_filters: list[FileFilter] = []
     if excludes:
         file_filters.append(ExcludesFilter(source_folder_path, excludes))
     if gitignore:
         file_filters.append(GitignoreFilter(source_folder_path))
-    for path in file_iterator_function(source_folder_path):
-        if all((file_filter.accept(path) for file_filter in file_filters)):
-            yield path
+    # Discard length supports relative path truncation.
+    source_folder_path_string = str(source_folder_path)
+    discard_length = len(source_folder_path_string)
+    if not source_folder_path_string.endswith(os.path.sep):
+        discard_length += 1
+    # Top-down traversal allows preempting descents into rejected folders.
+    for folder, sub_folders, file_names in os.walk(source_folder_path, topdown=True):
+        rel_folder = folder[discard_length:]
+        # Remove sub-folders that are rejected by filters.
+        to_remove_idxs: list[int] = []
+        for idx, sub_folder in enumerate(sub_folders):
+            sub_folder_path = Path(os.path.join(rel_folder, sub_folder))
+            if any((not file_filter.accept(sub_folder_path) for file_filter in file_filters)):
+                to_remove_idxs.append(idx)
+        if to_remove_idxs:
+            for to_remove_idx in reversed(to_remove_idxs):
+                del sub_folders[to_remove_idx]
+        # Yield all the files in this folder that pass muster.
+        for file_name in file_names:
+            path = Path(os.path.join(rel_folder, file_name))
+            if all((file_filter.accept(path) for file_filter in file_filters)):
+                yield path
 
 
 def find_system_program(name: str) -> Path | None:

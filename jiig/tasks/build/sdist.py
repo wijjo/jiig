@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2023, Steven Cooper
+# Copyright (C) 2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -16,25 +16,26 @@
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-Virtual environment Python  execution task.
+Build source distribution.
 """
 
 import os
 
 import jiig
 
+from ._pyproject_toml import generate_pyproject_toml
+
 
 @jiig.task
-def python(
+def sdist(
     runtime: jiig.Runtime,
-    trailing_arguments: jiig.f.text(repeat=(None, None)),
 ):
     """
-    Run python from virtual environment.
+    Build the source distribution.
 
-    :param runtime: jiig Runtime API.
-    :param trailing_arguments: Trailing CLI arguments.
+    :param runtime: Jiig runtime API.
     """
+    runtime.heading(1, 'Build source distribution')
+    generate_pyproject_toml(runtime)
     python_path = runtime.format_path('{venv_folder}/bin/python')
-    env = {'PYTHONPATH': runtime.paths.library_path}
-    os.execle(python_path, python_path, *trailing_arguments, env)
+    os.execvp(python_path, [python_path, '-m', 'build'])

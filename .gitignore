@@ -8,9 +8,9 @@ __pycache__/
 
 # Distribution / packaging
 .Python
-build/
+/build/
 develop-eggs/
-dist/
+/dist/
 downloads/
 eggs/
 .eggs/
@@ -78,4 +78,10 @@ dist.backup/
 .DS_Store
 
 # local sandbox
-/sandbox
+sandbox/
+
+# generated
+/pyproject.toml
+
+# virtual environment
+venv/

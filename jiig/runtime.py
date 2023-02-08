@@ -52,8 +52,10 @@ class RuntimeMetadata:
     tool_name: str
     project_name: str
     author: str
+    email: str
     copyright: str
     description: str
+    url: str
     version: str
     top_task_label: str
     sub_task_label: str

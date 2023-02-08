@@ -48,9 +48,9 @@ class Context:
         if parent is not None:
             self.s = AttributeDictionary.new(no_defaults=True)
             self.copy_symbols(**parent.s)
-            self.update(**kwargs)
         else:
             self.s = AttributeDictionary.new(no_defaults=True)
+        self.update(**kwargs)
         # Give useful symbols for free, e.g. newline.
         if 'nl' not in self.s:
             self.s['nl'] = os.linesep

@@ -4,6 +4,8 @@ description: Jiig tool.
 version: "0.5"
 author: Steve Cooper
 copyright: 2021-2023, Steve Cooper
+email: steve@wijjo.com
+url: https://github.com/wijjo/jiig
 
 pip_packages:
   - pdoc3
@@ -36,6 +38,10 @@ tasks:
             description: -d,--description
           cli_trailing: command_arguments
         show:
+
+    build:
+      sub_tasks:
+        sdist:
 
     help:
       visibility: 1
