@@ -216,7 +216,7 @@ TOML configuration and a script that uses "jiigrun" as the interpreter.
 
 Below is an `extool` example task module, `calc.py`.
 
-```
+```python
 """Sample Jiig task module."""
 
 from jiig.task import task
@@ -252,7 +252,7 @@ def calc(
 
 Below is the `extool` example, `extool-jiigrun`
 
-```
+```toml
 #!/usr/bin/env jiigrun
 # extool Jiig tool script.
 #
@@ -276,4 +276,90 @@ tasks_package = "extool.tasks"
 cli_options = {lower = ["-l", "--lower"], upper = ["-u", "--upper"]}
 
 [tasks.words]
+```
+
+### Pure Python Jiig tool
+
+The `extool` example `bin/extool-python` script demonstrates how to define a 
+tool that is configured by pure Python data structures. That script supplies an
+identical configuration, compared to `bin/extool-jiigrun`, and uses the same 
+`tasks` package.
+
+```python
+#!/usr/bin/env python3
+# extool Jiig tool script.
+#
+# This script demonstrates manual pure-Python tool configuration. Note that
+# extool needs to be in the Python library load path so that its tasks package
+# can be imported. Use PYTHONPATH or another mechanism to adjust the path.
+
+import sys
+from pathlib import Path
+
+from jiig.task import Task, TaskTree
+from jiig.tool import ToolMetadata
+from jiig.startup import tool_main
+
+EXTOOL_ROOT = str(Path(__file__).resolve().parent.parent)
+
+# This implementation assumes the Python path is manipulated externally so that
+# extool task modules can be imported.
+try:
+    # noinspection PyUnresolvedReferences
+    import extool
+except ModuleNotFoundError:
+    sys.stderr.write(f'Extool must be in the Python path for its library to import, e.g.:\n'
+                     f'   PYTHONPATH={EXTOOL_ROOT} {sys.argv[0]} ...\n')
+    sys.exit(1)
+
+
+def main():
+    tool_main(
+        meta=ToolMetadata(
+            'extool',
+            project_name='Extool',
+            description='extool Jiig example tool script',
+            author='Extool Author',
+            copyright='Copyright (C) 2023, Extool Author',
+            pip_packages=[],
+        ),
+        task_tree=TaskTree(
+            name='(extool root)',
+            package='extool.tasks',
+            sub_tasks=[
+                Task(name='calc'),
+                Task(name='case',
+                     cli_options={'lower': ["-l", "--lower"],
+                                  'upper': ["-u", "--upper"]}),
+                Task(name='words'),
+            ],
+        ),
+    )
+
+
+if __name__ == '__main__':
+    main()
+```
+
+With this example the user is completely responsible for making sure Jiig is
+available, and for adding `extool` to the Python library load path. Here is a
+sample shell session that takes care of those requirements.
+
+Note that `~/test/extool` has a complete copy of the `extool` example source,
+including the `extool.tasks` package.
+
+```
+$ cd ~/test/extool
+
+$ python3 -m venv venv
+
+$ source venv/bin/activate
+
+$ pip install jiig
+...
+Installing collected packages: jiig
+Successfully installed jiig-0.5
+
+$ PYTHONPATH=. bin/extool-python case abcd                                                                                                        ─╯
+ABCD
 ```
