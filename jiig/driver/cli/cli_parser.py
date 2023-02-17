@@ -29,8 +29,8 @@ from typing import Sequence, Any
 from jiig.util.collections import make_list
 from jiig.util.default import DefaultValue
 from jiig.util.log import Logger
-from jiig.util.repetition import Repetition
 from jiig.util.python import format_call_string
+from jiig.util.repetition import Repetition
 
 from .cli_types import CLICommand, CLIOptionArgument
 
@@ -171,6 +171,7 @@ class _ArgumentParser(argparse.ArgumentParser):
         if self.raise_exceptions:
             raise CLIParserError(message)
         if REQUIRED_SUB_COMMAND_REGEX.match(message):
+            logger.message(f'Command: {self.prog}')
             logger.error(message)
             help_words = self.prog.split()
             help_words.insert(1, 'help')

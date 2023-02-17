@@ -21,12 +21,15 @@ Jiig library.
 
 # Top-level imports to allow task implementations to just import jiig. These
 # must have minimal dependencies in order to avoid inadvertent circular imports.
-from .action_context import ActionContext
 from .context import Context
+from .action_context import ActionContext
 from .runtime import Runtime
-from .startup import main, jiig_main, tool_main
-from .task import task, Task, TaskGroup, TaskTree
-from .tool import Tool
+from .task import (
+    Task,
+    TaskGroup,
+    TaskTree,
+    task,
+)
 from .util.options import OPTIONS
 from .util.script import Script
 

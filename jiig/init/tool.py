@@ -17,6 +17,7 @@
 
 """Tool configuration loading."""
 
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -27,159 +28,232 @@ from jiig.constants import (
     DEFAULT_COPYRIGHT,
     DEFAULT_DOC_FOLDER,
     DEFAULT_EMAIL,
+    DEFAULT_ROOT_TASK_NAME,
     DEFAULT_TEST_FOLDER,
     DEFAULT_TOOL_DESCRIPTION,
     DEFAULT_URL,
     DEFAULT_VERSION,
-    HOME_FOLDER_PATH,
     JIIG_CONFIGURATION_NAME,
     JIIG_VENV_ROOT,
     SUB_TASK_LABEL,
     TOP_TASK_LABEL,
 )
-from jiig.runtime import RuntimeMetadata, RuntimePaths
 from jiig.task import TaskTree
-from jiig.tool import Tool, ToolOptions, ToolCustomizations
+from jiig.tool import (
+    Tool,
+    ToolCustomizations,
+    ToolMetadata,
+    ToolOptions,
+    ToolPaths,
+)
+from jiig.types import ModuleReference
 from jiig.util.collections import make_list
+from jiig.util.filesystem import search_folder_stack_for_file
+from jiig.util.python import find_package_base_folder
 from jiig.util.log import abort, log_error
 
 
-def _read_config_file(config_path: Path) -> dict:
+def read_config_file(config_path: Path) -> dict:
+    """
+    Read TOML format configuration file.
+
+    :param config_path: configuration file path
+    :return: dictionary data
+    """
     try:
-        import yaml
-        with open(config_path, encoding='utf-8') as config_file:
+        with open(config_path, 'rb') as config_file:
             try:
-                config_data = yaml.safe_load(config_file)
+                config_data = tomllib.load(config_file)
                 if not isinstance(config_data, dict):
                     abort(f'Configuration file data is not a dictionary.',
                           path=config_path)
                 return config_data
-            except yaml.YAMLError as yaml_exc:
+            except tomllib.TOMLDecodeError as toml_exc:
                 abort(f'Unable to parse configuration file.',
                       path=config_path,
-                      exception=yaml_exc)
+                      exception=toml_exc)
     except (IOError, OSError) as file_exc:
         abort(f'Failed to read configuration file.',
               path=config_path,
               exception=file_exc)
 
 
+def read_script_configuration(script_path: Path) -> dict:
+    """
+    Read TOML format configuration data from script or separate file.
+
+    :param script_path: script path
+    :return: configuration data
+    """
+    # First try parsing the script for TOML data.
+    config_data = read_config_file(script_path)
+    if 'tool' in config_data:
+        return config_data
+    # Otherwise find and read a separate configuration file..
+    config_path = search_folder_stack_for_file(script_path.parent,
+                                               JIIG_CONFIGURATION_NAME)
+    if config_path is None:
+        abort(f'Could not find {JIIG_CONFIGURATION_NAME} based on script path.',
+              script_path=script_path)
+    return read_config_file(script_path)
+
+
 class _Extractor:
     def __init__(self, raw_data: dict):
         self.raw_data = raw_data
-        self.extracted_names: set[str] = set()
+
+    def _get(self, name: str) -> Any | None:
+        raw_data = self.raw_data
+        name_parts = name.split('.')
+        for name_part in name_parts[:-1]:
+            if name_part not in raw_data:
+                return None
+            raw_data = raw_data[name_part]
+            if not isinstance(raw_data, dict):
+                return None
+        return raw_data.get(name_parts[-1])
 
     def boolean(self, name: str, default: bool) -> bool:
-        self.extracted_names.add(name)
-        value = self.raw_data.get(name, default)
+        value = self._get(name)
+        if value is None:
+            return default
         if not isinstance(value, bool):
             log_error(f'Ignoring non-boolean "{name}" value: {value}')
-            value = default
+            return default
         return value
 
     def string(self, name: str, default: str | None) -> str | None:
-        self.extracted_names.add(name)
-        return str(self.raw_data.get(name, default))
+        value = self._get(name)
+        if value is None:
+            return default
+        return str(value)
 
     def string_list(self, name: str, default: list[str]) -> list[str]:
-        self.extracted_names.add(name)
-        return [str(s) for s in make_list(self.raw_data.get(name, default))]
+        value = self._get(name)
+        if value is None:
+            return default
+        return [str(s) for s in make_list(value)]
 
     def path(self, name: str, default: Path) -> Path:
-        self.extracted_names.add(name)
-        raw_path = self.raw_data.get(name, default)
-        if isinstance(raw_path, Path):
-            return raw_path
-        return Path(raw_path)
+        value = self._get(name)
+        if value is None:
+            return default
+        if isinstance(value, Path):
+            return value
+        if not isinstance(value, str):
+            return default
+        return Path(value)
 
     def path_list(self, name: str, default: list[Path], *extra_paths: Path) -> list[Path]:
-        self.extracted_names.add(name)
-        if name not in self.raw_data:
+        value = self._get(name)
+        if value is None:
             return default
-        paths = [Path(item) for item in make_list(self.raw_data.get(name))]
+        paths = [Path(item) for item in make_list(value)]
         for extra_path in extra_paths:
             if extra_path not in paths:
                 paths.append(extra_path)
         return paths
 
-    def task_tree(self, name: str, top_task_name: str) -> TaskTree:
-        self.extracted_names.add(name)
-        raw_tasks = self.raw_data.get(name, {})
-        return TaskTree.from_raw_data(name=top_task_name, raw_data=raw_tasks)
+    def task_tree(self, name: str, top_task_name: str, package: ModuleReference | None) -> TaskTree:
+        value = self._get(name)
+        if value is None:
+            return TaskTree(name=top_task_name, sub_tasks=[])
+        # The extracted value is just the sub-tasks. Wrap so that
+        # TaskTree.from_raw_data() works properly.
+        wrapped_data = {
+            'package': package,
+            'sub_tasks': value,
+        }
+        return TaskTree.from_raw_data(name=top_task_name, raw_data=wrapped_data)
 
     def any(self, name: str, default: Any) -> Any:
-        self.extracted_names.add(name)
-        return self.raw_data.get(name, default)
+        value = self._get(name)
+        if value is None:
+            return default
+        return value
 
-    def extra_symbols(self) -> dict:
-        return {
-            name: self.raw_data[name]
-            for name in set(self.raw_data.keys()).difference(self.extracted_names)
-        }
+    def dictionary(self, name: str) -> dict:
+        value = self._get(name)
+        if value is None or not isinstance(value, dict):
+            return {}
+        return value
 
 
-def load_tool(tool_root: Path,
-              jiig_root: Path,
-              ) -> Tool:
+def load_tool_configuration(script_path: Path,
+                            is_jiig: bool,
+                            jiig_source_root: Path | None,
+                            ) -> Tool:
     """
     Load tool.
 
-    :param tool_root: tool root folder
-    :param jiig_root: jiig root folder
+    :param script_path: tool script path
+    :param is_jiig: running Jiig tool if True
+    :param jiig_source_root: optional Jiig source root folder
     :return: loaded Tool object
     """
-    config_path = tool_root / JIIG_CONFIGURATION_NAME
-    config_data = _read_config_file(config_path)
+    # TOML configuration data can either be embedded in the script or in a
+    # separate file.
+    config_data = read_script_configuration(script_path)
     extractor = _Extractor(config_data)
 
     options = ToolOptions(
-        disable_alias=extractor.boolean('disable_alias', False),
-        disable_help=extractor.boolean('disable_help', False),
-        disable_debug=extractor.boolean('disable_debug', False),
-        disable_dry_run=extractor.boolean('disable_dry_run', False),
-        disable_verbose=extractor.boolean('disable_verbose', False),
-        enable_pause=extractor.boolean('enable_pause', False),
-        enable_keep_files=extractor.boolean('enable_keep_files', False),
-        hide_builtin_tasks=extractor.boolean('hide_builtin_tasks', False),
-        venv_required=extractor.boolean('venv_required', False),
+        disable_alias=extractor.boolean('options.disable_alias', False),
+        disable_help=extractor.boolean('options.disable_help', False),
+        disable_debug=extractor.boolean('options.disable_debug', False),
+        disable_dry_run=extractor.boolean('options.disable_dry_run', False),
+        disable_verbose=extractor.boolean('options.disable_verbose', False),
+        enable_pause=extractor.boolean('options.enable_pause', False),
+        enable_keep_files=extractor.boolean('options.enable_keep_files', False),
+        hide_builtin_tasks=extractor.boolean('options.hide_builtin_tasks', False),
+        is_jiig=is_jiig,
     )
 
-    tool_name = extractor.string('tool_name', tool_root.name)
-    project_name = extractor.string('project_name', tool_name.capitalize())
+    custom = ToolCustomizations(
+        runtime=extractor.any('tool.runtime', None),
+        driver=extractor.any('tool.driver', None),
+    )
 
-    meta = RuntimeMetadata(
+    tool_name = extractor.string('tool.name', script_path.parent.name)
+    project_name = extractor.string('tool.project', tool_name.capitalize())
+
+    meta = ToolMetadata(
         tool_name=tool_name,
         project_name=project_name,
-        author=extractor.string('author', DEFAULT_AUTHOR),
-        email=extractor.string('email', DEFAULT_EMAIL),
-        copyright=extractor.string('copyright', DEFAULT_COPYRIGHT),
-        description=extractor.string('description', DEFAULT_TOOL_DESCRIPTION),
-        url=extractor.string('url', DEFAULT_URL),
-        version=extractor.string('version', DEFAULT_VERSION),
-        top_task_label=extractor.string('top_task_label', TOP_TASK_LABEL),
-        sub_task_label=extractor.string('top_task_label', SUB_TASK_LABEL),
-        pip_packages=extractor.string_list('pip_packages', []),
-        doc_api_packages=extractor.string_list('doc_api_packages', []),
-        doc_api_packages_excluded=extractor.string_list('doc_api_packages_excluded', []),
+        author=extractor.string('tool.author', DEFAULT_AUTHOR),
+        email=extractor.string('tool.email', DEFAULT_EMAIL),
+        copyright=extractor.string('tool.copyright', DEFAULT_COPYRIGHT),
+        description=extractor.string('tool.description', DEFAULT_TOOL_DESCRIPTION),
+        url=extractor.string('tool.url', DEFAULT_URL),
+        version=extractor.string('tool.version', DEFAULT_VERSION),
+        top_task_label=extractor.string('tool.top_task_label', TOP_TASK_LABEL),
+        sub_task_label=extractor.string('tool.top_task_label', SUB_TASK_LABEL),
+        pip_packages=extractor.string_list('tool.pip_packages', []),
+        doc_api_packages=extractor.string_list('tool.doc_api_packages', []),
+        doc_api_packages_excluded=extractor.string_list('tool.doc_api_packages_excluded', []),
     )
 
-    venv_folder = JIIG_VENV_ROOT / tool_root.relative_to(HOME_FOLDER_PATH)
-    paths = RuntimePaths(
-        jiig_root=jiig_root,
-        tool_root=tool_root,
-        libraries=extractor.path_list('library_folders', [], jiig_root, tool_root),
+    package = extractor.string('tool.tasks_package', None)
+    task_tree = extractor.task_tree('tasks', DEFAULT_ROOT_TASK_NAME, package)
+
+    # If a package is specified, use the configuration path as the basis for a
+    # package folder search. The package parent folder will be added to the
+    # Python library load path.
+    tool_source_root: Path | None = None
+    if package is not None and isinstance(package, str):
+        tool_source_root = find_package_base_folder(package, script_path)
+        if tool_source_root is None:
+            log_error('Package folder not found:', package)
+
+    venv_folder = JIIG_VENV_ROOT / tool_name
+    paths = ToolPaths(
+        libraries=extractor.path_list('tool.library_folders', []),
         venv=extractor.path('venv_folder', venv_folder),
         aliases=extractor.path('aliases_path', DEFAULT_ALIASES_PATH),
         build=extractor.path('build_folder', DEFAULT_BUILD_FOLDER),
         doc=extractor.path('doc_folder', DEFAULT_DOC_FOLDER),
         test=extractor.path('test_folder', DEFAULT_TEST_FOLDER),
-    )
-
-    task_tree = extractor.task_tree('tasks', '(root)')
-
-    custom = ToolCustomizations(
-        runtime=extractor.any('runtime', None),
-        driver=extractor.any('driver', None),
+        jiig_source_root=jiig_source_root,
+        tool_source_root=tool_source_root,
     )
 
     return Tool(
@@ -188,5 +262,5 @@ def load_tool(tool_root: Path,
         meta=meta,
         paths=paths,
         task_tree=task_tree,
-        extra_symbols=extractor.extra_symbols(),
+        extra_symbols=extractor.dictionary('extra_symbols'),
     )

@@ -22,7 +22,8 @@ from pathlib import Path
 
 HOME_FOLDER_PATH = Path(os.environ['HOME'])
 JIIG_ROOT = Path(__file__).parent.parent
-JIIG_CONFIGURATION_NAME = 'jiig.yaml'
+JIIG_CONFIGURATION_NAME = 'jiig.toml'
+JIIG_CONFIGURATION_PATH = Path(__file__).parent.parent / JIIG_CONFIGURATION_NAME
 JIIG_VENV_ROOT = HOME_FOLDER_PATH / '.jiig-venv'
 DEFAULT_AUTHOR = '(unknown author)'
 DEFAULT_COPYRIGHT = '(unknown copyright)'
@@ -34,7 +35,7 @@ DEFAULT_DOC_FOLDER = Path('doc')
 DEFAULT_TEST_FOLDER = Path('tests')
 DEFAULT_ALIASES_PATH = HOME_FOLDER_PATH / '.jiig-aliases'
 DEFAULT_BUILD_FOLDER = Path('build')
+DEFAULT_ROOT_TASK_NAME = '(root)'
 SUB_TASK_LABEL = 'SUB_TASK'
 TOP_TASK_LABEL = 'TASK'
 TOP_TASK_DEST_NAME = 'TASK'
-CORE_PIP_PACKAGES = ['PyYAML', 'build']

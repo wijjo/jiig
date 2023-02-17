@@ -22,7 +22,7 @@ Runtime arguments, e.g. for CLI.
 import sys
 from dataclasses import dataclass
 
-from jiig.runtime import RuntimePaths
+from jiig.tool import ToolPaths
 from jiig.util.alias_catalog import is_alias_name, open_alias_catalog
 from jiig.util.log import abort
 
@@ -59,7 +59,7 @@ def prepare_runtime_arguments(runner_args: list[str] | None,
 
 def expand_arguments(arguments: list[str],
                      tool_name: str,
-                     paths: RuntimePaths,
+                     paths: ToolPaths,
                      default_command: str,
                      ) -> list[str]:
     """

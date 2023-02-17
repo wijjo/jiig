@@ -117,7 +117,6 @@ class FootnoteBuilder:
         paragraphs: NotesList = []
         for label_num, label in enumerate(self.labels, start=1):
             if label not in self.footnotes:
-                print(f'{self.footnotes=}')
                 paragraphs.append(f'[^{label_num}]: "{label}" footnote not found.')
             else:
                 paragraphs.append(f'[^{label_num}]: {self.footnotes[label].strip()}')

@@ -20,10 +20,9 @@ Build source distribution.
 """
 
 import os
+from pathlib import Path
 
 import jiig
-
-from ._pyproject_toml import generate_pyproject_toml
 
 
 @jiig.task
@@ -35,7 +34,9 @@ def sdist(
 
     :param runtime: Jiig runtime API.
     """
-    runtime.heading(1, 'Build source distribution')
-    generate_pyproject_toml(runtime)
-    python_path = runtime.format_path('{venv_folder}/bin/python')
-    os.execvp(python_path, [python_path, '-m', 'build'])
+    if (Path(jiig.__file__).parent.parent / 'pyproject.toml').is_file():
+        runtime.heading(1, 'Build source distribution')
+        python_path = runtime.format_path('{venv_folder}/bin/python')
+        os.execvp(python_path, [python_path, '-m', 'build'])
+    else:
+        runtime.error('Not running in Jiig source environment.')

@@ -304,6 +304,7 @@ class _RuntimeTaskPreparer:
                       package=package)
             return None
         if isfunction(reference):
+            module = None
             registered_task = TASKS_BY_FUNCTION_ID.get(id(reference))
         else:
             module = self.module_resolver.resolve(reference)
@@ -314,7 +315,9 @@ class _RuntimeTaskPreparer:
             log_error('Failed to resolve registered task.',
                       task_group=task_group.name,
                       task=task.name,
-                      package=package)
+                      package=package,
+                      reference=reference,
+                      module=module)
             return None
         # Apply defaults to missing text.
         if registered_task.description is None:

@@ -22,12 +22,11 @@ Runner provides data and an API to task call-back functions..
 import os
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
-from dataclasses import dataclass
-from pathlib import Path
 from typing import Iterator, Callable
 
 from .context import Context
 from .action_context import ActionContext
+from .tool import ToolMetadata, ToolPaths
 from .util.alias_catalog import AliasCatalog, open_alias_catalog
 from .util.network import resolve_ip_address, get_client_name
 
@@ -44,46 +43,6 @@ class RuntimeHelpGenerator(ABC):
         :param show_hidden: show hidden task help if True
         """
         ...
-
-
-@dataclass
-class RuntimeMetadata:
-    """Runtime metadata."""
-    tool_name: str
-    project_name: str
-    author: str
-    email: str
-    copyright: str
-    description: str
-    url: str
-    version: str
-    top_task_label: str
-    sub_task_label: str
-    pip_packages: list[str]
-    doc_api_packages: list[str]
-    doc_api_packages_excluded: list[str]
-
-
-@dataclass
-class RuntimePaths:
-    """Runtime folder paths."""
-    jiig_root: Path
-    tool_root: Path
-    libraries: list[Path]
-    venv: Path
-    aliases: Path
-    build: Path
-    doc: Path
-    test: Path
-
-    @property
-    def library_path(self) -> str:
-        """
-        Provide library path string based on library folders.
-
-        :return: library path string
-        """
-        return os.pathsep.join([str(p) for p in self.libraries])
 
 
 class Runtime(ActionContext):
@@ -103,8 +62,8 @@ class Runtime(ActionContext):
                  parent: Context | None,
                  help_generator: RuntimeHelpGenerator,
                  data: object,
-                 meta: RuntimeMetadata,
-                 paths: RuntimePaths,
+                 meta: ToolMetadata,
+                 paths: ToolPaths,
                  **kwargs,
                  ):
         """
@@ -134,12 +93,11 @@ class Runtime(ActionContext):
             copyright=meta.copyright,
             description=meta.description,
             doc_folder=paths.doc,
-            jiig_root=paths.jiig_root,
+            jiig_source_root=paths.jiig_source_root,
             pip_packages=meta.pip_packages,
             project_name=meta.project_name,
             sub_task_label=meta.sub_task_label,
             tool_name=meta.tool_name,
-            tool_root=paths.tool_root,
             top_task_label=meta.top_task_label,
             venv_folder=paths.venv,
             version=meta.version,

@@ -21,28 +21,28 @@ import os
 import sys
 from pathlib import Path
 
-from jiig.constants import HOME_FOLDER_PATH, JIIG_VENV_ROOT
+from jiig.constants import JIIG_VENV_ROOT
 from jiig.util.log import log_message
 from jiig.util.python import (
     PYTHON_NATIVE_ENVIRONMENT_NAME,
     build_virtual_environment,
 )
 
-from .arguments import RuntimeArguments
-
 
 def check_virtual_environment(*,
-                              tool_root: Path | str,
-                              arguments: RuntimeArguments,
+                              tool_name: str,
+                              runner_args: list[str],
+                              cli_args: list[str],
                               ) -> Path:
     """
     Check virtual environment, build it, and restart in it as needed.
 
-    :param tool_root: tool root folder
-    :param arguments: runtime arguments data
+    :param tool_name: tool name
+    :param runner_args: runner arguments
+    :param cli_args: CLI arguments
     :return: virtual environment root Path
     """
-    venv_root = JIIG_VENV_ROOT / tool_root.relative_to(HOME_FOLDER_PATH)
+    venv_root = JIIG_VENV_ROOT / tool_name
     interpreter_path = venv_root / 'bin' / 'python'
     if sys.executable == str(interpreter_path):
         log_message('Virtual environment is active.', debug=True)
@@ -50,11 +50,9 @@ def check_virtual_environment(*,
         log_message('Activating virtual environment...', debug=True)
         build_virtual_environment(venv_root, quiet=True)
         # Restart inside the virtual environment with '--' inserted to help parsing.
-        args = [str(interpreter_path)]
-        if arguments.runner is not None:
-            args.extend(arguments.runner)
+        args = [str(interpreter_path)] + runner_args
         args.append('--')
-        args.extend(arguments.cli)
+        args.extend(cli_args)
         # Remember the original parent Python executable in an environment variable
         # in case the virtual environment needs to be rebuilt.
         os.environ[PYTHON_NATIVE_ENVIRONMENT_NAME] = sys.executable

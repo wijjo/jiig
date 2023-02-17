@@ -48,7 +48,8 @@ def run_tests():
     if ERRORS:
         sys.stderr.write(f'* {len(ERRORS)} of {len(TESTS) * 2} tests failed *')
     else:
-        print(f'All tests passed.')
+        sys.stdout.write(f'All tests passed.')
+    sys.stdout.write(os.linesep)
     sys.exit(len(ERRORS))
 
 

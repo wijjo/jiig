@@ -649,3 +649,41 @@ def get_function_fields(function: Callable) -> ExtractedFields:
         else:
             errors.append(f'Parameter "{name}" is not a Jiig field.')
     return task_fields
+
+
+def find_package_base_folder(package_name: str,
+                             start_path: Path | str,
+                             ) -> Path | None:
+    """
+    Look for folder containing named package given a starting path.
+
+    Searches containing folder stack for a sub-folder where it looks like the
+    package lives. It returns the containing folder under which the package was
+    found.
+
+    :param package_name: dot-separated package name
+    :param start_path: start path for search
+    :return: containing folder path if resolved or None otherwise
+    """
+    def _check_folder(folder: Path, names: list[str]) -> Path | None:
+        sub_folder = folder / names[0]
+        init_path = sub_folder / '__init__.py'
+        if init_path.is_file():
+            if len(names) == 1:
+                return sub_folder
+            return _check_folder(sub_folder, names[1:])
+
+    if not isinstance(start_path, Path):
+        start_path = Path(start_path)
+    if start_path.is_file():
+        start_path = start_path.parent
+    package_names = package_name.split('.')
+    check_folder = start_path
+    while True:
+        package_folder = _check_folder(check_folder, package_names)
+        if package_folder is not None:
+            return check_folder
+        if check_folder.parent == check_folder:
+            break
+        check_folder = check_folder.parent
+    return None

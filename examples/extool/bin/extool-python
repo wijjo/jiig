@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+# extool Jiig tool script.
+#
+# This script demonstrates manual pure-Python tool configuration. Note that
+# extool needs to be in the Python library load path so that its tasks package
+# can be imported. Use PYTHONPATH or another mechanism to adjust the path.
+
+import sys
+from pathlib import Path
+
+from jiig.task import Task, TaskTree
+from jiig.tool import ToolMetadata
+from jiig.startup import tool_main
+
+EXTOOL_ROOT = str(Path(__file__).resolve().parent.parent)
+
+# This implementation assumes the Python path is manipulated externally so that
+# extool task modules can be imported.
+try:
+    # noinspection PyUnresolvedReferences
+    import extool
+except ModuleNotFoundError:
+    sys.stderr.write(f'Extool must be in the Python path for its library to import, e.g.:\n'
+                     f'   PYTHONPATH={EXTOOL_ROOT} {sys.argv[0]} ...\n')
+    sys.exit(1)
+
+
+def main():
+    tool_main(
+        meta=ToolMetadata(
+            'extool',
+            project_name='Extool',
+            description='extool Jiig example tool script',
+            author='Extool Author',
+            copyright='Copyright (C) 2023, Extool Author',
+            pip_packages=[],
+        ),
+        task_tree=TaskTree(
+            name='(extool root)',
+            package='extool.tasks',
+            sub_tasks=[
+                Task(name='calc'),
+                Task(name='case',
+                     cli_options={'lower': ["-l", "--lower"],
+                                  'upper': ["-u", "--upper"]}),
+                Task(name='words'),
+            ],
+        ),
+    )
+
+
+if __name__ == '__main__':
+    main()

@@ -16,3 +16,9 @@
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
 """Pdoc3 documentation tasks."""
+
+from . import (
+    html,
+    pdf,
+    server,
+)

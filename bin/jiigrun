@@ -1,4 +1,6 @@
-# Copyright (C) 2021-2023, Steven Cooper
+#!/usr/bin/env python3
+
+# Copyright (C) 2020-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -15,13 +17,23 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Create and manage task command aliases."""
+"""
+Jiig tool script runner.
 
-from . import (
-    delete,
-    description,
-    list,
-    rename,
-    set,
-    show
-)
+Invoked by tool scripts where this is used as the shebang line interpreter.
+
+The tool script generally has TOML tool configuration data.
+"""
+
+import _util
+
+
+def main():
+    """jiigrun script main."""
+    _util.check_jiig()
+    from jiig.jiigrun import jiigrun_main
+    jiigrun_main(check_venv=True)
+
+
+if __name__ == '__main__':
+    main()

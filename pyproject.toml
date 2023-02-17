@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "jiig"
+version = "0.5"
+authors = [
+  { name="Steve Cooper", email="steve@wijjo.com" },
+]
+description = "Jiig tool."
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/wijjo/jiig"
+
+[project.scripts]
+jiigrun = "jiig.jiigrun:jiigrun_main"

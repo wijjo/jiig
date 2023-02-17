@@ -1,8 +1,0 @@
-#!/usr/bin/env jiig
-"""
-extool Jiig tool script.
-
-Jiig automatically deals with the Python package load path, manages any
-required virtual environment, and scrapes tool metadata from simple
-configuration variables.
-"""

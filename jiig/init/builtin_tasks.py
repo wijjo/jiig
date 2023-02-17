@@ -17,70 +17,87 @@
 
 """Application/tasks preparation."""
 
-from jiig.runtime import RuntimePaths
-from jiig.task import TaskTree
+import jiig.tasks
+from jiig.task import (
+    Task,
+    TaskGroup,
+    TaskTree,
+)
 from jiig.tool import ToolOptions
+from jiig.util.log import log_error
 
 
 def inject_builtin_tasks(*,
-                         tool_task_tree: TaskTree,
+                         task_tree: TaskTree,
                          jiig_task_tree: TaskTree,
                          tool_options: ToolOptions,
-                         paths: RuntimePaths,
                          ) -> TaskTree:
     """
     Create PreparedApplication.
 
-    :param tool_task_tree: tool task tree
+    :param task_tree: tool task tree
     :param jiig_task_tree: jiig task tree
     :param tool_options: tool options
-    :param paths: runtime paths
     :return: prepared application
     """
-    # Do nothing for the Jiig tool itself.
-    if paths.tool_root == paths.jiig_root:
-        return tool_task_tree
     # Access built-in tasks through by loading the Jiig Tool.
-    injector = _BuiltinTaskInjector(
-        tool_task_tree,
-        jiig_task_tree,
-        2 if tool_options.hide_builtin_tasks else 1,
-    )
-    # Inject built-in tasks as needed.
-    injector.inject_task('help', tool_options.disable_help)
-    injector.inject_group('alias', tool_options.disable_alias)
-    injector.inject_group('venv', not tool_options.venv_required)
-    # Provide adjusted task tree with built-in tasks present.
-    return injector.adjusted_task_tree
+    visibility = 2 if tool_options.hide_builtin_tasks else 1
+    provider = _JiigTaskTreeProvider(jiig_task_tree, visibility)
+    provider.check_task('help', tool_options.disable_help)
+    provider.check_group('alias', tool_options.disable_alias)
+    provider.check_group('venv', False)
+    if not provider.add_tasks and not provider.add_groups:
+        return task_tree
+    adjusted_task_tree = task_tree.copy()
+    if provider.add_tasks:
+        adjusted_task_tree.tasks.extend(provider.add_tasks)
+    for add_group in provider.add_groups:
+        # Need to override the tool package default for the added group to import.
+        add_group.package = jiig.tasks
+        adjusted_task_tree.groups.append(add_group)
+    return adjusted_task_tree
 
 
-class _BuiltinTaskInjector:
+class _JiigTaskTreeProvider:
+    """
+    Provide requested tasks and task groups based on Jiig configuration.
 
-    def __init__(self,
-                 tool_task_tree: TaskTree,
-                 jiig_task_tree: TaskTree,
-                 visibility: int):
-        self.jiig_task_tree = jiig_task_tree
+    NB: This class currently assumes the caller is only interested in top level
+    tasks and task groups. It specifically assumes that requested task groups
+    will not have sub-task groups.
+    """
+
+    def __init__(self, task_tree: TaskTree, visibility: int):
+        self.task_tree = task_tree
         self.visibility = visibility
-        self.adjusted_task_tree = tool_task_tree.copy()
+        self.add_tasks: list[Task] = []
+        self.add_groups: list[TaskGroup] = []
 
-    def inject_task(self, name: str, disable: bool):
-        if self._skip(name, disable):
+    def check_task(self, name: str, disabled: bool):
+        if disabled:
             return
-        for built_in_task in self.jiig_task_tree.tasks:
-            if built_in_task.name == name:
-                adjusted_task = built_in_task.copy(visibility=self.visibility)
-                adjusted_task.impl = f'jiig.tasks.{name}'
-                self.adjusted_task_tree.tasks.append(adjusted_task)
+        for task in self.task_tree.tasks:
+            if task.name == name:
+                task_copy = task.copy(visibility=self.visibility, impl=f'jiig.tasks.{name}')
+                self.add_tasks.append(task_copy)
+                break
+        else:
+            log_error(f'Jiig task "{name}" not found in Jiig configuration.')
 
-    def inject_group(self, name: str, disable: bool):
-        if self._skip(name, disable):
+    def check_group(self, name: str, disabled: bool):
+        if disabled:
             return
-        for built_in_group in self.jiig_task_tree.groups:
-            if built_in_group.name == name:
-                adjusted_group = built_in_group.copy(visibility=self.visibility)
-                adjusted_group.package = f'jiig.tasks.{name}'
-                self.adjusted_task_tree.groups.append(adjusted_group)
-
-    def _skip(self, name: str, disable: bool) -> bool:
-        return disable or name in self.adjusted_task_tree.names
+        for group in self.task_tree.groups:
+            if group.name == name:
+                group_copy = group.copy(visibility=self.visibility)
+                # Add implementation references to sub_tasks.
+                group_copy.tasks = [
+                    task.copy(impl=f'jiig.tasks.{group.name}.{task.name}')
+                    for task in group_copy.tasks
+                ]
+                if group_copy.groups:
+                    log_error(f'Ignoring "jiig.tasks.{group.name}" sub-task groups.')
+                self.add_groups.append(group_copy)
+                break
+        else:
+            log_error(f'Jiig task group "{name}" not found in Jiig configuration.')

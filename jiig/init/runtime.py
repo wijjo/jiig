@@ -21,7 +21,8 @@ from types import ModuleType
 from typing import Type
 
 from jiig.action_context import ActionContext
-from jiig.runtime import Runtime, RuntimeMetadata, RuntimePaths
+from jiig.runtime import Runtime
+from jiig.tool import ToolMetadata, ToolPaths
 from jiig.util.class_resolver import ClassResolver
 from jiig.util.log import abort
 
@@ -30,9 +31,9 @@ from .help import HelpGenerator
 
 def prepare_runtime_object(*,
                            runtime_spec: Type[Runtime] | str | ModuleType | None,
-                           metadata: RuntimeMetadata,
+                           metadata: ToolMetadata,
                            argument_data: object,
-                           paths: RuntimePaths,
+                           paths: ToolPaths,
                            help_generator: HelpGenerator,
                            extra_symbols: dict,
                            ) -> Runtime:

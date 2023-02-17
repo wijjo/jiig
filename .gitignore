@@ -79,9 +79,3 @@ dist.backup/
 
 # local sandbox
 sandbox/
-
-# generated
-/pyproject.toml
-
-# virtual environment
-venv/

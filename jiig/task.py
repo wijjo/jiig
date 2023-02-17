@@ -38,12 +38,6 @@ class _BaseTask:
 
     dump_indent = '   '
 
-    @staticmethod
-    def shorten_notes(notes: NotesList | NotesDict | None) -> str:
-        if notes is None:
-            return ''
-        return textwrap.shorten(str(notes)[1:-1], 40)
-
     @classmethod
     def format_dump(cls,
                     name: str,
@@ -57,6 +51,18 @@ class _BaseTask:
         ]
         member_text = textwrap.indent(os.linesep.join(member_strings), cls.dump_indent)
         return textwrap.indent(os.linesep.join([heading, member_text]), indent or '')
+
+    @staticmethod
+    def format_dump_string(value: str | None) -> str:
+        if value is None:
+            return 'None'
+        return f'"{value}"'
+
+    @staticmethod
+    def format_dump_notes(value: NotesList | NotesDict | None) -> str:
+        if value is None:
+            return 'None'
+        return f'"{textwrap.shorten(str(value)[1:-1], 40)}"'
 
 
 class Task(_BaseTask):
@@ -95,16 +101,17 @@ class Task(_BaseTask):
         self.footnotes: NotesDict | None = footnotes
         self.hints: dict = hints
 
-    def copy(self, visibility: int = None) -> Self:
+    def copy(self, visibility: int = None, impl: TaskReference | None = None) -> Self:
         """
         Copy this task.
 
-        :param visibility: optional visibility override
+        :param visibility: optional override visibility
+        :param impl: optional override implementation reference
         :return: task copy
         """
         task_copy = Task(
             name=self.name,
-            task=self.impl,
+            impl=impl if impl is not None else self.impl,
             visibility=visibility if visibility is not None else self.visibility,
             description=self.description,
             notes=self.notes.copy() if self.notes is not None else None,
@@ -145,9 +152,9 @@ class Task(_BaseTask):
             indent,
             visibility=self.visibility,
             impl=self.impl,
-            description=f'"{self.description}"',
-            notes=f'"{self.shorten_notes(self.notes)}"',
-            footnotes=f'"{self.shorten_notes(self.footnotes)}"',
+            description=self.format_dump_string(self.description),
+            notes=self.format_dump_notes(self.notes),
+            footnotes=self.format_dump_notes(self.footnotes),
         )
 
 
@@ -188,15 +195,11 @@ class TaskGroup(_BaseTask):
         self.visibility = visibility
         self.package = package
         self.description = description
-        self.names: set[str] = set()
-        self.groups: list[TaskGroup] = _scrub_sub_tasks(self.name,
-                                                        sub_tasks,
-                                                        self.names,
-                                                        TaskGroup)
-        self.tasks: list[Task] = _scrub_sub_tasks(self.name,
-                                                  sub_tasks,
-                                                  self.names,
-                                                  Task)
+        sub_task_scrubber = _TaskGroupSubTaskScrubber()
+        self.groups: list[TaskGroup] = sub_task_scrubber.scrub_sub_tasks(
+            self.name, sub_tasks, TaskGroup)
+        self.tasks: list[Task] = sub_task_scrubber.scrub_sub_tasks(
+            self.name, sub_tasks, Task)
         self.notes: NotesList | None = make_list(notes, allow_none=True)
         self.footnotes: NotesDict | None = footnotes
         self.hints: dict = hints
@@ -220,7 +223,6 @@ class TaskGroup(_BaseTask):
         )
         group_copy.tasks = self.tasks.copy()
         group_copy.groups = self.groups.copy()
-        group_copy.names = self.names.copy()
         return group_copy
 
     @classmethod
@@ -258,11 +260,11 @@ class TaskGroup(_BaseTask):
         group_dump = self.format_dump(
             self.name,
             indent,
-            package=f'"{self.package}"',
-            description=f'"{self.description}"',
+            package=self.format_dump_string(self.package),
+            description=self.format_dump_string(self.description),
             visibility=self.visibility,
-            notes=f'"{self.shorten_notes(self.notes)}"',
-            footnotes=f'"{self.shorten_notes(self.footnotes)}"',
+            notes=self.format_dump_notes(self.notes),
+            footnotes=self.format_dump_notes(self.footnotes),
         )
         sub_task_dumps: list[str] = [
             sub_task.dump(indent + self.dump_indent)
@@ -315,7 +317,6 @@ class TaskTree(TaskGroup):
         )
         tree_copy.tasks = self.tasks.copy()
         tree_copy.groups = self.groups.copy()
-        tree_copy.names = self.names.copy()
         return tree_copy
 
     @classmethod
@@ -330,7 +331,6 @@ class TaskTree(TaskGroup):
         :return: TaskTree object
         """
         converter = _TaskTreeElementConverter(raw_data)
-
         task_tree = cls(
             name=name,
             sub_tasks=converter.get_sub_tasks(),
@@ -425,21 +425,26 @@ def _register_task_function(
         TASKS_BY_MODULE_ID[id(registered_task.module)] = registered_task
 
 
-def _scrub_sub_tasks(parent_name: str,
-                     sub_tasks: Sequence[Task | TaskGroup],
-                     names: set[str],
-                     filter_type: Type[T_task_or_group],
-                     ) -> list[T_task_or_group]:
-    scrubbed: list[T_task_or_group] = []
-    for sub_task in sub_tasks:
-        if isinstance(sub_task, filter_type):
-            if sub_task.name not in names:
-                names.add(sub_task.name)
-                scrubbed.append(sub_task)
-            else:
-                log_error(f'Ignoring repeated sub-task name in task group'
-                          f' "{parent_name}": {sub_task.name}')
-    return scrubbed
+class _TaskGroupSubTaskScrubber:
+
+    def __init__(self):
+        self.names: set[str] = set()
+
+    def scrub_sub_tasks(self,
+                        parent_name: str,
+                        sub_tasks: Sequence[Task | TaskGroup],
+                        filter_type: Type[T_task_or_group],
+                        ) -> list[T_task_or_group]:
+        scrubbed: list[T_task_or_group] = []
+        for sub_task in sub_tasks:
+            if isinstance(sub_task, filter_type):
+                if sub_task.name not in self.names:
+                    self.names.add(sub_task.name)
+                    scrubbed.append(sub_task)
+                else:
+                    log_error(f'Ignoring repeated sub-task name in task group'
+                              f' "{parent_name}": {sub_task.name}')
+        return scrubbed
 
 
 class _TaskTreeElementConverter:

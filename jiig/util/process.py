@@ -24,7 +24,7 @@ import re
 import shlex
 import subprocess
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 from .log import abort, log_message
 from .options import OPTIONS
@@ -280,3 +280,13 @@ def simple_shell_quote(value: Any,
         parts.append(text[pos:])
     final_text = ''.join(parts)
     return f'"{final_text}"'
+
+
+def simple_shell_quote_arguments(args: Sequence) -> str:
+    """
+    Simplistic shell argument quoting applied to sequence of arguments.
+
+    :param args: raw command arguments
+    :return: command string with quoted arguments
+    """
+    return ' '.join(simple_shell_quote(arg) for arg in args)

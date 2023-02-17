@@ -20,6 +20,7 @@
 from types import ModuleType
 from typing import Self, Sequence
 
+from .constants import DEFAULT_ROOT_TASK_NAME
 from .fields import TaskField
 from .types import TaskFunction
 from .util.log import abort
@@ -181,7 +182,7 @@ class RuntimeTask:
         :return: new RuntimeTask
         """
         return RuntimeTask(
-            name='(root)',
+            name=DEFAULT_ROOT_TASK_NAME,
             full_name='',
             sub_tasks=sub_tasks,
             visibility=2,
