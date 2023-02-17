@@ -17,7 +17,10 @@
 
 """Application/tasks preparation."""
 
-import jiig.tasks
+from types import ModuleType
+
+import jiig.tasks.alias
+import jiig.tasks.venv
 from jiig.task import (
     Task,
     TaskGroup,
@@ -44,17 +47,13 @@ def inject_builtin_tasks(*,
     visibility = 2 if tool_options.hide_builtin_tasks else 1
     provider = _JiigTaskTreeProvider(jiig_task_tree, visibility)
     provider.check_task('help', tool_options.disable_help)
-    provider.check_group('alias', tool_options.disable_alias)
-    provider.check_group('venv', False)
+    provider.check_group('alias', tool_options.disable_alias, jiig.tasks.alias)
+    provider.check_group('venv', False, jiig.tasks.venv)
     if not provider.add_tasks and not provider.add_groups:
         return task_tree
     adjusted_task_tree = task_tree.copy()
-    if provider.add_tasks:
-        adjusted_task_tree.tasks.extend(provider.add_tasks)
-    for add_group in provider.add_groups:
-        # Need to override the tool package default for the added group to import.
-        add_group.package = jiig.tasks
-        adjusted_task_tree.groups.append(add_group)
+    adjusted_task_tree.tasks.extend(provider.add_tasks)
+    adjusted_task_tree.groups.extend(provider.add_groups)
     return adjusted_task_tree
 
 
@@ -84,7 +83,7 @@ class _JiigTaskTreeProvider:
         else:
             log_error(f'Jiig task "{name}" not found in Jiig configuration.')
 
-    def check_group(self, name: str, disabled: bool):
+    def check_group(self, name: str, disabled: bool, package: ModuleType):
         if disabled:
             return
         for group in self.task_tree.groups:
@@ -97,6 +96,7 @@ class _JiigTaskTreeProvider:
                 ]
                 if group_copy.groups:
                     log_error(f'Ignoring "jiig.tasks.{group.name}" sub-task groups.')
+                group_copy.package = package
                 self.add_groups.append(group_copy)
                 break
         else:

@@ -98,87 +98,6 @@ def read_script_configuration(script_path: Path) -> dict:
     return read_config_file(script_path)
 
 
-class _Extractor:
-    def __init__(self, raw_data: dict):
-        self.raw_data = raw_data
-
-    def _get(self, name: str) -> Any | None:
-        raw_data = self.raw_data
-        name_parts = name.split('.')
-        for name_part in name_parts[:-1]:
-            if name_part not in raw_data:
-                return None
-            raw_data = raw_data[name_part]
-            if not isinstance(raw_data, dict):
-                return None
-        return raw_data.get(name_parts[-1])
-
-    def boolean(self, name: str, default: bool) -> bool:
-        value = self._get(name)
-        if value is None:
-            return default
-        if not isinstance(value, bool):
-            log_error(f'Ignoring non-boolean "{name}" value: {value}')
-            return default
-        return value
-
-    def string(self, name: str, default: str | None) -> str | None:
-        value = self._get(name)
-        if value is None:
-            return default
-        return str(value)
-
-    def string_list(self, name: str, default: list[str]) -> list[str]:
-        value = self._get(name)
-        if value is None:
-            return default
-        return [str(s) for s in make_list(value)]
-
-    def path(self, name: str, default: Path) -> Path:
-        value = self._get(name)
-        if value is None:
-            return default
-        if isinstance(value, Path):
-            return value
-        if not isinstance(value, str):
-            return default
-        return Path(value)
-
-    def path_list(self, name: str, default: list[Path], *extra_paths: Path) -> list[Path]:
-        value = self._get(name)
-        if value is None:
-            return default
-        paths = [Path(item) for item in make_list(value)]
-        for extra_path in extra_paths:
-            if extra_path not in paths:
-                paths.append(extra_path)
-        return paths
-
-    def task_tree(self, name: str, top_task_name: str, package: ModuleReference | None) -> TaskTree:
-        value = self._get(name)
-        if value is None:
-            return TaskTree(name=top_task_name, sub_tasks=[])
-        # The extracted value is just the sub-tasks. Wrap so that
-        # TaskTree.from_raw_data() works properly.
-        wrapped_data = {
-            'package': package,
-            'sub_tasks': value,
-        }
-        return TaskTree.from_raw_data(name=top_task_name, raw_data=wrapped_data)
-
-    def any(self, name: str, default: Any) -> Any:
-        value = self._get(name)
-        if value is None:
-            return default
-        return value
-
-    def dictionary(self, name: str) -> dict:
-        value = self._get(name)
-        if value is None or not isinstance(value, dict):
-            return {}
-        return value
-
-
 def load_tool_configuration(script_path: Path,
                             is_jiig: bool,
                             jiig_source_root: Path | None,
@@ -264,3 +183,84 @@ def load_tool_configuration(script_path: Path,
         task_tree=task_tree,
         extra_symbols=extractor.dictionary('extra_symbols'),
     )
+
+
+class _Extractor:
+    def __init__(self, raw_data: dict):
+        self.raw_data = raw_data
+
+    def _get(self, name: str) -> Any | None:
+        raw_data = self.raw_data
+        name_parts = name.split('.')
+        for name_part in name_parts[:-1]:
+            if name_part not in raw_data:
+                return None
+            raw_data = raw_data[name_part]
+            if not isinstance(raw_data, dict):
+                return None
+        return raw_data.get(name_parts[-1])
+
+    def boolean(self, name: str, default: bool) -> bool:
+        value = self._get(name)
+        if value is None:
+            return default
+        if not isinstance(value, bool):
+            log_error(f'Ignoring non-boolean "{name}" value: {value}')
+            return default
+        return value
+
+    def string(self, name: str, default: str | None) -> str | None:
+        value = self._get(name)
+        if value is None:
+            return default
+        return str(value)
+
+    def string_list(self, name: str, default: list[str]) -> list[str]:
+        value = self._get(name)
+        if value is None:
+            return default
+        return [str(s) for s in make_list(value)]
+
+    def path(self, name: str, default: Path) -> Path:
+        value = self._get(name)
+        if value is None:
+            return default
+        if isinstance(value, Path):
+            return value
+        if not isinstance(value, str):
+            return default
+        return Path(value)
+
+    def path_list(self, name: str, default: list[Path], *extra_paths: Path) -> list[Path]:
+        value = self._get(name)
+        if value is None:
+            return default
+        paths = [Path(item) for item in make_list(value)]
+        for extra_path in extra_paths:
+            if extra_path not in paths:
+                paths.append(extra_path)
+        return paths
+
+    def task_tree(self, name: str, top_task_name: str, package: ModuleReference | None) -> TaskTree:
+        value = self._get(name)
+        if value is None:
+            return TaskTree(name=top_task_name, sub_tasks=[])
+        # The extracted value is just the sub-tasks. Wrap so that
+        # TaskTree.from_raw_data() works properly.
+        wrapped_data = {
+            'package': package,
+            'sub_tasks': value,
+        }
+        return TaskTree.from_raw_data(name=top_task_name, raw_data=wrapped_data)
+
+    def any(self, name: str, default: Any) -> Any:
+        value = self._get(name)
+        if value is None:
+            return default
+        return value
+
+    def dictionary(self, name: str) -> dict:
+        value = self._get(name)
+        if value is None or not isinstance(value, dict):
+            return {}
+        return value
