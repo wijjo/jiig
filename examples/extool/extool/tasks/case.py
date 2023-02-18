@@ -1,4 +1,4 @@
-"""Sample Jiig task module."""
+"""Sample Jiig calc task module."""
 
 from jiig import fields
 from jiig.task import task

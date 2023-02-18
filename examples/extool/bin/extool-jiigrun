@@ -21,3 +21,12 @@ tasks_package = "extool.tasks"
 cli_options = {lower = ["-l", "--lower"], upper = ["-u", "--upper"]}
 
 [tasks.words]
+
+[tasks.time.sub_tasks.now]
+cli_options = {format = ["-f", "--format"]}
+
+[tasks.time.sub_tasks.month]
+cli_options = {date = ["-d", "--date"]}
+
+[tasks.time.sub_tasks.year]
+cli_options = {year = ["-y", "--year"]}

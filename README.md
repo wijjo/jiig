@@ -250,15 +250,10 @@ def calc(
    * Task tree maps registered task functions to a user interface, e.g. a  
      text-based command line interface. 
 
-Below is the `extool` example, `extool-jiigrun`
+The code below is taken from `examples/extool/bin/extool-jiigrun`.
 
 ```toml
 #!/usr/bin/env jiigrun
-# extool Jiig tool script.
-#
-# jiigrun automatically deals with the Python package load path, manages any
-# required virtual environment, and scrapes tool metadata from simple
-# configuration variables.
 
 [tool]
 name = "extool"
@@ -276,42 +271,28 @@ tasks_package = "extool.tasks"
 cli_options = {lower = ["-l", "--lower"], upper = ["-u", "--upper"]}
 
 [tasks.words]
+
+[tasks.time.sub_tasks.now]
+cli_options = {format = ["-f", "--format"]}
+
+[tasks.time.sub_tasks.month]
+cli_options = {date = ["-d", "--date"]}
+
+[tasks.time.sub_tasks.year]
+cli_options = {year = ["-y", "--year"]}
 ```
 
 ### Pure Python Jiig tool
 
-The `extool` example `bin/extool-python` script demonstrates how to define a 
-tool that is configured by pure Python data structures. That script supplies an
-identical configuration, compared to `bin/extool-jiigrun`, and uses the same 
-`tasks` package.
+The code below demonstrates a pure Python Jiig tool script. It is taken from
+`examples/extool/bin/extool-python`, but has been simplified for readability.
 
 ```python
 #!/usr/bin/env python3
-# extool Jiig tool script.
-#
-# This script demonstrates manual pure-Python tool configuration. Note that
-# extool needs to be in the Python library load path so that its tasks package
-# can be imported. Use PYTHONPATH or another mechanism to adjust the path.
 
-import sys
-from pathlib import Path
-
-from jiig.task import Task, TaskTree
+from jiig.task import Task, TaskGroup, TaskTree
 from jiig.tool import ToolMetadata
 from jiig.startup import tool_main
-
-EXTOOL_ROOT = str(Path(__file__).resolve().parent.parent)
-
-# This implementation assumes the Python path is manipulated externally so that
-# extool task modules can be imported.
-try:
-    # noinspection PyUnresolvedReferences
-    import extool
-except ModuleNotFoundError:
-    sys.stderr.write(f'Extool must be in the Python path for its library to import, e.g.:\n'
-                     f'   PYTHONPATH={EXTOOL_ROOT} {sys.argv[0]} ...\n')
-    sys.exit(1)
-
 
 def main():
     tool_main(
@@ -332,10 +313,20 @@ def main():
                      cli_options={'lower': ["-l", "--lower"],
                                   'upper': ["-u", "--upper"]}),
                 Task(name='words'),
+                TaskGroup(
+                    name='time',
+                    sub_tasks=[
+                        Task(name='month',
+                             cli_options={'date': ['-d', '--date']}),
+                        Task(name='now',
+                             cli_options={'format': ['-f', '--format']}),
+                        Task(name='year',
+                             cli_options={'year': ['-y', '--year']}),
+                    ],
+                )
             ],
         ),
     )
-
 
 if __name__ == '__main__':
     main()

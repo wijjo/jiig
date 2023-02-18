@@ -8,7 +8,7 @@
 import sys
 from pathlib import Path
 
-from jiig.task import Task, TaskTree
+from jiig.task import Task, TaskGroup, TaskTree
 from jiig.tool import ToolMetadata
 from jiig.startup import tool_main
 
@@ -44,6 +44,17 @@ def main():
                      cli_options={'lower': ["-l", "--lower"],
                                   'upper': ["-u", "--upper"]}),
                 Task(name='words'),
+                TaskGroup(
+                    name='time',
+                    sub_tasks=[
+                        Task(name='month',
+                             cli_options={'date': ['-d', '--date']}),
+                        Task(name='now',
+                             cli_options={'format': ['-f', '--format']}),
+                        Task(name='year',
+                             cli_options={'year': ['-y', '--year']}),
+                    ],
+                )
             ],
         ),
     )
