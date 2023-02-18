@@ -155,6 +155,8 @@ class CLIDriver(Driver):
             capture_trailing=True,
             raise_exceptions=False,
         )
+        if not names:
+            abort(f'Program defines no tasks.')
         full_name = '.'.join(names)
         # Resolve task stack.
         task_stack = get_task_stack(root_task, names)
