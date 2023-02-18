@@ -22,8 +22,8 @@ from pathlib import Path
 
 HOME_FOLDER_PATH = Path(os.environ['HOME'])
 JIIG_ROOT = Path(__file__).parent.parent
-JIIG_CONFIGURATION_NAME = 'jiig.toml'
-JIIG_CONFIGURATION_PATH = Path(__file__).parent.parent / JIIG_CONFIGURATION_NAME
+JIIG_TOML_CONFIGURATION_NAME = 'jiig.toml'
+JIIG_JSON_CONFIGURATION_NAME = 'jiig.json'
 JIIG_VENV_ROOT = HOME_FOLDER_PATH / '.jiig-venv'
 DEFAULT_AUTHOR = '(unknown author)'
 DEFAULT_COPYRIGHT = '(unknown copyright)'

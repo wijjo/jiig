@@ -34,17 +34,35 @@ needing to deal with "plumbing".
 
 ## Application and user interface configuration
 
-Application configurations are frequently written as inline TOML format data. If
-not familiar with TOML, it's a built-in Python-supported configuration format 
-that starts out liking like ".ini" files, and adds features to support some more
-complex data structures.
+Application configurations can use one of the following formats:
+
+* TOML - a friendly INI-like format with comments and complex data support.
+* JSON - a simple and familiar dictionary-like format.
+* Python objects - use various Jiig-supplied Python configuration classes. 
+
+TOML is a built-in Python-supported configuration format that resembles Windows
+".ini" files. It adds features like comments and support for some more complex
+data structures. The `examples/bin/extool-jiigrun` script demonstrates a TOML format
+configuration.
+
+JSON is a simple format that is familiar to Web developers in particular. It is
+fussier than TOML. Comma separators must be between successive elements, but 
+must not be placed after the last element of a list or dictionary. Also,
+comments are not supported. One advantage is that the task hierarchy is easier 
+to understand, compared to the TOML equivalent. The 
+`jiigadmin config toml_to_json` command can convert a TOML configuration file to
+JSON. It also works with `jiigrun` scripts, because it knows how to skip to the
+first "{" line.
+
+Configuration format is a personal choice. TOML is considered the Jiig default
+format.
+
+A pure Python configuration tends to be a little more verbose. The 
+`examples/bin/extool-python` script demonstrates a pure Python configuration. 
 
 The user interface (UI) is also configured as part of the application
 configuration. UI configurations map task functions to UI elements, like command
 line sub-commands, options, and arguments.
-
-While the TOML format is generally easier to write, read, and maintain, 
-configurations may also be specified with pure Python code. 
 
 
 ## Modular user interface drivers

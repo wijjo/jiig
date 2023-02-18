@@ -59,6 +59,12 @@ JIIGADMIN_TASK_TREE = TaskTree(
                 Task(name='sdist'),
             ],
         ),
+        TaskGroup(
+            name='config',
+            sub_tasks=[
+                Task(name='toml_to_json')
+            ],
+        ),
         Task(name='help', visibility=1, cli_options={'all_tasks': ['-a', '--all']}),
         TaskGroup(
             name='pdoc',

@@ -17,7 +17,6 @@
 
 """Tool configuration loading."""
 
-import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -33,7 +32,8 @@ from jiig.constants import (
     DEFAULT_TOOL_DESCRIPTION,
     DEFAULT_URL,
     DEFAULT_VERSION,
-    JIIG_CONFIGURATION_NAME,
+    JIIG_JSON_CONFIGURATION_NAME,
+    JIIG_TOML_CONFIGURATION_NAME,
     JIIG_VENV_ROOT,
     SUB_TASK_LABEL,
     TOP_TASK_LABEL,
@@ -48,32 +48,44 @@ from jiig.tool import (
 )
 from jiig.types import ModuleReference
 from jiig.util.collections import make_list
+from jiig.util.configuration import (
+    read_json_configuration,
+    read_toml_configuration,
+)
 from jiig.util.filesystem import search_folder_stack_for_file
 from jiig.util.python import find_package_base_folder
 from jiig.util.log import abort, log_error
 
 
-def read_config_file(config_path: Path) -> dict:
-    """
-    Read TOML format configuration file.
-
-    :param config_path: configuration file path
-    :return: dictionary data
-    """
+def _read_toml_configuration(config_path: Path,
+                             ignore_decode_error: bool = False,
+                             ) -> dict | None:
     try:
-        with open(config_path, 'rb') as config_file:
-            try:
-                config_data = tomllib.load(config_file)
-                if not isinstance(config_data, dict):
-                    abort(f'Configuration file data is not a dictionary.',
-                          path=config_path)
-                return config_data
-            except tomllib.TOMLDecodeError as toml_exc:
-                abort(f'Unable to parse configuration file.',
-                      path=config_path,
-                      exception=toml_exc)
+        return read_toml_configuration(config_path, ignore_decode_error=ignore_decode_error)
+    except TypeError as type_exc:
+        abort(str(type_exc))
+    except ValueError as value_exc:
+        abort(str(value_exc))
     except (IOError, OSError) as file_exc:
-        abort(f'Failed to read configuration file.',
+        abort(f'Failed to read TOML configuration file.',
+              path=config_path,
+              exception=file_exc)
+
+
+def _read_json_configuration(config_path: Path,
+                             ignore_decode_error: bool = False,
+                             skip_file_header: bool = False,
+                             ) -> dict | None:
+    try:
+        return read_json_configuration(config_path,
+                                       skip_file_header=skip_file_header,
+                                       ignore_decode_error=ignore_decode_error)
+    except TypeError as type_exc:
+        abort(str(type_exc))
+    except ValueError as value_exc:
+        abort(str(value_exc))
+    except (IOError, OSError) as file_exc:
+        abort(f'Failed to read JSON configuration file.',
               path=config_path,
               exception=file_exc)
 
@@ -85,17 +97,28 @@ def read_script_configuration(script_path: Path) -> dict:
     :param script_path: script path
     :return: configuration data
     """
-    # First try parsing the script for TOML data.
-    config_data = read_config_file(script_path)
-    if 'tool' in config_data:
+    # First try parsing the script for TOML or JSON data.
+    config_data = _read_toml_configuration(script_path,
+                                           ignore_decode_error=True)
+    if config_data is not None:
+        return config_data
+    config_data = _read_json_configuration(script_path,
+                                           skip_file_header=True,
+                                           ignore_decode_error=True)
+    if config_data is not None:
         return config_data
     # Otherwise find and read a separate configuration file..
     config_path = search_folder_stack_for_file(script_path.parent,
-                                               JIIG_CONFIGURATION_NAME)
-    if config_path is None:
-        abort(f'Could not find {JIIG_CONFIGURATION_NAME} based on script path.',
-              script_path=script_path)
-    return read_config_file(script_path)
+                                               JIIG_TOML_CONFIGURATION_NAME)
+    if config_path is not None:
+        return _read_toml_configuration(config_path)
+    config_path = search_folder_stack_for_file(script_path.parent,
+                                               JIIG_JSON_CONFIGURATION_NAME)
+    if config_path is not None:
+        return _read_json_configuration(config_path)
+    abort(f'Could not find {JIIG_TOML_CONFIGURATION_NAME} or'
+          f' {JIIG_JSON_CONFIGURATION_NAME} based on script path.',
+          script_path=script_path)
 
 
 def load_tool_configuration(script_path: Path,
