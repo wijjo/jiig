@@ -29,6 +29,8 @@ from jiig.util.log import abort
 from jiig.util.repetition import Repetition
 from jiig.util.text.footnotes import NotesDict, NotesList
 
+from .cli_types import CLIOptionArgument
+
 
 @dataclass
 class CLIHelpProviderOptions:
@@ -43,15 +45,17 @@ class CLIHelpProvider(HelpProvider):
                  tool_description: str,
                  root_task: RuntimeTask,
                  options_by_task: dict[str, dict[str, list[str]]],
+                 global_options: list[CLIOptionArgument],
                  trailing_by_task: dict[str, str],
-                 options: CLIHelpProviderOptions = None,
+                 help_options: CLIHelpProviderOptions = None,
                  ):
         self.tool_name = tool_name
         self.tool_description = tool_description
         self.root_task = root_task
         self.options_by_task = options_by_task
+        self.global_options = global_options
         self.trailing_by_task = trailing_by_task
-        self.options = options or CLIHelpProviderOptions()
+        self.help_options = help_options or CLIHelpProviderOptions()
 
     def format_help(self, *names: str, show_hidden: bool = False) -> str:
         """
@@ -74,16 +78,18 @@ class CLIHelpProvider(HelpProvider):
 
         :param show_hidden: show hidden task help if True
         """
-        return self._format_help(self.tool_name,
-                                 [],
-                                 self.tool_description,
-                                 self.root_task.fields,
-                                 self.root_task.sub_tasks,
-                                 self.root_task.notes,
-                                 [self.root_task.footnotes],
-                                 self.options.top_task_label,
-                                 show_hidden,
-                                 )
+        return self._format_help(
+            tool_name=self.tool_name,
+            names=[],
+            description=self.tool_description,
+            fields=self.root_task.fields,
+            sub_tasks=self.root_task.sub_tasks,
+            notes=self.root_task.notes,
+            footnotes_list=[self.root_task.footnotes],
+            task_label=self.help_options.top_task_label,
+            show_hidden=show_hidden,
+            show_global_options=True,
+        )
 
     def format_task_help(self, names: Sequence[str], show_hidden: bool = False) -> str:
         """
@@ -100,16 +106,18 @@ class CLIHelpProvider(HelpProvider):
 
         active_task = task_stack[-1]
 
-        return self._format_help(self.tool_name,
-                                 names,
-                                 active_task.description,
-                                 active_task.fields,
-                                 active_task.sub_tasks,
-                                 active_task.notes,
-                                 [self.root_task.footnotes, active_task.footnotes],
-                                 self.options.sub_task_label,
-                                 show_hidden,
-                                 )
+        return self._format_help(
+            tool_name=self.tool_name,
+            names=names,
+            description=active_task.description,
+            fields=active_task.fields,
+            sub_tasks=active_task.sub_tasks,
+            notes=active_task.notes,
+            footnotes_list=[self.root_task.footnotes, active_task.footnotes],
+            task_label=self.help_options.sub_task_label,
+            show_hidden=show_hidden,
+            show_global_options=False,
+        )
 
     def _format_help(self,
                      tool_name: str,
@@ -121,6 +129,7 @@ class CLIHelpProvider(HelpProvider):
                      footnotes_list: Sequence[NotesDict],
                      task_label: str,
                      show_hidden: bool,
+                     show_global_options: bool,
                      ) -> str:
 
         formatter = HelpFormatter(tool_name, names, description, task_label)
@@ -130,6 +139,17 @@ class CLIHelpProvider(HelpProvider):
             formatter.add_note(note)
         for footnotes in footnotes_list:
             formatter.add_footnote_dictionary(footnotes)
+
+        # Add global options if required.
+        if show_global_options:
+            for global_option in self.global_options:
+                formatter.add_option(flags=global_option.flags,
+                                     name=global_option.name,
+                                     description=global_option.description,
+                                     repeat=global_option.repeat,
+                                     default=global_option.default,
+                                     choices=global_option.choices,
+                                     is_boolean=global_option.is_boolean)
 
         # Add flagged options, if any (tasks only).
         task_receives_trailing = False

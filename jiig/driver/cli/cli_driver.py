@@ -141,12 +141,11 @@ class CLIDriver(Driver):
         root_command = CLICommand(root_task.name,
                                   root_task.description,
                                   root_task.visibility)
-        self._add_task_tree(
-            [],
-            root_command,
-            root_task,
-            additional_options=self.global_options,
-        )
+        self._add_task_tree([], root_command, root_task)
+        option_names = [option.name for option in root_command.options]
+        for global_option in self.global_options:
+            if global_option.name not in option_names:
+                root_command.options.append(global_option)
         data, names, additional_arguments = self.cli_parser.parse(
             arguments,
             self.name,
@@ -188,7 +187,7 @@ class CLIDriver(Driver):
         :param names: name parts (task name stack)
         :param show_hidden: show hidden task help if True
         """
-        options = CLIHelpProviderOptions(
+        help_options = CLIHelpProviderOptions(
             top_task_label=self.options.top_task_label,
             sub_task_label=self.options.sub_task_label,
         )
@@ -196,8 +195,9 @@ class CLIDriver(Driver):
                                    self.description,
                                    root_task,
                                    self.options_by_task,
+                                   self.global_options,
                                    self.trailing_by_task,
-                                   options=options)
+                                   help_options=help_options)
         text = provider.format_help(*names, show_hidden=show_hidden)
         if text:
             log_message(text)
@@ -214,7 +214,6 @@ class CLIDriver(Driver):
                        names: list[str],
                        command: CLICommand,
                        task: RuntimeTask,
-                       additional_options: list[CLIOptionArgument] = None,
                        ):
         full_name = '.'.join(names)
         if task.driver_hints:
@@ -249,10 +248,6 @@ class CLIDriver(Driver):
                 )
                 command.options.append(option)
                 option_names.add(field.name)
-        if additional_options:
-            for additional_option in additional_options:
-                if additional_option.name not in option_names:
-                    command.options.append(additional_option)
         trailing_field_name = self.trailing_by_task.get(full_name)
         for field in task.fields:
             if field.name not in options_by_field:

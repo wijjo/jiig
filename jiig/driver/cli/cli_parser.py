@@ -234,15 +234,7 @@ class Parser:
         """
         # Don't use the primary argparse parser, since it may be initialized later.
         pre_parser = _ArgumentParser()
-        if options:
-            for option in options:
-                kwargs = {}
-                if option.is_boolean:
-                    kwargs['action'] = 'store_true'
-                pre_parser.add_argument(*option.flags,
-                                        dest=option.name.upper(),
-                                        help=option.description,
-                                        **kwargs)
+        cls._prepare_global_options(pre_parser, options)
         data, trailing_arguments = pre_parser.parse_known_args(
             command_line_arguments, raise_exceptions=raise_exceptions)
         if getattr(data, 'DEBUG', False):
@@ -394,3 +386,17 @@ class Parser:
                                                   add_help=False)
                 cls._prepare_recursive(sub_command, sub_parser, dest_name,
                                        command_names=(command_names + [sub_command.name]))
+
+    @staticmethod
+    def _prepare_global_options(parser: argparse.ArgumentParser,
+                                options: Sequence[CLIOptionArgument],
+                                ):
+        if options:
+            for option in options:
+                kwargs = {}
+                if option.is_boolean:
+                    kwargs['action'] = 'store_true'
+                parser.add_argument(*option.flags,
+                                    dest=option.name.upper(),
+                                    help=option.description,
+                                    **kwargs)
