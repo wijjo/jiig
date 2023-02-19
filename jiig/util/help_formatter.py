@@ -435,7 +435,7 @@ class HelpFormatter:
         output_formatter.add_blocks(
             *self._format_usage(self.program_name,
                                 options,
-                                arguments,
+                                self.arguments,
                                 receives_trailing_arguments))
         output_formatter.add_blocks(
             *self._format_description())
