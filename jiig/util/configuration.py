@@ -21,10 +21,12 @@ import json
 import tomllib
 from pathlib import Path
 
+from .collections import AttributeDictionary
+
 
 def read_toml_configuration(config_path: Path | str,
                             ignore_decode_error: bool = False,
-                            ) -> dict | None:
+                            ) -> AttributeDictionary | None:
     """
     Read TOML format configuration file.
 
@@ -44,7 +46,7 @@ def read_toml_configuration(config_path: Path | str,
             if not isinstance(config_data, dict):
                 raise TypeError(f'TOML configuration file data is not a'
                                 f' dictionary: {config_path}')
-            return config_data
+            return AttributeDictionary.new(config_data)
         except tomllib.TOMLDecodeError as decode_exc:
             if ignore_decode_error:
                 return None
@@ -55,7 +57,7 @@ def read_toml_configuration(config_path: Path | str,
 def read_json_configuration(config_path: Path | str,
                             skip_file_header: bool = False,
                             ignore_decode_error: bool = False,
-                            ) -> dict | None:
+                            ) -> AttributeDictionary | None:
     """
     Read JSON format configuration file.
 
@@ -83,7 +85,7 @@ def read_json_configuration(config_path: Path | str,
             if not isinstance(config_data, dict):
                 raise TypeError(f'JSON configuration file data is not a'
                                 f' dictionary: {config_path}')
-            return config_data
+            return AttributeDictionary.new(config_data)
         except json.JSONDecodeError as decode_exc:
             if ignore_decode_error:
                 return None

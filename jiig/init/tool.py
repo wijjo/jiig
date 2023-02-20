@@ -47,7 +47,10 @@ from jiig.tool import (
     ToolPaths,
 )
 from jiig.types import ModuleReference
-from jiig.util.collections import make_list
+from jiig.util.collections import (
+    AttributeDictionary,
+    make_list,
+)
 from jiig.util.configuration import (
     read_json_configuration,
     read_toml_configuration,
@@ -59,7 +62,7 @@ from jiig.util.log import abort, log_error
 
 def _read_toml_configuration(config_path: Path,
                              ignore_decode_error: bool = False,
-                             ) -> dict | None:
+                             ) -> AttributeDictionary | None:
     try:
         return read_toml_configuration(config_path, ignore_decode_error=ignore_decode_error)
     except TypeError as type_exc:
@@ -75,7 +78,7 @@ def _read_toml_configuration(config_path: Path,
 def _read_json_configuration(config_path: Path,
                              ignore_decode_error: bool = False,
                              skip_file_header: bool = False,
-                             ) -> dict | None:
+                             ) -> AttributeDictionary | None:
     try:
         return read_json_configuration(config_path,
                                        skip_file_header=skip_file_header,
@@ -90,7 +93,7 @@ def _read_json_configuration(config_path: Path,
               exception=file_exc)
 
 
-def read_script_configuration(script_path: Path) -> dict:
+def read_script_configuration(script_path: Path) -> AttributeDictionary:
     """
     Read TOML format configuration data from script or separate file.
 
