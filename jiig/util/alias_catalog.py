@@ -164,6 +164,9 @@ def is_alias_name(name: str | Path) -> bool:
     :param name: name to check
     :return: True if it is an alias
     """
+    # If the name is a filesystem object, then it isn't an alias.
+    if Path(name).exists():
+        return False
     return str(name)[0] in (os.path.sep, '.', '~')
 
 
