@@ -98,9 +98,15 @@ class PackageManager:
 class Platform:
     """Platform data."""
     name: str
+    """Platform name."""
     recognition_pattern: str
+    """Regular expression to test platform.version."""
     package_manager: PackageManager
+    """Default package manager."""
     compiled_pattern: re.Pattern = field(init=False)
+    """Automatically compiled recognition pattern."""
+    check_command: str | None = None
+    """Optional shell command to test if the platform matches."""
 
     def __post_init__(self):
         self.compiled_pattern = re.compile(self.recognition_pattern, re.IGNORECASE)
@@ -137,13 +143,30 @@ PACKAGE_MANAGERS: dict[str, PackageManager] = {
 
 # TODO: make sure platform recognition patterns are correct.
 SUPPORTED_PLATFORMS: dict[str, Platform] = {
-    'debian': Platform('debian', r'\b(:?Debian|Ubuntu)\b', PACKAGE_MANAGERS['apt']),
-    'mac': Platform('mac', r'\bDarwin\b', PACKAGE_MANAGERS['homebrew']),
-    'centos': Platform('centos', r'\bCentOS\b', PACKAGE_MANAGERS['yum']),
-    'fedora': Platform('fedora', r'\bFedora\b', PACKAGE_MANAGERS['dnf']),
-    'opensuse': Platform('opensuse', r'\bOpenSUSE\b', PACKAGE_MANAGERS['zypper']),
-    'arch': Platform('arch', r'\bArch\b', PACKAGE_MANAGERS['pacman']),
-    'alpine': Platform('alpine', r'\bAlpine\b', PACKAGE_MANAGERS['apk']),
+    'debian': Platform(name='debian',
+                       recognition_pattern=r'\b(:?Debian|Ubuntu)\b',
+                       package_manager=PACKAGE_MANAGERS['apt'],
+                       check_command='test -f /etc/debian_version'),
+    'mac': Platform(name='mac',
+                    recognition_pattern=r'\bDarwin\b',
+                    package_manager=PACKAGE_MANAGERS['homebrew'],
+                    check_command='test -d /Applications'),
+    'fedora': Platform(name='fedora',
+                       recognition_pattern=r'\bFedora\b',
+                       package_manager=PACKAGE_MANAGERS['dnf'],
+                       check_command='test -f /etc/fedora-release'),
+    'centos': Platform(name='centos',
+                       recognition_pattern=r'\bCentOS\b',
+                       package_manager=PACKAGE_MANAGERS['yum']),
+    'opensuse': Platform(name='opensuse',
+                         recognition_pattern=r'\bOpenSUSE\b',
+                         package_manager=PACKAGE_MANAGERS['zypper']),
+    'arch': Platform(name='arch',
+                     recognition_pattern=r'\bArch\b',
+                     package_manager=PACKAGE_MANAGERS['pacman']),
+    'alpine': Platform(name='alpine',
+                       recognition_pattern=r'\bAlpine\b',
+                       package_manager=PACKAGE_MANAGERS['apk']),
 }
 
 
