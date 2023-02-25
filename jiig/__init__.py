@@ -23,13 +23,14 @@ Jiig library.
 # must have minimal dependencies in order to avoid inadvertent circular imports.
 from .context import Context
 from .action_context import ActionContext
-from .runtime import Runtime
+from .runtime import Runtime, RuntimeHelpGenerator
 from .task import (
     Task,
     TaskGroup,
     TaskTree,
     task,
 )
+from .types import ToolMetadata, ToolPaths
 from .util.options import OPTIONS
 from .util.script import Script
 

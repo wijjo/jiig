@@ -18,27 +18,22 @@
 """Tool specification."""
 
 import os
-from dataclasses import dataclass, field
-from pathlib import Path
+from dataclasses import dataclass
 from types import ModuleType
 from typing import Any, Self
 
 from .constants import (
     DEFAULT_ALIASES_PATH,
-    DEFAULT_AUTHOR,
     DEFAULT_BUILD_FOLDER,
-    DEFAULT_COPYRIGHT,
     DEFAULT_DOC_FOLDER,
-    DEFAULT_EMAIL,
     DEFAULT_TEST_FOLDER,
-    DEFAULT_TOOL_DESCRIPTION,
-    DEFAULT_URL,
-    DEFAULT_VERSION,
     JIIG_VENV_ROOT,
-    SUB_TASK_LABEL,
-    TOP_TASK_LABEL,
 )
 from .task import TaskTree
+from .types import (
+    ToolMetadata,
+    ToolPaths,
+)
 from .util.log import log_warning
 from .util.options import OPTIONS
 from .util.python import symbols_to_dataclass
@@ -100,52 +95,6 @@ class ToolCustomizations:
 
     driver: type | str | ModuleType | None
     """Driver class reference."""
-
-
-TOOL_METADATA_STRING_DEFAULT = '<placeholder>'
-
-
-@dataclass
-class ToolMetadata:
-    """
-    Runtime metadata.
-
-    tool_name is the only required parameter.
-    """
-    tool_name: str
-    project_name: str = TOOL_METADATA_STRING_DEFAULT
-    author: str = DEFAULT_AUTHOR
-    email: str = DEFAULT_EMAIL
-    copyright: str = DEFAULT_COPYRIGHT
-    description: str = DEFAULT_TOOL_DESCRIPTION
-    url: str = DEFAULT_URL
-    version: str = DEFAULT_VERSION
-    top_task_label: str = TOP_TASK_LABEL
-    sub_task_label: str = SUB_TASK_LABEL
-    pip_packages: list[str] = field(default_factory=list)
-    doc_api_packages: list[str] = field(default_factory=list)
-    doc_api_packages_excluded: list[str] = field(default_factory=list)
-
-    def __post_init__(self):
-        if self.project_name == TOOL_METADATA_STRING_DEFAULT:
-            self.project_name = self.tool_name.capitalize()
-
-
-@dataclass
-class ToolPaths:
-    """Runtime folder paths."""
-    libraries: list[Path]
-    venv: Path
-    aliases: Path
-    build: Path
-    doc: Path
-    test: Path
-    jiig_source_root: Path | None = None
-    tool_source_root: Path | None = None
-    library_path: str = field(init=False)
-
-    def __post_init__(self):
-        self.library_path = os.pathsep.join([str(p) for p in self.libraries])
 
 
 class Tool:
