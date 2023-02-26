@@ -89,8 +89,9 @@ class ZshPackageBundle(BaseSystemPackage):
 
 @dataclass
 class PackageManager:
-    install_command: str
-    update_command: str | None
+    install_package: str
+    refresh_database: str | None
+    upgrade_all: str | None
     root_required: bool
 
 
@@ -113,31 +114,48 @@ class Platform:
 
 
 PACKAGE_MANAGERS: dict[str, PackageManager] = {
-    # TODO: Check.
-    'apk': PackageManager(install_command='apk add --no-cache',
-                          update_command='apk update',
+    # TODO: Untested.
+    'apk': PackageManager(install_package='apk add --no-cache',
+                          refresh_database='apk update',
+                          upgrade_all='apk upgrade',
                           root_required=True),
-    'apt': PackageManager(install_command='apt-get install -y',
-                          update_command='apt-get update',
+    'apt': PackageManager(install_package='apt-get install -y',
+                          refresh_database='apt-get update',
+                          upgrade_all='apt-get upgrade -y',
                           root_required=True),
-    # TODO: Check.
-    'dnf': PackageManager(install_command='dnf install -y',
-                          update_command=None,
+    # TODO: Untested.
+    'dnf': PackageManager(install_package='dnf install -y',
+                          refresh_database=None,
+                          upgrade_all='dnf upgrade -y',
                           root_required=True),
-    'homebrew': PackageManager(install_command='brew install',
-                               update_command=None,
+    # TODO: Untested.
+    'flatpak': PackageManager(install_package='flatpak install -y',
+                              refresh_database=None,
+                              upgrade_all=None,
+                              root_required=True),
+    'homebrew': PackageManager(install_package='brew install',
+                               refresh_database=None,
+                               upgrade_all='brew upgrade',
                                root_required=False),
-    # TODO: Check.
-    'pacman': PackageManager(install_command='pacman -S --needed',
-                             update_command='pacman -Sy',
+    # TODO: Untested.
+    'pacman': PackageManager(install_package='pacman -S --needed',
+                             refresh_database='pacman -Sy',
+                             upgrade_all='pacman -Syu',
                              root_required=True),
-    # TODO: Check.
-    'yum': PackageManager(install_command='yum install -y',
-                          update_command=None,
+    # TODO: Untested.
+    'snap': PackageManager(install_package='snap install',
+                           refresh_database=None,
+                           upgrade_all=None,
+                           root_required=True),
+    # TODO: Untested.
+    'yum': PackageManager(install_package='yum install -y',
+                          refresh_database=None,
+                          upgrade_all='yum update -y',
                           root_required=True),
-    # TODO: Check.
-    'zypper': PackageManager(install_command='zypper install -y',
-                             update_command=None,
+    # TODO: Untested.
+    'zypper': PackageManager(install_package='zypper install -y',
+                             refresh_database=None,
+                             upgrade_all='zypper update -y',
                              root_required=True),
 }
 
