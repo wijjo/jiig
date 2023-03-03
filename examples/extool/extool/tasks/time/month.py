@@ -24,6 +24,7 @@ def month(
     :param runtime: jiig runtime api
     :param date: optional date (string) override
     """
+    t: datetime | None = None
     if date is None:
         t = datetime.now()
     else:
@@ -41,4 +42,5 @@ def month(
             t = datetime.fromisoformat(date)
         except ValueError:
             runtime.abort(f'bad ISO date string')
-    print(calendar.month(t.year, t.month))
+    if t is not None:
+        print(calendar.month(t.year, t.month))
