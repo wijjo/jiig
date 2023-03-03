@@ -32,6 +32,14 @@ from .log import abort
 class BaseSystemPackage(ABC):
     """Abstract base class for system packages and package bundles."""
 
+    def __init__(self, name: str):
+        """
+        Constructor.
+
+        :param name: package name
+        """
+        self.name = name
+
     @abstractmethod
     def get_packages(self, platform_name: str) -> list[str]:
         ...
@@ -41,22 +49,43 @@ class BaseSystemPackage(ABC):
         ...
 
 
-@dataclass
 class SystemPackage(BaseSystemPackage):
     """System package installation data."""
-    packages: str | Sequence[str]
-    check_executable: str = None
+
+    def __init__(self,
+                 packages: str | Sequence[str],
+                 check_executable: str = None,
+                 name: str = None,
+                 ):
+        """
+        Constructor.
+
+        :param packages: package name or names that would be installed
+        :param check_executable: executable name to check whether or not it's installed
+        :param name: optional overall package name (default: first package name)
+        """
+        self.packages = make_list(packages)
+        self.check_executable = check_executable
+        if name is None:
+            if self.packages:
+                name = self.packages[0]
+            else:
+                name = '(empty)'
+        super().__init__(name)
 
     def get_packages(self, platform_name: str) -> list[str]:
-        return make_list(self.packages)
+        return self.packages
 
     def get_check_executable(self, platform_name: str) -> str | None:
         return self.check_executable
 
 
-@dataclass
 class DevelopmentToolPackageBundle(BaseSystemPackage):
     """Development tool package bundle, adapted for target OS."""
+
+    def __init__(self):
+        """Constructor."""
+        super().__init__('<development-tools>')
 
     def get_packages(self, platform_name: str) -> list[str]:
         return DEVELOPMENT_PACKAGES[platform_name]
@@ -68,6 +97,10 @@ class DevelopmentToolPackageBundle(BaseSystemPackage):
 class VimPackageBundle(BaseSystemPackage):
     """Vim package bundle."""
 
+    def __init__(self):
+        """Constructor."""
+        super().__init__('vim')
+
     def get_packages(self, platform_name: str) -> list[str]:
         # TODO: Adapt for neovim, plugins, etc..
         return ['vim', 'vim-doc']
@@ -78,6 +111,10 @@ class VimPackageBundle(BaseSystemPackage):
 
 class ZshPackageBundle(BaseSystemPackage):
     """Zsh package bundle."""
+
+    def __init__(self):
+        """Constructor."""
+        super().__init__('zsh')
 
     def get_packages(self, platform_name: str) -> list[str]:
         # TODO: Adapt for plugins and other options.
@@ -92,6 +129,7 @@ class PackageManager:
     install_package: str
     refresh_database: str | None
     upgrade_all: str | None
+    last_update_timestamp: str | None
     root_required: bool
 
 
@@ -118,44 +156,53 @@ PACKAGE_MANAGERS: dict[str, PackageManager] = {
     'apk': PackageManager(install_package='apk add --no-cache',
                           refresh_database='apk update',
                           upgrade_all='apk upgrade',
+                          last_update_timestamp=None,
                           root_required=True),
     'apt': PackageManager(install_package='apt-get install -y',
                           refresh_database='apt-get update',
                           upgrade_all='apt-get upgrade -y',
+                          last_update_timestamp='date +%s -r /var/cache/apt/pkgcache.bin',
                           root_required=True),
     # TODO: Untested.
     'dnf': PackageManager(install_package='dnf install -y',
                           refresh_database=None,
                           upgrade_all='dnf upgrade -y',
+                          last_update_timestamp=None,
                           root_required=True),
     # TODO: Untested.
     'flatpak': PackageManager(install_package='flatpak install -y',
                               refresh_database=None,
                               upgrade_all=None,
+                              last_update_timestamp=None,
                               root_required=True),
     'homebrew': PackageManager(install_package='brew install',
                                refresh_database=None,
                                upgrade_all='brew upgrade',
+                               last_update_timestamp=None,
                                root_required=False),
     # TODO: Untested.
     'pacman': PackageManager(install_package='pacman -S --needed',
                              refresh_database='pacman -Sy',
                              upgrade_all='pacman -Syu',
+                             last_update_timestamp=None,
                              root_required=True),
     # TODO: Untested.
     'snap': PackageManager(install_package='snap install',
                            refresh_database=None,
                            upgrade_all=None,
+                           last_update_timestamp=None,
                            root_required=True),
     # TODO: Untested.
     'yum': PackageManager(install_package='yum install -y',
                           refresh_database=None,
                           upgrade_all='yum update -y',
+                          last_update_timestamp=None,
                           root_required=True),
     # TODO: Untested.
     'zypper': PackageManager(install_package='zypper install -y',
                              refresh_database=None,
                              upgrade_all='zypper update -y',
+                             last_update_timestamp=None,
                              root_required=True),
 }
 
