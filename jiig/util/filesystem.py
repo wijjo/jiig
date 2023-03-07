@@ -19,6 +19,7 @@
 
 import os
 import re
+import shutil
 import stat
 from abc import ABC, abstractmethod
 from contextlib import contextmanager, AbstractContextManager
@@ -29,9 +30,10 @@ from typing import Iterator, Any, Sequence
 from .thirdparty.gitignore_parser import gitignore_parser
 
 from .collections import make_list
-from .log import abort, log_message, log_error
+from .log import abort, log_message, log_error, log_heading
 from .options import OPTIONS
 from .process import run
+from .text.blocks import trim_text_blocks
 
 # noinspection RegExpRedundantClassElement
 REMOTE_PATH_REGEX = re.compile(r'^([\w\d.@-]+):([\w\d_-~/]+)$')
@@ -683,3 +685,91 @@ def change_permissions(path: str | Path,
         log_error(f'Target for permissions change is missing: {str(path)}')
         return
     run(['chmod', permissions, str(path)])
+
+
+def grep(path: str | Path,
+         pattern: str,
+         case_insensitive: bool = False,
+         ) -> Iterator[str]:
+    """
+    Search for a regular expression in a file.
+
+    :param path: file path
+    :param pattern: regular expression pattern to compile and search for
+    :param case_insensitive: perform a case-insensitive search
+    :return: found line iterator
+    """
+    if isinstance(path, str):
+        path = Path(path)
+    else:
+        path = path.expanduser()
+    if path.exists():
+        compile_option_args = [re.IGNORECASE] if case_insensitive else []
+        compiled_pattern = re.compile(pattern, *compile_option_args)
+        with open(path, encoding='utf-8') as open_file:
+            for line in open_file.readlines():
+                if compiled_pattern.search(line):
+                    yield line
+
+
+def contains(path: str | Path,
+             pattern: str,
+             case_insensitive: bool = False,
+             ) -> bool:
+    """
+    Search for a regular expression in a file and return True if found.
+
+    :param path: file path
+    :param pattern: regular expression pattern to compile and search for
+    :param case_insensitive: perform a case-insensitive search
+    :return: True if the pattern was found
+    """
+    return bool(list(grep(path, pattern, case_insensitive=case_insensitive)))
+
+
+def add_text(path: str | Path,
+             *blocks: str,
+             backup: bool = True,
+             permissions: str = None,
+             exists_pattern: str = None,
+             keep_indent: bool = False,
+             heading: str = None,
+             skip_message: str = None,
+             ):
+    """
+    Append text block(s) to file as needed.
+
+    Can be gated by checking for a regular expression existence pattern.
+
+    :param path: file path (will be expanded)
+    :param blocks: text block(s) to expand and append if required
+    :param backup: backup the file if True
+    :param permissions: optional permissions to apply
+    :param exists_pattern: optional regular expression check if missing
+    :param keep_indent: preserve indentation if True
+    :param heading: optional displayed heading
+    :param skip_message: optional message displayed when skipping the file, e.g.
+                         due to missing text
+    """
+    if isinstance(path, str):
+        path = Path(path)
+    else:
+        path = path.expanduser()
+    if heading:
+        log_heading(heading, level=1)
+    exists = path.exists()
+    if exists_pattern and contains(path, exists_pattern):
+        if skip_message:
+            log_message(skip_message)
+        return
+    if backup:
+        if exists:
+            shutil.copy(path, f'{str(path)}.backup')
+    with open(path, 'a', encoding='utf-8') as open_file:
+        if exists:
+            open_file.write(os.linesep)
+        for line in trim_text_blocks(*blocks, keep_indent=keep_indent):
+            open_file.write(line)
+            open_file.write(os.linesep)
+    if permissions is not None:
+        change_permissions(path, permissions)

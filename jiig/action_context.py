@@ -25,10 +25,6 @@ from typing import Self
 
 from jiig.util.options import OPTIONS
 
-from jiig.context_api.file import ActionContextFileAPI
-from jiig.context_api.misc import ActionContextMiscAPI
-from jiig.context_api.run import ActionContextRunAPI
-
 from .context import Context
 
 
@@ -45,10 +41,6 @@ class ActionContext(Context):
         super().__init__(parent, **kwargs)
         self.initial_working_folder = Path(os.getcwd())
         self.working_folder_changed = False
-        # API namespaces
-        self.run = ActionContextRunAPI(self)
-        self.file = ActionContextFileAPI(self)
-        self.misc = ActionContextMiscAPI(self)
         # Convenient access to Jiig runtime options.
         self.options = OPTIONS
 
