@@ -71,7 +71,7 @@ def expand_value(value: Any, symbols: dict) -> str:
         try:
             output_string = value.format(**symbols)
             if bad_names:
-                if OPTIONS.is_debug():
+                if OPTIONS.debug:
                     sys.stderr.write(f'--- symbols ---{os.linesep}')
                     sys.stderr.write(f'{pformat(symbols, indent=2)}{os.linesep}')
                     sys.stderr.write(f'---{os.linesep}')

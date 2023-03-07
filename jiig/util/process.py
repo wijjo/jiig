@@ -32,7 +32,7 @@ from .options import OPTIONS
 # Operators to leave unchanged when quoting shell arguments.
 SHELL_OPERATORS = ['<', '>', '|', '&&', '||', ';']
 # Regular expression for finding characters requiring quoting.
-SHELL_QUOTED_REGEX = re.compile(r'[\s"\\;<>{}()\[\]|&]')
+SHELL_QUOTED_REGEX = re.compile(r'[\s"\\;<>{}()\[\]|&!*]')
 # Characters that need to be escaped inside a double-quoted string.
 SHELL_ESCAPED_REGEX = re.compile(r'"')
 

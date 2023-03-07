@@ -29,7 +29,7 @@ from typing import Iterator, Any, Sequence
 from .thirdparty.gitignore_parser import gitignore_parser
 
 from .collections import make_list
-from .log import abort, log_message
+from .log import abort, log_message, log_error
 from .options import OPTIONS
 from .process import run
 
@@ -409,8 +409,6 @@ def synchronize_folders(source_folder_path: str | Path,
     # Add the trailing slash for rsync. This works for remote paths too.
     source_folder_path_string = folder_path_string(source_folder_path)
     target_folder_path_string = folder_path_string(target_folder_path)
-    if not OPTIONS.dry_run:
-        check_folder_exists(source_folder_path_string)
     if not quiet:
         log_message('Folder sync.',
                     source=source_folder_path_string,
@@ -668,3 +666,20 @@ def make_relative_path(path: str | Path,
     if rel_path.startswith('./'):
         return Path(rel_path[2:])
     return Path(rel_path)
+
+
+def change_permissions(path: str | Path,
+                       permissions: str,
+                       ):
+    """
+    Change file or folder permissions.
+
+    :param path: file or folder path
+    :param permissions: chmod-style permission string
+    """
+    if isinstance(path, str):
+        path = Path(path)
+    if not path.exists():
+        log_error(f'Target for permissions change is missing: {str(path)}')
+        return
+    run(['chmod', permissions, str(path)])

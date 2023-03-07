@@ -117,7 +117,7 @@ class ContextOutputFile(OutputFile):
         :param context: context with expansion symbols
         :param path: file path
         """
-        super().__init__(open_file, path)
+        super().__init__(open_file, path, None)
         self.context = context
 
     def write_expanded(self, s: str) -> int:

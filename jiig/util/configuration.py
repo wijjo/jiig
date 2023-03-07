@@ -50,8 +50,8 @@ def read_toml_configuration(config_path: Path | str,
         except tomllib.TOMLDecodeError as decode_exc:
             if ignore_decode_error:
                 return None
-            ValueError(f'Unable to parse TOML configuration file:'
-                       f' {config_path}: {decode_exc}')
+            raise ValueError(f'Unable to parse TOML configuration file:'
+                             f' {config_path}: {decode_exc}')
 
 
 def read_json_configuration(config_path: Path | str,

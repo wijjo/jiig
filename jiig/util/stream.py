@@ -27,11 +27,12 @@ import sys
 from contextlib import contextmanager
 from io import StringIO
 from pathlib import Path
+from subprocess import run
 from tempfile import NamedTemporaryFile
 from types import TracebackType
 from typing import IO, Iterator, Any, AnyStr, Callable, Iterable, Type
 
-from .log import abort
+from .log import abort, log_error
 from .filesystem import create_folder
 from .options import OPTIONS
 
@@ -259,15 +260,23 @@ class OutputFile(IO):
     Generally not used directly. It is returned by stream.open_output_file().
     """
 
-    def __init__(self, open_file: IO, path: str | Path | None):
+    def __init__(self,
+                 open_file: IO,
+                 path: str | Path | None,
+                 permissions: str | None,
+                 ):
         """
         Output file constructor.
 
+        Note that permissions are only applied when used in a "with" block.
+
         :param open_file: open file
         :param path: file path
+        :param permissions: chmod-style permissions to apply after closing the file
         """
         self.open_file = open_file
         self.path = path if isinstance(path, Path) else Path(path)
+        self.permissions = permissions
 
     def close(self):
         """Close the file"""
@@ -347,23 +356,32 @@ class OutputFile(IO):
                  traceback: TracebackType | None,
                  ) -> bool | None:
         """Context manager support. See IO.__exit__()."""
-        return self.open_file.__exit__(t, value, traceback)
+        ret = self.open_file.__exit__(t, value, traceback)
+        if self.permissions:
+            proc = run(['chmod', self.permissions, str(self.path)])
+            if proc.returncode != 0:
+                log_error(f'Failed to change file permissions: {str(self.path)}')
+        return ret
 
 
 def open_output_file(path_spec: str | Path,
                      binary: bool = False,
                      keep_temporary: bool = False,
                      create_parent_folder: bool = False,
+                     permissions: str = None,
                      ) -> OutputFile:
     """
     Convenient opening of text or binary files, temporary or permanent, for writing.
 
     I/O exceptions are fully the caller's responsibility.
 
+    Note that permissions are only applied when used in a "with" block.
+
     :param path_spec: file path, possibly including a '?' marker to create a temporary file
     :param binary: open the file in binary mode (defaults to utf-8 text)
     :param keep_temporary: do not delete temporary file if True
     :param create_parent_folder: create parent folder as needed if True
+    :param permissions: chmod-style permissions to apply after closing the file
     :return: open file object, usable in a `with` statement for automatic closing
     """
     kwargs = {'mode': 'w'}
@@ -384,10 +402,10 @@ def open_output_file(path_spec: str | Path,
         kwargs['delete'] = not (keep_temporary or OPTIONS.debug)
         temp_file = NamedTemporaryFile(**kwargs)
         # Temporary file.
-        return OutputFile(temp_file, temp_file.name)
+        return OutputFile(temp_file, temp_file.name, permissions)
     # Permanent file.
     if create_parent_folder:
         parent_folder = path_object.parent
         if not os.path.exists(parent_folder):
             create_folder(parent_folder)
-    return OutputFile(open(path_object, **kwargs), path_object)
+    return OutputFile(open(path_object, **kwargs), path_object, permissions)
