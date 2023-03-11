@@ -134,7 +134,11 @@ def execute_application(task_stack: list[RuntimeTask],
             }
             # Add task function to callables?
             if isfunction(task.task_function):
-                run_name = f'task "{task.name}" {task.full_name}'
+                if task.full_name == task.name:
+                    full_name = ''
+                else:
+                    full_name = f' ({task.full_name})'
+                run_name = f'task "{task.name}"{full_name}'
                 run_function = task.task_function
                 run_calls.append((run_name, run_function, task_field_data))
         # Invoke run callable stack.

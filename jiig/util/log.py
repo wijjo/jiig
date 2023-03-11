@@ -213,20 +213,25 @@ def log_error(text: Any, *args, **kwargs):
     log_message(text, *args, **kwargs)
 
 
-def log_heading(heading: str, level: int = 0, is_error: bool = False):
+def log_heading(heading: str,
+                level: int = 0,
+                is_error: bool = False,
+                compact: bool = False,
+                ):
     """
     Display, and in the future log, a heading message to delineate blocks.
 
     :param heading: heading text
     :param level: heading level 0-n
     :param is_error: log to stderr instead of stdout if True
+    :param compact: omit gap lines if True
     """
     decoration = f'=====' if level <= 1 else f'---'
     if heading:
         line = ' '.join([decoration, heading, decoration])
     else:
         line = decoration
-    _LOG_WRITER.write_line(line, extra_space=True, is_error=is_error)
+    _LOG_WRITER.write_line(line, extra_space=not compact, is_error=is_error)
 
 
 def log_block_begin(level: int, heading: str):

@@ -17,8 +17,6 @@
 
 """
 Stream utilities.
-
-For now these are read-only utilities.
 """
 
 import json

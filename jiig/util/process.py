@@ -290,3 +290,20 @@ def simple_shell_quote_arguments(args: Sequence) -> str:
     :return: command string with quoted arguments
     """
     return ' '.join(simple_shell_quote(arg) for arg in args)
+
+
+def format_dotenv(**variables) -> str:
+    """
+    Format .env file text for a dictionary of variables.
+
+    :param variables: names and values for .env text
+    :return: .env text
+    """
+    lines: list[str] = []
+    for name, value in variables.items():
+        if isinstance(value, bool):
+            value = str(value).lower()
+        else:
+            value = simple_shell_quote(str(value))
+        lines.append(f'{name}={value}')
+    return os.linesep.join(lines)

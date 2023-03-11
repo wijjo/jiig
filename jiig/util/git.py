@@ -20,6 +20,7 @@ Git-related utilities.
 """
 
 import os
+from typing import Iterable
 
 from .filesystem import temporary_working_folder
 from .process import run
@@ -47,4 +48,34 @@ def repo_name_from_url(url: str) -> str:
     :param url: repository URL
     :return: repository name
     """
-    return url.split('.')[-2].split('/')[-1]
+    name = url.split('/')[-1]
+    if name.endswith('.git'):
+        name = name[:-4]
+    return name
+
+
+def find_url_by_name(urls: Iterable[str],
+                     name: str,
+                     partial: bool = False,
+                     ) -> str | None:
+    """
+    Find URL by full or partial repository name.
+
+    :param urls: iterable URLs to search
+    :param name: full or partial name to search for
+    :param partial: accept partial matches
+    :return: matched URL or None if not found
+    """
+    for url in urls:
+        extracted_name = repo_name_from_url(url)
+        if partial:
+            name_parts = url.split('/')[-1].split('.')
+            while name_parts:
+                extracted_name = '.'.join(name_parts)
+                if name.lower() == extracted_name.lower():
+                    return url
+                name_parts = name_parts[:-1]
+        else:
+            if extracted_name == name:
+                return url
+    return None

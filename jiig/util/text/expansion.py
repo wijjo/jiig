@@ -30,25 +30,17 @@ from jiig.util.options import OPTIONS
 class StringExpansionError(RuntimeError):
     """String expansion exception."""
 
-    def __init__(self, value: str, *missing_symbols: str):
+    def __init__(self, value: str, *missing: str):
         """
         Constructor.
 
         :param value: value that failed expansion
-        :param missing_symbols: missing symbols
+        :param missing: missing symbols
         """
-        self.missing_symbols = missing_symbols
-        unresolved = self.wrapped_symbol_string
-        super().__init__(f'String expansion error: {value=} {unresolved=}')
-
-    @property
-    def wrapped_symbol_string(self) -> str:
-        """
-        Provide {}-wrapped symbol string for error display.
-
-        :return: wrapped symbol string
-        """
-        return ' '.join([f'{{{symbol}}}' for symbol in self.missing_symbols])
+        self.value = value
+        self.missing = missing
+        self.missing_string = ' '.join([f'{{{symbol}}}' for symbol in missing])
+        super().__init__()
 
 
 def expand_value(value: Any, symbols: dict) -> str:
@@ -80,7 +72,7 @@ def expand_value(value: Any, symbols: dict) -> str:
             sys.stderr.write(f'--- expansion string ---{os.linesep}')
             sys.stderr.write(f'{pformat(value, indent=2)}{os.linesep}')
             sys.stderr.write(f'---{os.linesep}')
-            raise StringExpansionError(f'Bad string expansion attribute: {attr_exc}')
+            raise StringExpansionError(f'String expansion attribute: {attr_exc}')
         except KeyError as key_exc:
             # Strip out surrounding single quotes from exception text to get key name.
             name = str(key_exc)[1:-1]
