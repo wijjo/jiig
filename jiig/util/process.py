@@ -306,4 +306,5 @@ def format_dotenv(**variables) -> str:
         else:
             value = simple_shell_quote(str(value))
         lines.append(f'{name}={value}')
+    lines.append('')
     return os.linesep.join(lines)
