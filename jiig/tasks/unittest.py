@@ -33,7 +33,7 @@ from jiig.util.python import import_module_path
 @jiig.task
 def unittest(
     runtime: jiig.Runtime,
-    tests: jiig.fields.text(repeat=(None, None)),
+    tests: jiig.fields.text(repeat=()),
 ):
     """
     Run unit tests using Python standard library unittest module.

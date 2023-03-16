@@ -26,7 +26,7 @@ import jiig
 def help_(
     runtime: jiig.Runtime,
     all_tasks: jiig.f.boolean(),
-    help_names: jiig.f.text(repeat=(None, None)),
+    help_names: jiig.f.text(repeat=()),
 ):
     """
     Display tool or task-specific help.

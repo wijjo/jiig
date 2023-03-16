@@ -27,7 +27,7 @@ import jiig
 @jiig.task
 def pip(
     runtime: jiig.Runtime,
-    trailing_arguments: jiig.f.text(repeat=(None, None)),
+    trailing_arguments: jiig.f.text(repeat=()),
 ):
     """
     Run pip from virtual environment.

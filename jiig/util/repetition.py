@@ -35,17 +35,25 @@ def repetition_from_spec(spec: RepeatSpec | None) -> Repetition:
     if isinstance(spec, int):
         if spec > 0:
             return Repetition(spec, spec)
-    elif isinstance(spec, tuple) and len(spec) == 2:
-        if spec[0] is None:
-            if spec[1] is None:
-                return Repetition(None, None)
-            if isinstance(spec[1], int) and spec[1] >= 1:
-                return Repetition(spec[0], spec[1])
-        elif isinstance(spec[0], int) and spec[0] >= 0:
-            if spec[1] is None:
-                return Repetition(spec[0], None)
-            if isinstance(spec[1], int) and spec[1] >= spec[0]:
-                return Repetition(spec[0], spec[1])
+    elif isinstance(spec, tuple):
+        # An empty tuple allows any repetition.
+        if len(spec) == 0:
+            return Repetition(None, None)
+        # A tuple singleton sets the value as both the minimum and maximum.
+        if len(spec) == 1:
+            return Repetition(spec[0], spec[0])
+        # A tuple pair sets the minimum and maximum if they make sense.
+        if len(spec) == 2:
+            if spec[0] is None:
+                if spec[1] is None:
+                    return Repetition(None, None)
+                if isinstance(spec[1], int) and spec[1] >= 1:
+                    return Repetition(spec[0], spec[1])
+            elif isinstance(spec[0], int) and spec[0] >= 0:
+                if spec[1] is None:
+                    return Repetition(spec[0], None)
+                if isinstance(spec[1], int) and spec[1] >= spec[0]:
+                    return Repetition(spec[0], spec[1])
     log_error(f'Repeat specification {spec} is not one of the following:',
               '- None for non-repeating field.',
               '- A single integer for a specific required quantity.',

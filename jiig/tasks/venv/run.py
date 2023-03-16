@@ -28,7 +28,7 @@ import jiig
 def run(
     runtime: jiig.Runtime,
     command: jiig.f.text(),
-    trailing_arguments: jiig.f.text(repeat=(None, None)),
+    trailing_arguments: jiig.f.text(repeat=()),
 ):
     """
     Run miscellaneous command from virtual environment.
