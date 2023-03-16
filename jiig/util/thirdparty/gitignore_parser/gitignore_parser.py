@@ -45,7 +45,8 @@ class _IgnoreRule:
     def match(self, abs_path: str | Path):
         matched = False
         if self.base_path:
-            rel_path = str(Path(abs_path).resolve().relative_to(self.base_path))
+            # SC rel_path = str(Path(abs_path).resolve().relative_to(self.base_path))
+            rel_path = str(Path(abs_path).absolute().relative_to(self.base_path))
         else:
             rel_path = str(Path(abs_path))
         # Path() strips the trailing slash, so we need to preserve it

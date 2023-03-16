@@ -337,6 +337,8 @@ class Parser:
                 if 'nargs' not in kwargs:
                     logger.error(f'Bad repeat range for "{command_name}", field "{name}".',
                                  (repeat.minimum, repeat.maximum))
+        elif repeat is not None:
+            kwargs['action'] = 'append'
         # Add the argument to argparse.
         parser.add_argument(*make_list(flags), **kwargs)
 
