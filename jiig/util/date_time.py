@@ -18,7 +18,13 @@
 """Jiig date/time utilities."""
 
 import datetime
-import time
+import re
+from time import (
+    localtime,
+    mktime,
+    strftime,
+    struct_time,
+)
 from dataclasses import dataclass
 
 from .log import log_error, log_warning
@@ -26,6 +32,22 @@ from .log import log_error, log_warning
 DATE_DELTA_LETTERS = 'ymwd'
 TIME_DELTA_LETTERS = 'HMS'
 DATE_TIME_DELTA_LETTERS = DATE_DELTA_LETTERS + TIME_DELTA_LETTERS
+
+# Compiled regular expression for timestamp format strings. One quirk is that it
+# allows a separator at the end of a format string if it doesn't end with 'ss'
+# for seconds. This does no harm, and simplifies the regular expression.
+TIMESTAMP_FORMAT_REGEX = re.compile(
+    rf'^%s$' % rf'([.\-_])?'.join(
+        [
+            r'(yyyy|yy)?',
+            r'(mm)?',
+            r'(dd)?',
+            r'(hh)?',
+            r'(mm)?',
+            r'(ss)?',
+        ]
+    )
+)
 
 
 @dataclass
@@ -132,11 +154,11 @@ def parse_date_time_delta(delta_string: str | None,
 
 def apply_date_time_delta_string(delta_string: str | None,
                                  negative: bool = False,
-                                 start_time: time.struct_time = None,
+                                 start_time: struct_time = None,
                                  default_letter: str = None,
                                  date_only: bool = False,
                                  time_only: bool = False,
-                                 ) -> time.struct_time:
+                                 ) -> struct_time:
     """
     Parse a time delta and apply to the current time or a specific one.
 
@@ -159,8 +181,8 @@ def apply_date_time_delta_string(delta_string: str | None,
 
 
 def apply_date_time_delta(delta: DateTimeDelta,
-                          start_time: time.struct_time = None,
-                          ) -> time.struct_time:
+                          start_time: struct_time = None,
+                          ) -> struct_time:
     """
     Apply a date/time delta to the current time or a specific one.
 
@@ -169,7 +191,7 @@ def apply_date_time_delta(delta: DateTimeDelta,
     :return: calculated time as time_struct
     """
     if start_time is not None:
-        start_datetime = datetime.datetime.fromtimestamp(time.mktime(start_time))
+        start_datetime = datetime.datetime.fromtimestamp(mktime(start_time))
     else:
         start_datetime = datetime.datetime.now()
     result_datetime = start_datetime
@@ -189,7 +211,7 @@ def apply_date_time_delta(delta: DateTimeDelta,
 
 def parse_date_time(date_time_string: str | None,
                     quiet: bool = False,
-                    ) -> time.struct_time | None:
+                    ) -> struct_time | None:
     """
     Flexible parsing of date and or time strings.
 
@@ -226,10 +248,10 @@ def parse_date_time(date_time_string: str | None,
                 date_parts = part_string.split('-')
                 if len(date_parts) == 2:
                     # Inject the current year when there is no year.
-                    date_parts.insert(0, str(time.localtime().tm_year))
+                    date_parts.insert(0, str(localtime().tm_year))
                 elif len(date_parts) == 3 and len(date_parts[0]) == 2:
                     # Lengthen a short 2 digit year.
-                    date_parts[0] = str(time.localtime().tm_year)[:2] + date_parts[0]
+                    date_parts[0] = str(localtime().tm_year)[:2] + date_parts[0]
                 fixed_date_string = '-'.join(date_parts)
                 parsed_date = datetime.date.fromisoformat(fixed_date_string)
             else:
@@ -264,3 +286,68 @@ def parse_time_interval(interval_string: str | None) -> int | None:
     if delta is None:
         return None
     return (delta.hours * 3600) + (delta.minutes * 60) + delta.seconds
+
+
+def timestamp_string(timestamp_format: str = None,
+                     time_value: float | struct_time = None,
+                     ) -> str:
+    """
+    Generate timestamp string based on simplified specification.
+
+    Case-insensitive timestamp format strings can include the following
+    components. Possible components include date/time specifiers (see list
+    below) and separator characters ('.', '-', or '_'). Date/time specifiers may
+    be omitted, but whichever ones are present must follow the order listed
+    below. Month ('mm') is distinguished from minutes (also 'mm') by requiring
+    minutes be preceded by hours ('hh').
+
+    * yyyy - 4 digit year
+    * yy - 2 digit year
+    * mm - 2 digit month
+    * dd - 2 digit day of the month
+    * hh - 2 digit hours (00-23)
+    * mm - 2 digit minutes (00-59) (only interpreted as minutes if preceded by 'hh')
+    * ss - 2 digit seconds (00-59)
+
+    Formatting options are intentionally limited so that the resulting string is
+    sortable, and works with file names.
+
+    :param timestamp_format: optional timestamp format specification (default: 'yyyymmddhhmmss')
+    :param time_value: optional time value as float or struct_time (default: current time)
+    :return: timestamp string
+    """
+    if timestamp_format is not None:
+        matched = TIMESTAMP_FORMAT_REGEX.match(timestamp_format.lower())
+        if matched is None:
+            log_error(f'Bad timestamp string format: {timestamp_format}')
+            return ''
+        strftime_parts: list[str] = []
+        for group in matched.groups():
+            if group is not None:
+                match group:
+                    case 'yyyy':
+                        strftime_parts.append('%Y')
+                    case 'yy':
+                        strftime_parts.append('%y')
+                    case 'mm':
+                        # 'mm' is either month or minutes (if preceded by hours).
+                        if '%H' in strftime_parts:
+                            strftime_parts.append('%M')
+                        else:
+                            strftime_parts.append('%m')
+                    case 'dd':
+                        strftime_parts.append('%d')
+                    case 'hh':
+                        strftime_parts.append('%H')
+                    case 'ss':
+                        strftime_parts.append('%S')
+                    case _:
+                        strftime_parts.append(group)
+        strftime_format = ''.join(strftime_parts)
+    else:
+        strftime_format = '%Y%m%d%H%M%S'
+    if time_value is None:
+        time_value = localtime()
+    elif isinstance(time_value, float):
+        time_value = localtime(time_value)
+    return strftime(strftime_format, time_value)
