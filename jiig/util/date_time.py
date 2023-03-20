@@ -48,6 +48,7 @@ TIMESTAMP_FORMAT_REGEX = re.compile(
         ]
     )
 )
+TIMESTAMP_DEFAULT_STRFTIME_FORMAT = '%Y%m%d%H%M%S'
 
 
 @dataclass
@@ -288,6 +289,62 @@ def parse_time_interval(interval_string: str | None) -> int | None:
     return (delta.hours * 3600) + (delta.minutes * 60) + delta.seconds
 
 
+def timestamp_to_strftime_format(timestamp_format: str = None) -> str:
+    """
+    Convert simplified timestamp specification to strftime format string.
+
+    Case-insensitive timestamp format strings can include the following
+    components. Possible components include date/time specifiers (see list
+    below) and separator characters ('.', '-', or '_'). Date/time specifiers may
+    be omitted, but whichever ones are present must follow the order listed
+    below. Month ('mm') is distinguished from minutes (also 'mm') by requiring
+    minutes be preceded by hours ('hh').
+
+    * yyyy - 4 digit year
+    * yy - 2 digit year
+    * mm - 2 digit month
+    * dd - 2 digit day of the month
+    * hh - 2 digit hours (00-23)
+    * mm - 2 digit minutes (00-59) (only interpreted as minutes if preceded by 'hh')
+    * ss - 2 digit seconds (00-59)
+
+    Formatting options are intentionally limited so that the resulting string is
+    sortable, and works with file names.
+
+    :param timestamp_format: optional timestamp format specification (default: 'yyyymmddhhmmss')
+    :return: strftime format string
+    """
+    if timestamp_format is None:
+        return TIMESTAMP_DEFAULT_STRFTIME_FORMAT
+    matched = TIMESTAMP_FORMAT_REGEX.match(timestamp_format.lower())
+    if matched is None:
+        log_error(f'Bad timestamp string format: {timestamp_format}')
+        return ''
+    strftime_parts: list[str] = []
+    for group in matched.groups():
+        if group is not None:
+            match group:
+                case 'yyyy':
+                    strftime_parts.append('%Y')
+                case 'yy':
+                    strftime_parts.append('%y')
+                case 'mm':
+                    # 'mm' is either month or minutes (if preceded by hours).
+                    if '%H' in strftime_parts:
+                        strftime_parts.append('%M')
+                    else:
+                        strftime_parts.append('%m')
+                case 'dd':
+                    strftime_parts.append('%d')
+                case 'hh':
+                    strftime_parts.append('%H')
+                case 'ss':
+                    strftime_parts.append('%S')
+                case _:
+                    strftime_parts.append(group)
+    return ''.join(strftime_parts)
+
+
 def timestamp_string(timestamp_format: str = None,
                      time_value: float | struct_time = None,
                      ) -> str:
@@ -316,36 +373,7 @@ def timestamp_string(timestamp_format: str = None,
     :param time_value: optional time value as float or struct_time (default: current time)
     :return: timestamp string
     """
-    if timestamp_format is not None:
-        matched = TIMESTAMP_FORMAT_REGEX.match(timestamp_format.lower())
-        if matched is None:
-            log_error(f'Bad timestamp string format: {timestamp_format}')
-            return ''
-        strftime_parts: list[str] = []
-        for group in matched.groups():
-            if group is not None:
-                match group:
-                    case 'yyyy':
-                        strftime_parts.append('%Y')
-                    case 'yy':
-                        strftime_parts.append('%y')
-                    case 'mm':
-                        # 'mm' is either month or minutes (if preceded by hours).
-                        if '%H' in strftime_parts:
-                            strftime_parts.append('%M')
-                        else:
-                            strftime_parts.append('%m')
-                    case 'dd':
-                        strftime_parts.append('%d')
-                    case 'hh':
-                        strftime_parts.append('%H')
-                    case 'ss':
-                        strftime_parts.append('%S')
-                    case _:
-                        strftime_parts.append(group)
-        strftime_format = ''.join(strftime_parts)
-    else:
-        strftime_format = '%Y%m%d%H%M%S'
+    strftime_format = timestamp_to_strftime_format(timestamp_format)
     if time_value is None:
         time_value = localtime()
     elif isinstance(time_value, float):
