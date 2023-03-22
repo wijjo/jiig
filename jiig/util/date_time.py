@@ -33,12 +33,14 @@ DATE_DELTA_LETTERS = 'ymwd'
 TIME_DELTA_LETTERS = 'HMS'
 DATE_TIME_DELTA_LETTERS = DATE_DELTA_LETTERS + TIME_DELTA_LETTERS
 
-# Compiled regular expression for timestamp format strings. One quirk is that it
-# allows a separator at the end of a format string if it doesn't end with 'ss'
-# for seconds. This does no harm, and simplifies the regular expression.
+TIMESTAMP_SEPARATOR_REGEX = re.compile(r'[.\-_]')
+# Compiled regular expression for timestamp format strings. '.', '-', and '_'
+# separator characters are allowed in front of a string, at the end of a string,
+# and between date/time specifiers.
 TIMESTAMP_FORMAT_REGEX = re.compile(
-    rf'^%s$' % rf'([.\-_])?'.join(
+    rf'^%s$' % rf'({TIMESTAMP_SEPARATOR_REGEX.pattern})?'.join(
         [
+            '',
             r'(yyyy|yy)?',
             r'(mm)?',
             r'(dd)?',
@@ -289,7 +291,7 @@ def parse_time_interval(interval_string: str | None) -> int | None:
     return (delta.hours * 3600) + (delta.minutes * 60) + delta.seconds
 
 
-def timestamp_to_strftime_format(timestamp_format: str = None) -> str:
+def timestamp_to_strftime_format(timestamp_format: str = None) -> str | None:
     """
     Convert simplified timestamp specification to strftime format string.
 
@@ -312,14 +314,13 @@ def timestamp_to_strftime_format(timestamp_format: str = None) -> str:
     sortable, and works with file names.
 
     :param timestamp_format: optional timestamp format specification (default: 'yyyymmddhhmmss')
-    :return: strftime format string
+    :return: strftime format string or None if timestamp_format is bad
     """
     if timestamp_format is None:
         return TIMESTAMP_DEFAULT_STRFTIME_FORMAT
     matched = TIMESTAMP_FORMAT_REGEX.match(timestamp_format.lower())
     if matched is None:
-        log_error(f'Bad timestamp string format: {timestamp_format}')
-        return ''
+        return None
     strftime_parts: list[str] = []
     for group in matched.groups():
         if group is not None:
@@ -374,6 +375,9 @@ def timestamp_string(timestamp_format: str = None,
     :return: timestamp string
     """
     strftime_format = timestamp_to_strftime_format(timestamp_format)
+    if strftime_format is None:
+        log_error(f'Bad timestamp string format: {timestamp_format}')
+        return ''
     if time_value is None:
         time_value = localtime()
     elif isinstance(time_value, float):
