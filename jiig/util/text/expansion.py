@@ -48,7 +48,7 @@ class StringExpansionError(RuntimeError):
 
         :return: exception string
         """
-        return super().__str__() + f': value="{self.value}" missing={self.missing}'
+        return super().__str__() + f'value="{self.value}" missing={self.missing}'
 
 
 def expand_value(value: Any, symbols: dict) -> str:
