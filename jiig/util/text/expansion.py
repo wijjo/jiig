@@ -38,9 +38,17 @@ class StringExpansionError(RuntimeError):
         :param missing: missing symbols
         """
         self.value = value
-        self.missing = missing
+        self.missing = list(missing)
         self.missing_string = ' '.join([f'{{{symbol}}}' for symbol in missing])
         super().__init__()
+
+    def __str__(self) -> str:
+        """
+        Provide string for exception.
+
+        :return: exception string
+        """
+        return super().__str__() + f': value="{self.value}" missing={self.missing}'
 
 
 def expand_value(value: Any, symbols: dict) -> str:
