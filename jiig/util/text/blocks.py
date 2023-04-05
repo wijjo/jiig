@@ -161,7 +161,7 @@ def format_block_lines(*blocks: str | Sequence,
                         minimum_leading_spaces = leading_spaces
     indent_string = ' ' * indent if indent else ''
     if keep_indent:
-        return lines
+        minimum_leading_spaces = 0
     if minimum_leading_spaces:
         return [indent_string + line[minimum_leading_spaces:] for line in lines]
     return [indent_string + line for line in lines]
