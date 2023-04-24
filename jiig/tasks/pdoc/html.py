@@ -19,16 +19,8 @@
 Pdoc3 HTML documentation generation task.
 """
 
-import os
-
 import jiig
-from jiig.util.filesystem import create_folder, short_path
-
-from ._util import PdocBuilder
-
-
-def _module_path(module):
-    return os.path.join('html', *module.url().split('/')[1:])
+from jiig.util.text.pdoc import PdocBuilder
 
 
 @jiig.task
@@ -43,23 +35,7 @@ def html(
     :param force: Overwrite existing files.
     """
     builder = PdocBuilder(runtime.meta.doc_api_packages,
-                          runtime.meta.doc_api_packages_excluded)
-    if not force:
-        for module in builder.iterate_modules():
-            path = _module_path(module)
-            if os.path.exists(path):
-                if not os.path.isfile(path):
-                    runtime.abort(f'Output path exists, but is not a file.', path)
-                runtime.abort(f'One or more output files exist in the'
-                              f' output folder "{runtime.paths.doc}".',
-                              'Use -f or --force to overwrite.')
-    for module in builder.iterate_modules():
-        path = os.path.join(runtime.paths.doc,
-                            *module.url().split('/')[1:])
-        create_folder(os.path.dirname(path), quiet=True)
-        try:
-            runtime.message(short_path(path))
-            with open(path, 'w', encoding='utf-8') as html_file:
-                html_file.write(module.html())
-        except (IOError, OSError) as exc:
-            runtime.abort(f'Failed to write HTML file.', path, exc)
+                          runtime.meta.doc_api_packages_excluded,
+                          runtime.paths.doc)
+    if not builder.generate_html(force=force):
+        runtime.abort('Failed to generate HTML format documentation.')

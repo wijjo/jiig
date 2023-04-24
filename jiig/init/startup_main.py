@@ -42,18 +42,16 @@ from .builtin_tasks import inject_builtin_tasks
 from .driver import load_driver
 from .execution import execute_application
 from .help import prepare_help_generator
-from jiig.jiigadmin import (
-    JIIGADMIN_META,
-    JIIGADMIN_TASK_TREE,
-)
 from .library_path import prepare_library_path
 from .runtime import prepare_runtime_object
 from .runtime_tasks import prepare_runtime_tasks
 
 
 def startup_main(tool: Tool,
-                 driver_args: list[str],
-                 is_jiig: bool,
+                 runner_args: list[str],
+                 cli_args: list[str],
+                 is_jiigadmin: bool,
+                 skip_venv_check: bool,
                  ):
     """
     Common startup code to drive most of the initialization.
@@ -61,19 +59,29 @@ def startup_main(tool: Tool,
     tool is None if running Jiig directly.
 
     :param tool: tool runtime data, e.g. loaded from configuration
-    :param driver_args: command line arguments prepared for driver
-    :param is_jiig: True when running jiigadmin
+    :param runner_args: runner arguments
+    :param cli_args: CLI arguments
+    :param is_jiigadmin: True when running jiigadmin
+    :param skip_venv_check: skip check for running in a Jiig virtual environment if True
     """
-    # Need access to Jiig configuration for built-in tasks and library paths.
-    if is_jiig:
-        jiig_tool = tool
-    else:
-        jiig_tool = Tool(meta=JIIGADMIN_META, task_tree=JIIGADMIN_TASK_TREE)
+    # Prepare runtime, CLI, and driver arguments.
+    from jiig.init.arguments import prepare_runtime_arguments
+    runtime_args = prepare_runtime_arguments(runner_args, cli_args)
+
+    # Check for and invoke the virtual environment as needed.
+    from jiig.init.venv import check_virtual_environment
+    if not skip_venv_check:
+        check_virtual_environment(
+            tool_name=tool.meta.tool_name,
+            packages=tool.meta.pip_packages,
+            runner_args=runner_args,
+            cli_args=cli_args,
+        )
 
     # Add (missing) Jiig and tool library folders to Python library load path.
     prepare_library_path(
         tool_source_root=tool.paths.tool_source_root,
-        jiig_library_paths=jiig_tool.paths.libraries,
+        jiig_library_paths=tool.paths.libraries if is_jiigadmin else [],
         additional_library_paths=tool.paths.libraries,
     )
 
@@ -97,7 +105,7 @@ def startup_main(tool: Tool,
 
     # Initialize driver and receive preliminary driver data.
     driver_prelim_data = driver.initialize_driver(
-        command_line_arguments=driver_args,
+        command_line_arguments=runtime_args.driver,
     )
 
     # Apply options globally so that debug, etc. can be in effect below.
@@ -112,11 +120,10 @@ def startup_main(tool: Tool,
     )
 
     # Need access to Jiig configuration for built-in tasks and library paths.
-    if not is_jiig:
+    if not is_jiigadmin:
         # Inject built-in tasks as needed.
         task_tree = inject_builtin_tasks(
             task_tree=tool.task_tree,
-            jiig_task_tree=jiig_tool.task_tree,
             tool_options=tool.options,
         )
     else:

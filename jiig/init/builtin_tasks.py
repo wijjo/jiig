@@ -21,6 +21,11 @@ from types import ModuleType
 
 import jiig.tasks.alias
 import jiig.tasks.venv
+from jiig.builtin_tasks import (
+    ALIAS_TASK_GROUP,
+    HELP_TASK,
+    VENV_TASK_GROUP,
+)
 from jiig.task import (
     Task,
     TaskGroup,
@@ -32,72 +37,45 @@ from jiig.util.log import log_error
 
 def inject_builtin_tasks(*,
                          task_tree: TaskTree,
-                         jiig_task_tree: TaskTree,
                          tool_options: ToolOptions,
                          ) -> TaskTree:
     """
     Create PreparedApplication.
 
     :param task_tree: tool task tree
-    :param jiig_task_tree: jiig task tree
     :param tool_options: tool options
     :return: prepared application
     """
     # Access built-in tasks through by loading the Jiig Tool.
     visibility = 2 if tool_options.hide_builtin_tasks else 1
-    provider = _JiigTaskTreeProvider(jiig_task_tree, visibility)
-    provider.check_task('help', tool_options.disable_help)
-    provider.check_group('alias', tool_options.disable_alias, jiig.tasks.alias)
-    provider.check_group('venv', False, jiig.tasks.venv)
-    if not provider.add_tasks and not provider.add_groups:
-        return task_tree
+    add_tasks: list[Task] = []
+    add_groups: list[TaskGroup] = []
+
+    def _add_task(task: Task):
+        task_copy = task.copy(visibility=visibility, impl=f'jiig.tasks.{task.name}')
+        add_tasks.append(task_copy)
+
+    def _add_group(group: TaskGroup, package: ModuleType):
+        group_copy = group.copy(visibility=visibility)
+        # Add implementation references to sub_tasks.
+        group_copy.tasks = [
+            task.copy(impl=f'jiig.tasks.{group.name}.{task.name}')
+            for task in group_copy.tasks
+        ]
+        if group_copy.groups:
+            log_error(f'Ignoring "jiig.tasks.{group.name}" sub-task groups.')
+        group_copy.package = package
+        add_groups.append(group_copy)
+
+    if not tool_options.disable_help:
+        _add_task(HELP_TASK)
+    if not tool_options.disable_alias:
+        _add_group(ALIAS_TASK_GROUP, jiig.tasks.alias)
+    _add_group(VENV_TASK_GROUP, jiig.tasks.venv)
+
     adjusted_task_tree = task_tree.copy()
-    adjusted_task_tree.tasks.extend(provider.add_tasks)
-    adjusted_task_tree.groups.extend(provider.add_groups)
+    if add_tasks:
+        adjusted_task_tree.tasks.extend(add_tasks)
+    if add_groups:
+        adjusted_task_tree.groups.extend(add_groups)
     return adjusted_task_tree
-
-
-class _JiigTaskTreeProvider:
-    """
-    Provide requested tasks and task groups based on Jiig configuration.
-
-    NB: This class currently assumes the caller is only interested in top level
-    tasks and task groups. It specifically assumes that requested task groups
-    will not have sub-task groups.
-    """
-
-    def __init__(self, task_tree: TaskTree, visibility: int):
-        self.task_tree = task_tree
-        self.visibility = visibility
-        self.add_tasks: list[Task] = []
-        self.add_groups: list[TaskGroup] = []
-
-    def check_task(self, name: str, disabled: bool):
-        if disabled:
-            return
-        for task in self.task_tree.tasks:
-            if task.name == name:
-                task_copy = task.copy(visibility=self.visibility, impl=f'jiig.tasks.{name}')
-                self.add_tasks.append(task_copy)
-                break
-        else:
-            log_error(f'Jiig task "{name}" not found in Jiig configuration.')
-
-    def check_group(self, name: str, disabled: bool, package: ModuleType):
-        if disabled:
-            return
-        for group in self.task_tree.groups:
-            if group.name == name:
-                group_copy = group.copy(visibility=self.visibility)
-                # Add implementation references to sub_tasks.
-                group_copy.tasks = [
-                    task.copy(impl=f'jiig.tasks.{group.name}.{task.name}')
-                    for task in group_copy.tasks
-                ]
-                if group_copy.groups:
-                    log_error(f'Ignoring "jiig.tasks.{group.name}" sub-task groups.')
-                group_copy.package = package
-                self.add_groups.append(group_copy)
-                break
-        else:
-            log_error(f'Jiig task group "{name}" not found in Jiig configuration.')

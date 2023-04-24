@@ -17,14 +17,75 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-import _util
-
 
 def main():
     """jiigadmin script main."""
-    _util.check_jiig()
-    from jiig.jiigadmin import jiigadmin_main
-    jiigadmin_main()
+    # Enable jiig imports if not in Python load path.
+    from _util import check_jiig
+    check_jiig()
+
+    # Tool metadata.
+    from jiig.tool import ToolMetadata
+    metadata = ToolMetadata(
+        tool_name='jiigadmin',
+        project_name='Jiig',
+        description='Jiig administration tool.',
+        version='0.5',
+        author='Steve Cooper',
+        copyright='2021-2023, Steve Cooper',
+        email='steve@wijjo.com',
+        url='https://github.com/wijjo/jiig',
+        pip_packages=['build', 'pdoc3', 'PySimpleGUI'],
+        doc_api_packages=['jiig'],
+        doc_api_packages_excluded=['jiig.internal', 'jiig.tasks'],
+    )
+
+    # Declare tasks and task groups that are available via CLI.
+    import jiig.tasks
+    from jiig.builtin_tasks import (
+        ALIAS_TASK_GROUP,
+        HELP_TASK,
+        VENV_TASK_GROUP,
+    )
+    from jiig.constants import DEFAULT_ROOT_TASK_NAME
+    from jiig.task import (
+        Task,
+        TaskGroup,
+        TaskTree,
+    )
+    task_tree = TaskTree(
+        name=DEFAULT_ROOT_TASK_NAME,
+        package=jiig.tasks,
+        sub_tasks=[
+            ALIAS_TASK_GROUP,
+            TaskGroup(
+                name='build',
+                sub_tasks=[
+                    Task(name='sdist'),
+                ],
+            ),
+            TaskGroup(
+                name='config',
+                sub_tasks=[
+                    Task(name='toml_to_json')
+                ],
+            ),
+            HELP_TASK,
+            TaskGroup(
+                name='pdoc',
+                sub_tasks=[
+                    Task(name='html', cli_options={'force': ['-f', '--force']}),
+                    Task(name='pdf', cli_options={'port': ['-p', '--port']}),
+                ],
+            ),
+            Task(name='unittest'),
+            VENV_TASK_GROUP,
+        ],
+    )
+
+    # Run tool.
+    from jiig.startup import tool_main
+    tool_main(meta=metadata, task_tree=task_tree, is_jiig=True)
 
 
 if __name__ == '__main__':

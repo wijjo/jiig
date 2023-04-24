@@ -26,9 +26,9 @@ from jiig.util.python import update_virtual_environment
 @jiig.task
 def update(runtime: jiig.Runtime):
     """
-    Delete the tool virtual environment.
+    Update the tool virtual environment.
 
     :param runtime: jiig Runtime API.
     """
-    runtime.heading(1, 'Delete virtual environment')
+    runtime.heading(1, 'Update virtual environment packages.')
     update_virtual_environment(runtime.paths.venv, packages=runtime.meta.pip_packages)

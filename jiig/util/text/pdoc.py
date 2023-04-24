@@ -22,9 +22,13 @@ Since pdoc is a third party library, this module guards against import errors by
 loading the library only as needed.
 """
 
+import os
+from pathlib import Path
 from typing import Iterator
 
-from jiig.util.stream import OutputRedirector
+from ..filesystem import create_folder, short_path
+from ..log import log_error, log_message
+from ..stream import OutputRedirector
 
 IGNORED_ERROR_TEXT = 'You are running a VERY old version of tkinter'
 
@@ -41,10 +45,13 @@ class PdocBuilder:
     def __init__(self,
                  doc_api_packages: list[str],
                  doc_api_packages_excluded: list[str],
+                 doc_folder: str | Path,
                  ):
+        # Avoid pdoc dependency unless this class is used.
         import pdoc
         self.doc_api_packages = doc_api_packages
         self.doc_api_packages_excluded = doc_api_packages_excluded
+        self.doc_folder = doc_folder if isinstance(doc_folder, Path) else Path(doc_folder)
         self.context = pdoc.Context()
         # Load pdoc modules and redirect/filter out unwanted Pdoc noise.
         with OutputRedirector(line_filter=_output_filter, auto_flush=True):
@@ -78,3 +85,34 @@ class PdocBuilder:
         for module in self.modules:
             # noinspection PyTypeChecker
             yield from self._iterate_module(module)
+
+    def generate_html(self, force: bool = False) -> bool:
+        """
+        Build HTML format documentation.
+
+        :param force: Overwrite existing files.
+        :return: True if HTML generation succeeded
+        """
+        if not force:
+            for module in self.iterate_modules():
+                path = os.path.join('html', *module.url().split('/')[1:])
+                if os.path.exists(path):
+                    if not os.path.isfile(path):
+                        log_error(f'Output path exists, but is not a file.', path)
+                        return False
+                    log_error(f'One or more output files exist in the'
+                              f' output folder "{self.doc_folder}".',
+                              'Use -f or --force to overwrite.')
+                    return False
+        for module in self.iterate_modules():
+            path = os.path.join(self.doc_folder,
+                                *module.url().split('/')[1:])
+            create_folder(os.path.dirname(path), quiet=True)
+            try:
+                log_message(short_path(path))
+                with open(path, 'w', encoding='utf-8') as html_file:
+                    html_file.write(module.html())
+            except (IOError, OSError) as exc:
+                log_error(f'Exception while writing HTML file.', path, exc)
+                return False
+        return True

@@ -25,14 +25,15 @@ Invoked by tool scripts where this is used as the shebang line interpreter.
 The tool script generally has TOML tool configuration data.
 """
 
-import _util
-
 
 def main():
     """jiigrun script main."""
-    _util.check_jiig()
-    from jiig.jiigrun import jiigrun_main
-    jiigrun_main(check_venv=True)
+    # Enable jiig imports if not in Python load path.
+    from _util import check_jiig
+    check_jiig()
+    # Run tool.
+    from jiig.startup import jiigrun_main
+    jiigrun_main()
 
 
 if __name__ == '__main__':

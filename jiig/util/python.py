@@ -286,10 +286,10 @@ def build_virtual_environment(venv_folder: str | Path,
     else:
         python_executable = sys.executable
     run([python_executable, '-m', 'venv', venv_folder])
-    log_message('Upgrade pip in virtual environment.', verbose=True)
+    log_message('Upgrade pip in virtual environment.')
     run([pip_path, 'install', '--upgrade', 'pip'])
     if packages:
-        log_message('Install pip packages in virtual environment.', verbose=True)
+        log_message('Install pip packages in virtual environment.')
         run([pip_path, 'install'] + packages)
 
 
@@ -374,8 +374,10 @@ def virtual_environment_installed_packages(venv_folder: Path | str,
         # Panic and fall back to using the pip command.
         log_error(f'Unable to find virtual environment site-packages.',
                   venv_folder=venv_folder)
-        return pip_installed_packages(pip_path=venv_folder / 'bin' / 'pip',
-                                      quiet=quiet)
+        pip_path = venv_folder / 'bin' / 'pip'
+        if not pip_path.is_file():
+            abort('Virtual environment pip command not found.', pip_path)
+        return pip_installed_packages(pip_path=pip_path, quiet=quiet)
     return [
         str(dist_info.name).split('-', maxsplit=1)[0]
         for dist_info in site_packages.glob('*.dist-info')

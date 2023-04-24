@@ -33,6 +33,7 @@ def check_virtual_environment(*,
                               tool_name: str,
                               runner_args: list[str],
                               cli_args: list[str],
+                              packages: list = None,
                               ) -> Path:
     """
     Check virtual environment, build it, and restart in it as needed.
@@ -40,6 +41,7 @@ def check_virtual_environment(*,
     :param tool_name: tool name
     :param runner_args: runner arguments
     :param cli_args: CLI arguments
+    :param packages: optional packages to install in the virtual environment
     :return: virtual environment root Path
     """
     venv_root = JIIG_VENV_ROOT / tool_name
@@ -48,14 +50,17 @@ def check_virtual_environment(*,
         log_message('Virtual environment is active.', debug=True)
     else:
         log_message('Activating virtual environment...', debug=True)
-        build_virtual_environment(venv_root, quiet=True)
-        # Restart inside the virtual environment with '--' inserted to help parsing.
-        args = [str(interpreter_path)] + runner_args
-        args.append('--')
-        args.extend(cli_args)
-        # Remember the original parent Python executable in an environment variable
-        # in case the virtual environment needs to be rebuilt.
-        os.environ[PYTHON_NATIVE_ENVIRONMENT_NAME] = sys.executable
-        os.execv(args[0], args)
-        # os.execv() does not return.
+        build_virtual_environment(venv_root, packages=packages, quiet=True)
+        if cli_args:
+            # Restart inside the virtual environment with '--' inserted to help parsing.
+            args = [str(interpreter_path)] + runner_args
+            args.append('--')
+            args.extend(cli_args)
+            # Remember the original parent Python executable in an environment variable
+            # in case the virtual environment needs to be rebuilt.
+            os.environ[PYTHON_NATIVE_ENVIRONMENT_NAME] = sys.executable
+            os.execv(args[0], args)
+            # os.execv() does not return.
+        else:
+            sys.exit(0)
     return venv_root
