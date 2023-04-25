@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Tool specification."""
+"""Tool specification classes."""
 
 import os
 from dataclasses import dataclass
@@ -72,11 +72,13 @@ class ToolOptions:
 
     @classmethod
     def from_raw_data(cls, raw_tool_options: Any) -> Self:
-        """
-        Convert raw data to tool options object.
+        """Convert raw data to tool options object.
 
-        :param raw_tool_options: raw input data
-        :return: tool options object
+        Args:
+            raw_tool_options: raw input data
+
+        Returns:
+            tool options object
         """
         if raw_tool_options is None:
             return ToolOptions()
@@ -109,16 +111,17 @@ class Tool:
                  extra_symbols: dict[str, Any] = None,
                  global_option_names: list[str] = None,
                  ):
-        """
-        Tool constructor.
+        """Tool constructor.
 
-        :param meta: runtime metadata
-        :param task_tree: task specification tree
-        :param options: tool runtime options
-        :param custom: tool customizations
-        :param paths: various filesystem paths
-        :param extra_symbols: optional extra symbols for unknown keys
-        :param global_option_names: global option names, e.g. used by CLI driver for parsing
+        Args:
+            meta: runtime metadata
+            task_tree: task specification tree
+            options: tool runtime options
+            custom: tool customizations
+            paths: various filesystem paths
+            extra_symbols: optional extra symbols for unknown keys
+            global_option_names: global option names, e.g. used by CLI driver
+                for parsing
         """
         self.meta = meta
         self.task_tree = task_tree
@@ -146,10 +149,10 @@ class Tool:
             self.global_option_names.append('keep_files')
 
     def apply_options(self, runtime_data: object):
-        """
-        Apply options specified as runtime data attributes.
+        """Apply options specified as runtime data attributes.
 
-        :param runtime_data: object with options as attributes
+        Args:
+            runtime_data: object with options as attributes
         """
         # Update global util options so that they are in effect upon returning.
         if not self.options.disable_debug and getattr(runtime_data, 'DEBUG'):

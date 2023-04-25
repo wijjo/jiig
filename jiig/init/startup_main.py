@@ -15,8 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Jiig main function to boot the tool.
+"""Jiig main function to boot the tool.
 
 Consists of a series of function calls into the initialization package.
 
@@ -53,16 +52,17 @@ def startup_main(tool: Tool,
                  is_jiigadmin: bool,
                  skip_venv_check: bool,
                  ):
-    """
-    Common startup code to drive most of the initialization.
+    """Common startup code to drive most of the initialization.
 
     tool is None if running Jiig directly.
 
-    :param tool: tool runtime data, e.g. loaded from configuration
-    :param runner_args: runner arguments
-    :param cli_args: CLI arguments
-    :param is_jiigadmin: True when running jiigadmin
-    :param skip_venv_check: skip check for running in a Jiig virtual environment if True
+    Args:
+        tool: tool runtime data, e.g. loaded from configuration
+        runner_args: runner arguments
+        cli_args: CLI arguments
+        is_jiigadmin: True when running jiigadmin
+        skip_venv_check: skip check for running in a Jiig virtual environment if
+            True
     """
     # Prepare runtime, CLI, and driver arguments.
     from jiig.init.arguments import prepare_runtime_arguments

@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Alias sub-command tasks.
-"""
+"""Alias sub-command tasks."""
 
 import jiig
 
@@ -27,11 +25,11 @@ def delete(
     runtime: jiig.Runtime,
     alias: jiig.f.text(),
 ):
-    """
-    Delete alias.
+    """Delete alias.
 
-    :param runtime: Jiig runtime API.
-    :param alias: Name of alias to delete.
+    Args:
+        runtime: Jiig runtime API.
+        alias: Name of alias to delete.
     """
     with runtime.open_alias_catalog() as catalog:
         catalog.delete_alias(alias)

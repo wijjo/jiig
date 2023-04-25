@@ -41,11 +41,13 @@ GLOB_CHARACTERS_REGEX = re.compile(r'[*?\[\]]')
 
 
 def folder_path_string(path: str | Path) -> str:
-    """
-    Provide normalized path string, including trailing '/' for a folder.
+    """Provide normalized path string, including trailing '/' for a folder.
 
-    :param path: path to normalize
-    :return: normalized path string
+    Args:
+        path: path to normalize
+
+    Returns:
+        normalized path string
     """
     path = str(path)
     if not path.endswith('/'):
@@ -54,11 +56,13 @@ def folder_path_string(path: str | Path) -> str:
 
 
 def is_remote_path(path: str | Path) -> bool:
-    """
-    Check if path looks like a remote path.
+    """Check if path looks like a remote path.
 
-    :param path: path to check
-    :return: True if path is remote
+    Args:
+        path: path to check
+
+    Returns:
+        True if path is remote
     """
     return bool(REMOTE_PATH_REGEX.match(str(path)))
 
@@ -66,12 +70,14 @@ def is_remote_path(path: str | Path) -> bool:
 def search_folder_stack_for_file(folder: str | Path,
                                  name: str,
                                  ) -> Path | None:
-    """
-    Look up folder stack for a specific file or folder name.
+    """Look up folder stack for a specific file or folder name.
 
-    :param folder: starting folder path
-    :param name: file or folder name to look for
-    :return: found folder path or None if the name was not found
+    Args:
+        folder: starting folder path
+        name: file or folder name to look for
+
+    Returns:
+        found folder path or None if the name was not found
     """
     check_folder = str(folder)
     while True:
@@ -87,14 +93,16 @@ def short_path(long_path: str | Path,
                real_path: bool = False,
                is_local: bool = False,
                ) -> str:
-    """
-    Shorten path, e.g. for display.
+    """Shorten path, e.g. for display.
 
-    :param long_path: path to shorten
-    :param is_folder: consider it a folder if True
-    :param real_path: resolve real path if True
-    :param is_local: assume it is a local path if True
-    :return: shortened path
+    Args:
+        long_path: path to shorten
+        is_folder: consider it a folder if True
+        real_path: resolve real path if True
+        is_local: assume it is a local path if True
+
+    Returns:
+        shortened path
     """
     long_path = str(long_path)
     # Special case for remote paths.
@@ -126,11 +134,11 @@ def short_path(long_path: str | Path,
 
 
 def delete_folder(folder_path: str | Path, quiet: bool = False):
-    """
-    Delete folder and its contents.
+    """Delete folder and its contents.
 
-    :param folder_path: folder to delete path
-    :param quiet: suppress non-error messages if True
+    Args:
+        folder_path: folder to delete path
+        quiet: suppress non-error messages if True
     """
     folder_path = str(folder_path)
     short_folder_path = short_path(folder_path, is_folder=True)
@@ -141,11 +149,11 @@ def delete_folder(folder_path: str | Path, quiet: bool = False):
 
 
 def delete_file(file_path: str | Path, quiet: bool = False):
-    """
-    Delete file.
+    """Delete file.
 
-    :param file_path: file to delete path
-    :param quiet: suppress non-error messages if True
+    Args:
+        file_path: file to delete path
+        quiet: suppress non-error messages if True
     """
     file_path = str(file_path)
     if os.path.exists(file_path):
@@ -155,11 +163,13 @@ def delete_file(file_path: str | Path, quiet: bool = False):
 
 
 def is_glob_pattern(path: str | Path) -> bool:
-    """
-    Check if input path looks like a glob pattern (contains * ? [ ]).
+    """Check if input path looks like a glob pattern (contains * ? [ ]).
 
-    :param path: input path to check for glob characters
-    :return: True if path contains any glob characters
+    Args:
+        path: input path to check for glob characters
+
+    Returns:
+        True if path contains any glob characters
     """
     return GLOB_CHARACTERS_REGEX.search(str(path)) is not None
 
@@ -168,12 +178,12 @@ def create_folder(folder_path: str | Path,
                   delete_existing: bool = False,
                   quiet: bool = False,
                   ):
-    """
-    Create folder.
+    """Create folder.
 
-    :param folder_path: folder path
-    :param delete_existing: delete existing folder if True
-    :param quiet: suppress non-error messages if True
+    Args:
+        folder_path: folder path
+        delete_existing: delete existing folder if True
+        quiet: suppress non-error messages if True
     """
     short_folder_path = short_path(folder_path)
     if delete_existing:
@@ -187,12 +197,12 @@ def create_folder(folder_path: str | Path,
 
 
 def check_file_exists(file_path: str | Path):
-    """
-    Make sure a file exists.
+    """Make sure a file exists.
 
     Abort if the file is missing.
 
-    :param file_path: path of file to check
+    Args:
+        file_path: path of file to check
     """
     if not os.path.exists(file_path):
         abort('File does not exist.', short_path(file_path))
@@ -201,12 +211,12 @@ def check_file_exists(file_path: str | Path):
 
 
 def check_folder_exists(folder_path: str | Path):
-    """
-    Make sure a folder exists.
+    """Make sure a folder exists.
 
     Abort if the folder is missing.
 
-    :param folder_path: path of folder to check
+    Args:
+        folder_path: path of folder to check
     """
     if not os.path.exists(folder_path):
         abort('Folder does not exist.', short_path(folder_path, is_folder=True))
@@ -215,12 +225,12 @@ def check_folder_exists(folder_path: str | Path):
 
 
 def check_file_not_exists(file_path: str | Path):
-    """
-    Make sure a file does not already exist.
+    """Make sure a file does not already exist.
 
     Abort if something exists at that path.
 
-    :param file_path: path of file to check
+    Args:
+        file_path: path of file to check
     """
     if os.path.exists(file_path):
         if os.path.isdir(file_path):
@@ -229,12 +239,12 @@ def check_file_not_exists(file_path: str | Path):
 
 
 def check_folder_not_exists(folder_path: str | Path):
-    """
-    Make sure a folder does not already exist.
+    """Make sure a folder does not already exist.
 
     Abort if something exists at that path.
 
-    :param folder_path: path of folder to check
+    Args:
+        folder_path: path of folder to check
     """
     if os.path.exists(folder_path):
         if not os.path.isdir(folder_path):
@@ -247,13 +257,13 @@ def copy_folder(source_folder_path: str | Path,
                 merge: bool = False,
                 quiet: bool = False,
                 ):
-    """
-    Copy source folder to destination using rsync or cp as appropriate.
+    """Copy source folder to destination using rsync or cp as appropriate.
 
-    :param source_folder_path: source folder path
-    :param target_folder_path: target folder path
-    :param merge: add files to existing target folder if True
-    :param quiet: suppress non-error messages if True
+    Args:
+        source_folder_path: source folder path
+        target_folder_path: target folder path
+        merge: add files to existing target folder if True
+        quiet: suppress non-error messages if True
     """
     if not OPTIONS.dry_run:
         check_folder_exists(source_folder_path)
@@ -277,13 +287,13 @@ def copy_file(source_file_path: str | Path,
               overwrite: bool = False,
               quiet: bool = False,
               ):
-    """
-    Copy file to fully-specified file path, not a folder.
+    """Copy file to fully-specified file path, not a folder.
 
-    :param source_file_path: source file path
-    :param target_file_path: target file path
-    :param overwrite: overwrite existing files if True
-    :param quiet: suppress non-error messages if True
+    Args:
+        source_file_path: source file path
+        target_file_path: target file path
+        overwrite: overwrite existing files if True
+        quiet: suppress non-error messages if True
     """
     _copy_or_move_file(source_file_path,
                        target_file_path,
@@ -297,13 +307,13 @@ def copy_files(source_file_pattern: str | Path,
                allow_empty: bool = False,
                quiet: bool = False,
                ):
-    """
-    Copy files using glob patterns to destination folder.
+    """Copy files using glob patterns to destination folder.
 
-    :param source_file_pattern: source file glob pattern
-    :param target_folder_path: target folder path
-    :param allow_empty: suppress error for empty source file list if True
-    :param quiet: suppress non-error messages if True
+    Args:
+        source_file_pattern: source file glob pattern
+        target_folder_path: target folder path
+        allow_empty: suppress error for empty source file list if True
+        quiet: suppress non-error messages if True
     """
     source_paths = glob(str(source_file_pattern))
     short_target_folder_path = short_path(target_folder_path, is_folder=True)
@@ -323,13 +333,13 @@ def move_file(source_file_path: str,
               overwrite: bool = False,
               quiet: bool = False,
               ):
-    """
-    Move a file to a fully-specified file path, not a folder.
+    """Move a file to a fully-specified file path, not a folder.
 
-    :param source_file_path: source file path
-    :param target_file_path: target file path
-    :param overwrite: overwrite target if True
-    :param quiet: suppress non-error messages if True
+    Args:
+        source_file_path: source file path
+        target_file_path: target file path
+        overwrite: overwrite target if True
+        quiet: suppress non-error messages if True
     """
     _copy_or_move_file(source_file_path,
                        target_file_path,
@@ -368,13 +378,13 @@ def move_folder(source_folder_path: str | Path,
                 overwrite: bool = False,
                 quiet: bool = False,
                 ):
-    """
-    Move a folder to a fully-specified folder path, not a parent folder.
+    """Move a folder to a fully-specified folder path, not a parent folder.
 
-    :param source_folder_path: source folder path
-    :param target_folder_path: target folder path
-    :param overwrite: overwrite target if True
-    :param quiet: suppress non-error messages if True
+    Args:
+        source_folder_path: source folder path
+        target_folder_path: target folder path
+        overwrite: overwrite target if True
+        quiet: suppress non-error messages if True
     """
     short_source_folder_path = short_path(source_folder_path, is_folder=True)
     short_target_folder_path = short_path(target_folder_path, is_folder=True)
@@ -398,15 +408,15 @@ def synchronize_folders(source_folder_path: str | Path,
                         show_files: bool = False,
                         quiet: bool = False,
                         ):
-    """
-    Synchronize folders using rsync.
+    """Synchronize folders using rsync.
 
-    :param source_folder_path: source folder path
-    :param target_folder_path: target folder path
-    :param exclude: optional exclusions (rsync --exclude options)
-    :param check_contents: compare file contents if True (rsync -c option)
-    :param show_files: display synchronized files (rsync -v option)
-    :param quiet: suppress non-error messages
+    Args:
+        source_folder_path: source folder path
+        target_folder_path: target folder path
+        exclude: optional exclusions (rsync --exclude options)
+        check_contents: compare file contents if True (rsync -c option)
+        show_files: display synchronized files (rsync -v option)
+        quiet: suppress non-error messages
     """
     # Add the trailing slash for rsync. This works for remote paths too.
     source_folder_path_string = folder_path_string(source_folder_path)
@@ -435,15 +445,17 @@ def synchronize_folders(source_folder_path: str | Path,
 def temporary_working_folder(folder_path: str | Path | None,
                              quiet: bool = False,
                              ) -> AbstractContextManager[Path]:
-    """
-    Change work folder and restore when done.
+    """Change work folder and restore when done.
 
     Treats an empty or None folder, or when folder is the current work folder, a
     do-nothing operation. But at least the caller doesn't have to check.
 
-    :param folder_path: path of folder to become the working folder
-    :param quiet: suppress non-error messages
-    :return: saved working folder path string
+    Args:
+        folder_path: path of folder to become the working folder
+        quiet: suppress non-error messages
+
+    Returns:
+        saved working folder path string
     """
     restore_folder_path = Path(os.getcwd())
     if folder_path and os.path.realpath(folder_path) != restore_folder_path:
@@ -458,10 +470,10 @@ def temporary_working_folder(folder_path: str | Path | None,
 class FileFilter(ABC):
     """Abstract base class for file filters."""
     def __init__(self, source_folder_path: str | Path):
-        """
-        File filter constructor.
+        """File filter constructor.
 
-        :param source_folder_path: source folder path
+        Args:
+            source_folder_path: source folder path
         """
         if not isinstance(source_folder_path, Path):
             source_folder_path = Path(source_folder_path)
@@ -469,11 +481,13 @@ class FileFilter(ABC):
 
     @abstractmethod
     def accept(self, path: str | Path) -> bool:
-        """
-        Required override to accept or reject a path.
+        """Required override to accept or reject a path.
 
-        :param path: path to check
-        :return: True if the path is accepted
+        Args:
+            path: path to check
+
+        Returns:
+            True if the path is accepted
         """
         ...
 
@@ -484,11 +498,11 @@ class ExcludesFilter(FileFilter):
                  source_folder_path: str | Path,
                  exclusion_patterns: str | Sequence[str] | None,
                  ):
-        """
-        ExcludesFilter constructor.
+        """ExcludesFilter constructor.
 
-        :param source_folder_path: source folder path
-        :param exclusion_patterns: .gitignore style exclusion pattern(s)
+        Args:
+            source_folder_path: source folder path
+            exclusion_patterns: .gitignore style exclusion pattern(s)
         """
         exclusion_patterns = make_list(exclusion_patterns)
         if exclusion_patterns:
@@ -499,11 +513,13 @@ class ExcludesFilter(FileFilter):
         super().__init__(source_folder_path)
 
     def accept(self, path: str | Path) -> bool:
-        """
-        Required override to accept or reject a path.
+        """Required override to accept or reject a path.
 
-        :param path: path to check
-        :return: True if the path is accepted
+        Args:
+            path: path to check
+
+        Returns:
+            True if the path is accepted
         """
         if not self.match_function:
             return True
@@ -513,10 +529,10 @@ class ExcludesFilter(FileFilter):
 class GitignoreFilter(FileFilter):
     """File filter supporting exclusions declared in ~/.gitignore."""
     def __init__(self, source_folder_path: str | Path):
-        """
-        GitignoreFilter constructor.
+        """GitignoreFilter constructor.
 
-        :param source_folder_path: source folder path
+        Args:
+            source_folder_path: source folder path
         """
         super().__init__(source_folder_path)
         gitignore_path = os.path.join(self.source_folder, '.gitignore')
@@ -526,11 +542,13 @@ class GitignoreFilter(FileFilter):
             self.matcher = None
 
     def accept(self, path: str | Path) -> bool:
-        """
-        Required override to accept or reject a path.
+        """Required override to accept or reject a path.
 
-        :param path: path to check
-        :return: True if the path is accepted
+        Args:
+            path: path to check
+
+        Returns:
+            True if the path is accepted
         """
         if not self.matcher:
             return True
@@ -539,11 +557,13 @@ class GitignoreFilter(FileFilter):
 
 def iterate_files(source_folder_path: str | Path,
                   ) -> Iterator[Path]:
-    """
-    Files iteration.
+    """Files iteration.
 
-    :param source_folder_path: source folder path
-    :return: found Path iterator
+    Args:
+        source_folder_path: source folder path
+
+    Returns:
+        found Path iterator
     """
     source_folder_path_string = str(source_folder_path)
     discard_length = len(source_folder_path_string)
@@ -558,11 +578,13 @@ def iterate_files(source_folder_path: str | Path,
 
 def iterate_git_pending(source_folder_path: str | Path,
                         ) -> Iterator[Path]:
-    """
-    Git pending files iteration.
+    """Git pending files iteration.
 
-    :param source_folder_path: source folder path
-    :return: found Path iterator
+    Args:
+        source_folder_path: source folder path
+
+    Returns:
+        found Path iterator
     """
     with temporary_working_folder(source_folder_path, quiet=True):
         git_proc = run(['git', 'status', '-s', '-uno'],
@@ -579,13 +601,15 @@ def iterate_filtered_files(source_folder_path: str | Path,
                            excludes: list[str] = None,
                            gitignore: bool = False,
                            ) -> Iterator[Path]:
-    """
-    Filtered files iteration.
+    """Filtered files iteration.
 
-    :param source_folder_path: source folder path
-    :param excludes: optional .gitignore exclusion patterns
-    :param gitignore: apply ~/.gitignore exclusions
-    :return: found Path iterator
+    Args:
+        source_folder_path: source folder path
+        excludes: optional .gitignore exclusion patterns
+        gitignore: apply ~/.gitignore exclusions
+
+    Returns:
+        found Path iterator
     """
     file_filters: list[FileFilter] = []
     if excludes:
@@ -617,11 +641,13 @@ def iterate_filtered_files(source_folder_path: str | Path,
 
 
 def find_system_program(name: str) -> Path | None:
-    """
-    Search system PATH for named program.
+    """Search system PATH for named program.
 
-    :param name: program name
-    :return: path if found or None
+    Args:
+        name: program name
+
+    Returns:
+        path if found or None
     """
     for folder in os.environ['PATH'].split(os.pathsep):
         path = os.path.join(folder, name)
@@ -633,12 +659,14 @@ def find_system_program(name: str) -> Path | None:
 def choose_program_alternative(*programs: Any,
                                required: bool = False,
                                ) -> list[str] | None:
-    """
-    Search system PATH for one or more alternative programs, optionally with arguments.
+    """Search system PATH for one or more alternative programs, optionally with arguments.
 
-    :param programs: program name(s) or argument lists/tuples
-    :param required: fatal error if True and program was not found
-    :return: first found program as a command argument list
+    Args:
+        *programs: program name(s) or argument lists/tuples
+        required: fatal error if True and program was not found
+
+    Returns:
+        first found program as a command argument list
     """
     for program in programs:
         name = program[0] if isinstance(program, (list, tuple)) else str(program)
@@ -652,15 +680,17 @@ def choose_program_alternative(*programs: Any,
 def make_relative_path(path: str | Path,
                        start: str | Path = None,
                        ) -> Path:
-    """
-    Construct a relative path.
+    """Construct a relative path.
 
     Mainly a wrapper for os.path.relpath(), but it strips off leading './' to
     provided cleaner paths.
 
-    :param path: path to convert to relative
-    :param start: optional start path
-    :return: relative path
+    Args:
+        path: path to convert to relative
+        start: optional start path
+
+    Returns:
+        relative path
     """
     rel_path = os.path.relpath(path, start=start)
     if rel_path == '.':
@@ -673,11 +703,11 @@ def make_relative_path(path: str | Path,
 def change_permissions(path: str | Path,
                        permissions: str,
                        ):
-    """
-    Change file or folder permissions.
+    """Change file or folder permissions.
 
-    :param path: file or folder path
-    :param permissions: chmod-style permission string
+    Args:
+        path: file or folder path
+        permissions: chmod-style permission string
     """
     if isinstance(path, str):
         path = Path(path)
@@ -691,13 +721,15 @@ def grep(path: str | Path,
          pattern: str,
          case_insensitive: bool = False,
          ) -> Iterator[str]:
-    """
-    Search for a regular expression in a file.
+    """Search for a regular expression in a file.
 
-    :param path: file path
-    :param pattern: regular expression pattern to compile and search for
-    :param case_insensitive: perform a case-insensitive search
-    :return: found line iterator
+    Args:
+        path: file path
+        pattern: regular expression pattern to compile and search for
+        case_insensitive: perform a case-insensitive search
+
+    Returns:
+        found line iterator
     """
     if isinstance(path, str):
         path = Path(path)
@@ -716,13 +748,15 @@ def contains(path: str | Path,
              pattern: str,
              case_insensitive: bool = False,
              ) -> bool:
-    """
-    Search for a regular expression in a file and return True if found.
+    """Search for a regular expression in a file and return True if found.
 
-    :param path: file path
-    :param pattern: regular expression pattern to compile and search for
-    :param case_insensitive: perform a case-insensitive search
-    :return: True if the pattern was found
+    Args:
+        path: file path
+        pattern: regular expression pattern to compile and search for
+        case_insensitive: perform a case-insensitive search
+
+    Returns:
+        True if the pattern was found
     """
     return bool(list(grep(path, pattern, case_insensitive=case_insensitive)))
 
@@ -736,20 +770,20 @@ def add_text(path: str | Path,
              heading: str = None,
              skip_message: str = None,
              ):
-    """
-    Append text block(s) to file as needed.
+    """Append text block(s) to file as needed.
 
     Can be gated by checking for a regular expression existence pattern.
 
-    :param path: file path (will be expanded)
-    :param blocks: text block(s) to expand and append if required
-    :param backup: backup the file if True
-    :param permissions: optional permissions to apply
-    :param exists_pattern: optional regular expression check if missing
-    :param keep_indent: preserve indentation if True
-    :param heading: optional displayed heading
-    :param skip_message: optional message displayed when skipping the file, e.g.
-                         due to missing text
+    Args:
+        path: file path (will be expanded)
+        *blocks: text block(s) to expand and append if required
+        backup: backup the file if True
+        permissions: optional permissions to apply
+        exists_pattern: optional regular expression check if missing
+        keep_indent: preserve indentation if True
+        heading: optional displayed heading
+        skip_message: optional message displayed when skipping the file, e.g.
+            due to missing text
     """
     if isinstance(path, str):
         path = Path(path)

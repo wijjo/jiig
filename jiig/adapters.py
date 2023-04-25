@@ -15,8 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Jiig argument adapters, converters, etc..
+"""Jiig argument adapters, converters, etc..
+
+Used for task field validation and conversion.
 """
 
 import base64
@@ -31,11 +32,13 @@ from .util.date_time import parse_date_time, parse_time_interval, apply_date_tim
 
 
 def b64_decode(value: str) -> str:
-    """
-    Decode base64 string.
+    """Decode base64 string.
 
-    :param value: input base64 string
-    :return: output utf-8 string
+    Args:
+        value: input base64 string
+
+    Returns:
+        output utf-8 string
     """
     try:
         return base64.standard_b64decode(value).decode('utf-8')
@@ -45,11 +48,13 @@ def b64_decode(value: str) -> str:
 
 
 def b64_encode(value: str) -> str:
-    """
-    Encode string to base64.
+    """Encode string to base64.
 
-    :param value: input string
-    :return: output base64 string
+    Args:
+        value: input string
+
+    Returns:
+        output base64 string
     """
     try:
         return base64.standard_b64encode(bytes(value, 'utf-8')).decode('utf-8')
@@ -59,11 +64,13 @@ def b64_encode(value: str) -> str:
 
 
 def choices(*valid_values: Any) -> ArgumentAdapter:
-    """
-    Adapter factory that limits value to a set of choices.
+    """Adapter factory that limits value to a set of choices.
 
-    :param valid_values: valid value choices
-    :return: parameterized function to validate value choices
+    Args:
+        *valid_values: valid value choices
+
+    Returns:
+        parameterized function to validate value choices
     """
     def _choices_inner(value: Any) -> Any:
         if value not in valid_values:
@@ -75,16 +82,18 @@ def choices(*valid_values: Any) -> ArgumentAdapter:
 def num_limit(minimum: float | None,
               maximum: float | None,
               ) -> ArgumentAdapter:
-    """
-    Adapter factory for an input int/float number checked against limits.
+    """Adapter factory for an input int/float number checked against limits.
 
     Type inspection for float also accepts an int type.
 
     This must be called to receive a parameterized function.
 
-    :param minimum: minimum number value
-    :param maximum: maximum number value
-    :return: parameterized function to perform checking and conversion
+    Args:
+        minimum: minimum number value
+        maximum: maximum number value
+
+    Returns:
+        parameterized function to perform checking and conversion
     """
     def _number_range_inner(value: float) -> float:
         if not isinstance(value, (int, float)):
@@ -98,11 +107,13 @@ def num_limit(minimum: float | None,
 
 
 def path_exists(value: str | Path) -> str:
-    """
-    Adapter that checks if a path exists.
+    """Adapter that checks if a path exists.
 
-    :param value: file or folder path
-    :return: unchanged path
+    Args:
+        value: file or folder path
+
+    Returns:
+        unchanged path
     """
     if not os.path.exists(str(value)):
         raise ValueError(f'path "{value}" does not exist')
@@ -110,11 +121,13 @@ def path_exists(value: str | Path) -> str:
 
 
 def path_expand_user(value: str | Path) -> str | Path:
-    """
-    Adapter that expands a user path, e.g. that starts with "~/".
+    """Adapter that expands a user path, e.g. that starts with "~/".
 
-    :param value: path string
-    :return: expanded path string
+    Args:
+        value: path string
+
+    Returns:
+        expanded path string
     """
     if isinstance(value, Path):
         return value.expanduser()
@@ -122,11 +135,13 @@ def path_expand_user(value: str | Path) -> str | Path:
 
 
 def path_expand_environment(value: str | Path) -> str | Path:
-    """
-    Adapter that expands a path with environment variables.
+    """Adapter that expands a path with environment variables.
 
-    :param value: path string
-    :return: expanded path string
+    Args:
+        value: path string
+
+    Returns:
+        expanded path string
     """
     expanded = os.path.expandvars(str(value))
     if isinstance(value, Path):
@@ -135,11 +150,13 @@ def path_expand_environment(value: str | Path) -> str | Path:
 
 
 def path_is_file(value: str | Path) -> str | Path:
-    """
-    Adapter that checks if a path is a file.
+    """Adapter that checks if a path is a file.
 
-    :param value: path string
-    :return: unchanged path
+    Args:
+        value: path string
+
+    Returns:
+        unchanged path
     """
     if not os.path.isfile(str(value)):
         raise ValueError(f'"{value}" is not a file')
@@ -147,11 +164,13 @@ def path_is_file(value: str | Path) -> str | Path:
 
 
 def path_is_folder(value: str | Path) -> str | Path:
-    """
-    Adapter that checks if a path is a folder.
+    """Adapter that checks if a path is a folder.
 
-    :param value: path string
-    :return: unchanged path
+    Args:
+        value: path string
+
+    Returns:
+        unchanged path
     """
     if not os.path.isdir(value):
         raise ValueError(f'"{value}" is not a folder')
@@ -159,11 +178,13 @@ def path_is_folder(value: str | Path) -> str | Path:
 
 
 def path_to_absolute(value: str | Path) -> str | Path:
-    """
-    Adapter that makes a path absolute.
+    """Adapter that makes a path absolute.
 
-    :param value: path string
-    :return: absolute path string
+    Args:
+        value: path string
+
+    Returns:
+        absolute path string
     """
     if isinstance(value, Path):
         return value.absolute()
@@ -171,24 +192,28 @@ def path_to_absolute(value: str | Path) -> str | Path:
 
 
 def to_age(value: str) -> float:
-    """
-    Adapter for age, i.e. negative time delta.
+    """Adapter for age, i.e. negative time delta.
 
     See util.date_time.parse_date_time_delta() for more information
     about delta strings.
 
-    :param value: time delta string
-    :return: timestamp float
+    Args:
+        value: time delta string
+
+    Returns:
+        timestamp float
     """
     return mktime(apply_date_time_delta_string(value, negative=True))
 
 
 def to_bool(value: str | bool) -> bool:
-    """
-    Convert yes/no/true/false string to bool.
+    """Convert yes/no/true/false string to bool.
 
-    :param value: input boolean string
-    :return: output boolean value
+    Args:
+        value: input boolean string
+
+    Returns:
+        output boolean value
     """
     if isinstance(value, bool):
         return value
@@ -203,52 +228,62 @@ def to_bool(value: str | bool) -> bool:
 
 
 def to_comma_list(value: str) -> list[str]:
-    """
-    Adapter for comma-separated string to list conversion.
+    """Adapter for comma-separated string to list conversion.
 
-    :param value: comma-separated string
-    :return: returned string tuple
+    Args:
+        value: comma-separated string
+
+    Returns:
+        returned string tuple
     """
     return list(value_item.strip() for value_item in value.split(','))
 
 
 def to_int(value: str, base: int = 10) -> int:
-    """
-    Convert string to integer.
+    """Convert string to integer.
 
-    :param value: input hex string
-    :param base: conversion base (default: 10)
-    :return: output integer value
+    Args:
+        value: input hex string
+        base: conversion base (default: 10)
+
+    Returns:
+        output integer value
     """
     return int(value, base=base)
 
 
 def to_float(value: str) -> float:
-    """
-    Convert string to float.
+    """Convert string to float.
 
-    :param value: input hex string
-    :return: output float value
+    Args:
+        value: input hex string
+
+    Returns:
+        output float value
     """
     return float(value)
 
 
 def to_interval(value: str) -> int:
-    """
-    Adapter for string to time interval conversion.
+    """Adapter for string to time interval conversion.
 
-    :param value: raw text value
-    :return: returned interval integer
+    Args:
+        value: raw text value
+
+    Returns:
+        returned interval integer
     """
     return parse_time_interval(value)
 
 
 def to_timestamp(value: str) -> float:
-    """
-    Adapter for string to timestamp float conversion.
+    """Adapter for string to timestamp float conversion.
 
-    :param value: date/time string
-    :return: timestamp float, as returned by mktime()
+    Args:
+        value: date/time string
+
+    Returns:
+        timestamp float, as returned by mktime()
     """
     parsed_time_struct = parse_date_time(value)
     if not parsed_time_struct:

@@ -35,14 +35,16 @@ def check_virtual_environment(*,
                               cli_args: list[str],
                               packages: list = None,
                               ) -> Path:
-    """
-    Check virtual environment, build it, and restart in it as needed.
+    """Check virtual environment, build it, and restart in it as needed.
 
-    :param tool_name: tool name
-    :param runner_args: runner arguments
-    :param cli_args: CLI arguments
-    :param packages: optional packages to install in the virtual environment
-    :return: virtual environment root Path
+    Args:
+        tool_name: tool name
+        runner_args: runner arguments
+        cli_args: CLI arguments
+        packages: optional packages to install in the virtual environment
+
+    Returns:
+        virtual environment root Path
     """
     venv_root = JIIG_VENV_ROOT / tool_name
     interpreter_path = venv_root / 'bin' / 'python'

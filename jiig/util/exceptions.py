@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Python exception utilities.
-"""
+"""Python exception utilities."""
 
 import os
 import sys
@@ -34,13 +32,15 @@ class Package:
 
 
 def package_for_path(path: str | Path) -> Package:
-    """
-    Provide a package name based on a path.
+    """Provide a package name based on a path.
 
     Returns an empty string if not enclosed in a package.
 
-    :param path: path to convert to a package
-    :return: package data based on path
+    Args:
+        path: path to convert to a package
+
+    Returns:
+        package data based on path
     """
     if not isinstance(path, Path):
         path = Path(path)
@@ -79,8 +79,7 @@ def get_exception_stack(skip_external_frames: bool = False,
                         string_file_name: str = None,
                         skip_frame_count: int = None,
                         ) -> ExceptionStack:
-    """
-    Get exception stack as list.
+    """Get exception stack as list.
 
     By default it tries to minimize the stack frames returned to leave out
     non-file frames, e.g. due to exec()'d code, and frames outside of the top
@@ -89,11 +88,15 @@ def get_exception_stack(skip_external_frames: bool = False,
     Non-source frames may be skipped in order to clean up exception stack for
     exec() or programmatic module import.
 
-    :param skip_external_frames: exclude external non-application frames if True
-    :param skip_non_source_frames: skip non-source file frames if True
-    :param string_file_name: file to replace <string> in exception output for exec'd file
-    :param skip_frame_count: optional number of frames to skip
-    :return: stack item list
+    Args:
+        skip_external_frames: exclude external non-application frames if True
+        skip_non_source_frames: skip non-source file frames if True
+        string_file_name: file to replace <string> in exception output for
+            exec'd file
+        skip_frame_count: optional number of frames to skip
+
+    Returns:
+        stack item list
     """
     last_exc_tb = sys.exc_info()[2]
     # Get trimmed list of raw traceback items.
@@ -143,14 +146,16 @@ def format_exception(exc: Exception,
                      skip_frame_count: int = 0,
                      show_exception_location: bool = False,
                      ) -> str:
-    """
-    Format exception text.
+    """Format exception text.
 
-    :param exc: the exception to format
-    :param label: preamble for exception message
-    :param skip_frame_count: number of stack frames to skip
-    :param show_exception_location: add exception location to output if True
-    :return: text string for exception
+    Args:
+        exc: the exception to format
+        label: preamble for exception message
+        skip_frame_count: number of stack frames to skip
+        show_exception_location: add exception location to output if True
+
+    Returns:
+        text string for exception
     """
     parts = []
     if label:

@@ -15,8 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-General-purpose (independent) utilities.
+"""General-purpose (independent) utilities.
 
 Make sure that any other utility module can import this module without circular
 import references. I.e. DO NOT import other utility modules here.
@@ -29,8 +28,7 @@ from typing import Any
 
 
 def pluralize(noun: str, countable: Any):
-    """
-    Simplistic text pluralization.
+    """Simplistic text pluralization.
 
     If `countable` length is one:
 
@@ -44,9 +42,12 @@ def pluralize(noun: str, countable: Any):
     ** No other irregular pluralization cases are handled. Please be aware of
     the input, and how the simplistic algorithm works for it (or not). **
 
-    :param noun: noun to pluralize as needed
-    :param countable: item with a length that determines if it is pluralized
-    :return: possibly-pluralized noun
+    Args:
+        noun: noun to pluralize as needed
+        countable: item with a length that determines if it is pluralized
+
+    Returns:
+        possibly-pluralized noun
     """
     try:
         if len(countable) != 1:

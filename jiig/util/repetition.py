@@ -22,13 +22,15 @@ from .types import RepeatSpec, Repetition
 
 
 def repetition_from_spec(spec: RepeatSpec | None) -> Repetition:
-    """
-    Convert raw repeat specification to a Repetition object.
+    """Convert raw repeat specification to a Repetition object.
 
     Most of the code is purely sanity checking.
 
-    :param spec: raw integer or pair of optional integers
-    :return: Repetition object or None for bad or missing input data
+    Args:
+        spec: raw integer or pair of optional integers
+
+    Returns:
+        Repetition object or None for bad or missing input data
     """
     if spec is None:
         return Repetition(None, None)

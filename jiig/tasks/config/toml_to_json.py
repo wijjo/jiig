@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Build source distribution.
-"""
+"""Build source distribution."""
 
 import json
 
@@ -44,12 +42,12 @@ def toml_to_json(
     source: jiig.f.filesystem_file(),
     target: jiig.f.filesystem_object(),
 ):
-    """
-    Convert configuration file format.
+    """Convert configuration file format.
 
-    :param runtime: Jiig runtime API.
-    :param source: Source TOML format configuration file.
-    :param target: Target JSON format configuration file.
+    Args:
+        runtime: Jiig runtime API.
+        source: Source TOML format configuration file.
+        target: Target JSON format configuration file.
     """
     data = _read_toml_configuration(runtime, source)
     try:

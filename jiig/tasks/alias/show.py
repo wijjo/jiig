@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Show alias(es) task.
-"""
+"""Show alias(es) task."""
 
 import jiig
 
@@ -27,11 +25,11 @@ def show(
     runtime: jiig.Runtime,
     aliases: jiig.f.text(repeat=(1, None)),
 ):
-    """
-    Display alias(es).
+    """Display alias(es).
 
-    :param runtime: jiig Runtime API.
-    :param aliases: Alias name(s) to display.
+    Args:
+        runtime: jiig Runtime API.
+        aliases: Alias name(s) to display.
     """
     with runtime.open_alias_catalog() as catalog:
         for name in aliases:

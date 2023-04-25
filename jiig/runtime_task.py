@@ -15,7 +15,11 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Runtime task."""
+"""Runtime task.
+
+Runtime task objects are created when tasks are discovered and loaded to hold
+all the information needed to access and invoke tasks.
+"""
 
 from types import ModuleType
 from typing import Self, Sequence
@@ -28,8 +32,7 @@ from .util.text.footnotes import NotesList, NotesDict
 
 
 class RuntimeTask:
-    """
-    Runtime task information, based on a registered class.
+    """Runtime task information, based on a registered class.
 
     Also provides access to resolved fields and sub-tasks.
 
@@ -54,22 +57,23 @@ class RuntimeTask:
                  footnotes: NotesDict | None = None,
                  driver_hints: dict | None = None,
                  ):
-        """
-        Construct runtime task with resolved function/module references.
+        """Construct runtime task with resolved function/module references.
 
         INTERNAL: use new_...() methods to create RuntimeTask's.
 
-        :param name: task name
-        :param full_name: fully-qualified task name
-        :param visibility: 0=normal, 1=secondary, 2=hidden
-        :param description: task description
-        :param task_function: optional task implementation function (not used for task group)
-        :param module: optional module (not used for task group)
-        :param fields: optional task fields (not used for task group)
-        :param sub_tasks: optional sub-tasks (for task group only)
-        :param notes: optional notes
-        :param footnotes: optional footnotes
-        :param driver_hints: optional driver hints
+        Args:
+            name: task name
+            full_name: fully-qualified task name
+            visibility: 0=normal, 1=secondary, 2=hidden
+            description: task description
+            task_function: optional task implementation function (not used for
+                task group)
+            module: optional module (not used for task group)
+            fields: optional task fields (not used for task group)
+            sub_tasks: optional sub-tasks (for task group only)
+            notes: optional notes
+            footnotes: optional footnotes
+            driver_hints: optional driver hints
         """
         self.name = name
         self.full_name = full_name
@@ -97,20 +101,22 @@ class RuntimeTask:
                  footnotes: NotesDict,
                  hints: dict,
                  ) -> Self | None:
-        """
-        Resolve task reference to a RuntimeTask (if possible).
+        """Resolve task reference to a RuntimeTask (if possible).
 
-        :param name: task name
-        :param full_name: optional override full task name
-        :param description: task description
-        :param task_function: task function
-        :param module: module containing task function
-        :param fields: task field specifications
-        :param visibility: visibility (0=normal, 1=secondary, 2=hidden)
-        :param notes: notes list
-        :param footnotes: footnotes dictionary
-        :param hints: driver hints
-        :return: resolved task or None if it wasn't resolved and required is False
+        Args:
+            name: task name
+            full_name: optional override full task name
+            description: task description
+            task_function: task function
+            module: module containing task function
+            fields: task field specifications
+            visibility: visibility (0=normal, 1=secondary, 2=hidden)
+            notes: notes list
+            footnotes: footnotes dictionary
+            hints: driver hints
+
+        Returns:
+            resolved task or None if it wasn't resolved and required is False
         """
         return RuntimeTask(
             name=name,
@@ -138,18 +144,20 @@ class RuntimeTask:
                   footnotes: NotesDict,
                   hints: dict,
                   ) -> Self | None:
-        """
-        Create RuntimeTask for task group.
+        """Create RuntimeTask for task group.
 
-        :param name: task name
-        :param full_name: optional override full task name
-        :param description: optional override description
-        :param visibility: visibility (0=normal, 1=secondary, 2=hidden)
-        :param sub_tasks: sub-tasks
-        :param notes: optional override notes as string or string list
-        :param footnotes: optional override footnotes dictionary
-        :param hints: optional override driver hints
-        :return: new RuntimeTask
+        Args:
+            name: task name
+            full_name: optional override full task name
+            description: optional override description
+            visibility: visibility (0=normal, 1=secondary, 2=hidden)
+            sub_tasks: sub-tasks
+            notes: optional override notes as string or string list
+            footnotes: optional override footnotes dictionary
+            hints: optional override driver hints
+
+        Returns:
+            new RuntimeTask
         """
         return RuntimeTask(
             name=name,
@@ -171,15 +179,17 @@ class RuntimeTask:
                  footnotes: NotesDict,
                  hints: dict,
                  ) -> Self:
-        """
-        Create RuntimeTask that is the root of a task tree.
+        """Create RuntimeTask that is the root of a task tree.
 
-        :param sub_tasks: sub-tasks
-        :param description: optional override description
-        :param notes: optional override notes as string or string list
-        :param footnotes: optional override footnotes dictionary
-        :param hints: optional override driver hints
-        :return: new RuntimeTask
+        Args:
+            sub_tasks: sub-tasks
+            description: optional override description
+            notes: optional override notes as string or string list
+            footnotes: optional override footnotes dictionary
+            hints: optional override driver hints
+
+        Returns:
+            new RuntimeTask
         """
         return RuntimeTask(
             name=DEFAULT_ROOT_TASK_NAME,
@@ -196,12 +206,14 @@ class RuntimeTask:
 def get_task_stack(root_task: RuntimeTask,
                    names: Sequence[str],
                    ) -> list[RuntimeTask]:
-    """
-    Get task stack (list) based on names list.
+    """Get task stack (list) based on names list.
 
-    :param root_task: root task
-    :param names: name stack as list
-    :return: sub-task stack as list
+    Args:
+        root_task: root task
+        names: name stack as list
+
+    Returns:
+        sub-task stack as list
     """
     task_stack: list[RuntimeTask] = [root_task]
 

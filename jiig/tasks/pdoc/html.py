@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Pdoc3 HTML documentation generation task.
-"""
+"""Pdoc3 HTML documentation generation task."""
 
 import jiig
 from jiig.util.text.pdoc import PdocBuilder
@@ -28,11 +26,11 @@ def html(
     runtime: jiig.Runtime,
     force: jiig.f.boolean(),
 ):
-    """
-    Use Pdoc3 to build HTML format documentation.
+    """Use Pdoc3 to build HTML format documentation.
 
-    :param runtime: Jiig runtime API.
-    :param force: Overwrite existing files.
+    Args:
+        runtime: Jiig runtime API.
+        force: Overwrite existing files.
     """
     builder = PdocBuilder(runtime.meta.doc_api_packages,
                           runtime.meta.doc_api_packages_excluded,

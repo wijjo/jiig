@@ -19,12 +19,14 @@
 
 from jiig.task import Task, TaskGroup
 
+#: Task for "help" command.
 HELP_TASK = Task(
     name='help',
     visibility=1,
     cli_options={'all_tasks': ['-a', '--all']},
 )
 
+#: Task group for "alias" sub-commands.
 ALIAS_TASK_GROUP = TaskGroup(
     name='alias',
     sub_tasks=[
@@ -37,6 +39,7 @@ ALIAS_TASK_GROUP = TaskGroup(
     ],
 )
 
+#: Task group for "venv" (virtual environment) sub-commands.
 VENV_TASK_GROUP = TaskGroup(
     name='venv',
     sub_tasks=[

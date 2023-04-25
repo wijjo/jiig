@@ -15,8 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Footnote-related utility functions and classes.
+"""Footnote-related utility functions and classes.
 
 Footnotes are defined in dictionaries mapping labels to text blocks.
 

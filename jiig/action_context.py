@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Context for text expansion and external command execution environment.
-"""
+"""Context for actions, with working folder management."""
 
 import os
 from pathlib import Path
@@ -29,14 +27,19 @@ from .context import Context
 
 
 class ActionContext(Context):
-    """Nestable execution context with text expansion symbols."""
+    """Nestable execution context with text expansion symbols.
+
+    Supports temporary working folder location changes.
+
+    Supports text expansion capabilities provided by base Context class.
+    """
 
     def __init__(self, parent: Context | None, **kwargs):
-        """
-        Construct action context.
+        """Construct action context.
 
-        :param parent: optional parent context for symbol inheritance
-        :param kwargs: initial symbols
+        Args:
+            parent: optional parent context for symbol inheritance
+            **kwargs: initial symbols
         """
         super().__init__(parent, **kwargs)
         self.initial_working_folder = Path(os.getcwd())
@@ -45,30 +48,32 @@ class ActionContext(Context):
         self.options = OPTIONS
 
     def __enter__(self) -> Self:
-        """
-        Context management protocol enter method.
+        """Context management protocol enter method.
 
         Called at the start when an ActionContext is used in a with block. Saves
         the working directory.
 
-        :return: Context object
+        Returns:
+            Context object
         """
         self.initial_working_folder = Path(os.getcwd())
         self.working_folder_changed = True
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
-        """
-        Context management protocol exit method.
+        """Context management protocol exit method.
 
         Called at the end when an ActionContext is used in a with block.
         Restores the original working directory if it was changed by calling
         working_folder() method.
 
-        :param exc_type: exception type
-        :param exc_val: exception value
-        :param exc_tb: exception traceback
-        :return: True to suppress an exception that occurred in the with block
+        Args:
+            exc_type: exception type
+            exc_val: exception value
+            exc_tb: exception traceback
+
+        Returns:
+            True to suppress an exception that occurred in the with block
         """
         if self.working_folder_changed:
             os.chdir(self.initial_working_folder)
@@ -76,14 +81,16 @@ class ActionContext(Context):
         return False
 
     def working_folder(self, folder: str | Path) -> Path:
-        """
-        Change the working folder.
+        """Change the working folder.
 
         Original working folder is restored by the contextmanager wrapped around
         the sub_context creation.
 
-        :param folder: new working folder
-        :return: previous working folder as pathlib.Path
+        Args:
+            folder: new working folder
+
+        Returns:
+            previous working folder as pathlib.Path
         """
         os.chdir(folder)
         self.working_folder_changed = True

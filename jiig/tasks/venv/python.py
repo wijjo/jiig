@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Virtual environment Python  execution task.
-"""
+"""Virtual environment Python  execution task."""
 
 import os
 
@@ -29,11 +27,11 @@ def python(
     runtime: jiig.Runtime,
     trailing_arguments: jiig.f.text(repeat=()),
 ):
-    """
-    Run python from virtual environment.
+    """Run python from virtual environment.
 
-    :param runtime: jiig Runtime API.
-    :param trailing_arguments: Trailing CLI arguments.
+    Args:
+        runtime: jiig Runtime API.
+        trailing_arguments: Trailing CLI arguments.
     """
     python_path = runtime.format_path('{venv_folder}/bin/python')
     env = {'PYTHONPATH': runtime.paths.library_path}

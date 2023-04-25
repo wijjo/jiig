@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Message formatting utilities.
-"""
+"""Message formatting utilities."""
 
 import os
 from typing import Any, Iterator
@@ -27,8 +25,7 @@ from .options import OPTIONS
 
 
 def format_message_lines(text: Any, *args, **kwargs) -> Iterator[str]:
-    """
-    Generate message line(s) and indented lines for relevant keyword data.
+    """Generate message line(s) and indented lines for relevant keyword data.
 
     Located in the "python" utility library module because of its special
     formatting applied to Python Exception objects.
@@ -38,10 +35,13 @@ def format_message_lines(text: Any, *args, **kwargs) -> Iterator[str]:
     - sub_tag: string to appear in square brackets next to the tag
     - string_file_name: file name to replace '<string>' exception location name
 
-    :param text: primary text
-    :param args: positional arguments to format as data lines
-    :param kwargs: keyword arguments to format as data lines
-    :return: line iterator
+    Args:
+        text: primary text
+        *args: positional arguments to format as data lines
+        **kwargs: keyword arguments to format as data lines
+
+    Returns:
+        line iterator
     """
     tag = kwargs.pop('tag', None)
     sub_tag = kwargs.pop('sub_tag', None)
@@ -94,8 +94,7 @@ def format_message_lines(text: Any, *args, **kwargs) -> Iterator[str]:
 
 
 def format_message_block(message: Any, *args, **kwargs) -> str:
-    """
-    Format multi-line message text with positional and keyword arguments.
+    """Format multi-line message text with positional and keyword arguments.
 
     Located in the "python" utility library module because of its special
     formatting applied to Python Exception objects.
@@ -103,9 +102,12 @@ def format_message_block(message: Any, *args, **kwargs) -> str:
     "tag" is a special string keyword argument that prefixes all lines with an
     uppercase tag string.
 
-    :param message: primary message text
-    :param args: positional arguments to format as data lines
-    :param kwargs: keyword arguments to format as data lines
-    :return: formatted multiline message text block
+    Args:
+        message: primary message text
+        *args: positional arguments to format as data lines
+        **kwargs: keyword arguments to format as data lines
+
+    Returns:
+        formatted multiline message text block
     """
     return os.linesep.join(format_message_lines(message, *args, **kwargs))

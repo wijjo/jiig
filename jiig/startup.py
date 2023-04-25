@@ -15,8 +15,13 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Startup main function for tools providing Tool data directly.
+"""Startup main functions.
+
+tool_main(): Called by pure Python tools with pre-populated Tool data.
+
+jiig_run(): Called by scripts using `jiig_run` as the "shebang" line
+interpreter. Tool data is populated based on configuration information embedded
+in the tool script.
 """
 
 import os
@@ -49,17 +54,21 @@ def tool_main(meta: ToolMetadata,
               is_jiig: bool = False,
               skip_venv_check: bool = False,
               ):
-    """
-    Start a Jiig tool application based on Python tool data objects.
+    """Start a Jiig tool application based on Python tool data objects.
 
-    :param meta: tool metadata
-    :param task_tree: task tree
-    :param options: tool options
-    :param paths: tool paths
-    :param custom: optional tool customizations
-    :param args: optional argument list (default: sys.argv[1:])
-    :param is_jiig: True when running jiigadmin
-    :param skip_venv_check: skip check for running in a Jiig virtual environment if True
+    This function is used by pure Python tools that can provide all the tool and
+    task data.
+
+    Args:
+        meta: tool metadata
+        task_tree: task tree
+        options: tool options
+        paths: tool paths
+        custom: optional tool customizations
+        args: optional argument list (default: sys.argv[1:])
+        is_jiig: True when running jiigadmin
+        skip_venv_check: skip check for running in a Jiig virtual environment if
+            True
     """
     tool = Tool(
         options=options or ToolOptions(),
@@ -82,15 +91,21 @@ def tool_main(meta: ToolMetadata,
 def jiigrun_main(jiig_source_root: Path = None,
                  skip_venv_check: bool = False,
                  ):
-    """
-    jiigrun script main.
+    """jiigrun script main.
+
+    Called by tool scripts having "jiigrun" as the "shebang" line interpreter.
+    The script's embedded configuration serves as the basis for generating tool
+    runtime data.
 
     Checking for a virtual environment is optional, because when Jiig is
     installed it shouldn't require it, and a virtual environment may be provided
     by the user.
 
-    :param jiig_source_root: optional source root provided by source tree bin/jiigrun
-    :param skip_venv_check: skip check for running in a Jiig virtual environment if True
+    Args:
+        jiig_source_root: optional source root provided by source tree
+            bin/jiigrun
+        skip_venv_check: skip check for running in a Jiig virtual environment if
+            True
     """
     runner_args = sys.argv[:2]
     cli_args = sys.argv[2:]

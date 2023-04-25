@@ -15,8 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Persistent alias management.
+"""Persistent alias management.
 
 See README.md for the design rationale.
 
@@ -111,19 +110,19 @@ class Alias:
 
     @property
     def command_string(self) -> str:
-        """
-        Full shell command string.
+        """Full shell command string.
 
-        :return: shell-quoted command string
+        Returns:
+            shell-quoted command string
         """
         return shell_command_string(*self.command)
 
     @property
     def short_name(self) -> str:
-        """
-        Shortened alias name.
+        """Shortened alias name.
 
-        :return: shortened alias name
+        Returns:
+            shortened alias name
         """
         if self._short_name is None:
             self._short_name = shrink_alias_name(self.name)
@@ -131,38 +130,40 @@ class Alias:
 
     @property
     def label(self) -> str:
-        """
-        Alias label.
+        """Alias label.
 
-        :return: alias label
+        Returns:
+            alias label
         """
         return os.path.basename(self.name)
 
     @property
     def path(self) -> str | None:
-        """
-        Alias folder path.
+        """Alias folder path.
 
-        :return: alias folder path
+        Returns:
+            alias folder path
         """
         return os.path.dirname(self.name) or None
 
     @property
     def short_path(self) -> str | None:
-        """
-        Shortened alias folder path.
+        """Shortened alias folder path.
 
-        :return: shortened alias folder path
+        Returns:
+            shortened alias folder path
         """
         return os.path.dirname(self.short_name) or None
 
 
 def is_alias_name(name: str | Path) -> bool:
-    """
-    Check if name is an alias.
+    """Check if name is an alias.
 
-    :param name: name to check
-    :return: True if it is an alias
+    Args:
+        name: name to check
+
+    Returns:
+        True if it is an alias
     """
     # If the name is a filesystem object, then it isn't an alias.
     if Path(name).exists():
@@ -173,17 +174,21 @@ def is_alias_name(name: str | Path) -> bool:
 def expand_alias_name(short_name: str,
                       checked: bool = False,
                       ) -> str | None:
-    """
-    Expand scoped alias name.
+    """Expand scoped alias name.
 
     Validation is not strict, and bad paths may be accepted.
 
     The current implementation is inefficient and has minimal validation.
 
-    :param short_name: short alias name to expand
-    :param checked: abort instead of raising exception
-    :return: expanded name or None if it isn't a valid alias name
-    :raise ValueError: if the alias name is bad
+    Args:
+        short_name: short alias name to expand
+        checked: abort instead of raising exception
+
+    Returns:
+        expanded name or None if it isn't a valid alias name
+
+    Raises:
+        ValueError: if the alias name is bad
     """
     def _error(text: str):
         if checked:
@@ -213,13 +218,15 @@ def expand_alias_name(short_name: str,
 
 
 def shrink_alias_name(long_name: str) -> str:
-    """
-    Shrink paths using '.', '..', or '~', whenever possible.
+    """Shrink paths using '.', '..', or '~', whenever possible.
 
     The current implementation is inefficient and has minimal validation.
 
-    :param long_name: long alias name to shrink
-    :return: shrunken name
+    Args:
+        long_name: long alias name to shrink
+
+    Returns:
+        shrunken name
     """
     last_slash_pos = long_name.rfind(os.path.sep)
     if last_slash_pos == -1:
@@ -236,8 +243,7 @@ def shrink_alias_name(long_name: str) -> str:
 
 
 class AliasCatalog:
-    """
-    Manages and provides access to a tool->alias->arguments map.
+    """Manages and provides access to a tool->alias->arguments map.
 
     It is not quiet. I.e. it validates read and write operations and displays
     errors as appropriate.
@@ -247,11 +253,11 @@ class AliasCatalog:
     """
 
     def __init__(self, tool_name: str, catalog_path: str | Path):
-        """
-        AliasCatalog constructor.
+        """AliasCatalog constructor.
 
-        :param tool_name: tool name
-        :param catalog_path:
+        Args:
+            tool_name: tool name
+            catalog_path
         """
         self.tool_name = tool_name
         self.catalog_path = catalog_path
@@ -270,23 +276,25 @@ class AliasCatalog:
         return self.catalog
 
     def iterate_aliases(self) -> Iterator[Alias]:
-        """
-        Get all locations/aliases for current tool.
+        """Get all locations/aliases for current tool.
 
-        :return: Alias object iterator
+        Returns:
+            Alias object iterator
         """
         if not self.sorted:
             self._sort_catalog()
         return self._iterate_aliases()
 
     def get_alias(self, alias_name: str) -> Alias | None:
-        """
-        Get alias by name.
+        """Get alias by name.
 
         Expand optional path that may precede the name.
 
-        :param alias_name: alias name, possibly preceded by a path
-        :return: alias data if found or None if not
+        Args:
+            alias_name: alias name, possibly preceded by a path
+
+        Returns:
+            alias data if found or None if not
         """
         full_name = expand_alias_name(alias_name, checked=True)
         tool_alias_map = self.catalog.get(self.tool_name)
@@ -328,12 +336,12 @@ class AliasCatalog:
                      alias_name: str,
                      command: Iterable[str],
                      description: str = None):
-        """
-        Create a new alias.
+        """Create a new alias.
 
-        :param alias_name: name of alias to create
-        :param command: command arguments for alias (required)
-        :param description: description of alias, e.g. for help screen
+        Args:
+            alias_name: name of alias to create
+            command: command arguments for alias (required)
+            description: description of alias, e.g. for help screen
         """
         full_name = expand_alias_name(alias_name, checked=True)
         if not list(command):
@@ -356,12 +364,12 @@ class AliasCatalog:
                      alias_name: str,
                      command: Iterable[str] = None,
                      description: str = None):
-        """
-        Update an existing alias.
+        """Update an existing alias.
 
-        :param alias_name: name of alias to update
-        :param command: command arguments for alias (optional, or not updated)
-        :param description: description of alias (optional, or not updated)
+        Args:
+            alias_name: name of alias to update
+            command: command arguments for alias (optional, or not updated)
+            description: description of alias (optional, or not updated)
         """
         full_name = expand_alias_name(alias_name, checked=True)
         if command is not None and not list(command):
@@ -386,10 +394,10 @@ class AliasCatalog:
         self.modified = True
 
     def delete_alias(self, alias_name: str):
-        """
-        Delete an alias by name after expanding any preceding path.
+        """Delete an alias by name after expanding any preceding path.
 
-        :param alias_name: name of alias to delete
+        Args:
+            alias_name: name of alias to delete
         """
         full_name = expand_alias_name(alias_name, checked=True)
         tool_alias_map = self.catalog.get(self.tool_name)
@@ -402,13 +410,13 @@ class AliasCatalog:
         self.modified = True
 
     def rename_alias(self, alias_name: str, alias_name_new: str):
-        """
-        Rename an alias.
+        """Rename an alias.
 
         Applies to all locations for alias.
 
-        :param alias_name: name of alias to rename
-        :param alias_name_new: new target alias name
+        Args:
+            alias_name: name of alias to rename
+            alias_name_new: new target alias name
         """
         full_name = expand_alias_name(alias_name, checked=True)
         full_name_new = expand_alias_name(alias_name_new, checked=True)
@@ -428,11 +436,13 @@ class AliasCatalog:
         self.modified = True
 
     def _iterate_aliases(self, tool_name: str = None) -> Iterator[Alias]:
-        """
-        Get all locations/aliases for current or specified tool.
+        """Get all locations/aliases for current or specified tool.
 
-        :param tool_name: tool name (default is current tool)
-        :return: Alias object iterator
+        Args:
+            tool_name: tool name (default is current tool)
+
+        Returns:
+            Alias object iterator
         """
         tool_alias_map = self.catalog.get(tool_name or self.tool_name)
         if tool_alias_map:
@@ -468,8 +478,7 @@ class AliasCatalog:
 def open_alias_catalog(tool_name: str,
                        catalog_path: str | Path,
                        ) -> Iterator[AliasCatalog]:
-    """
-    Opens an alias catalog.
+    """Opens an alias catalog.
 
     It is not quiet. I.e. it validates read and write operations and displays
     errors as appropriate.
@@ -477,9 +486,12 @@ def open_alias_catalog(tool_name: str,
     It can be used as a context manager for a `with` block with automatic
     flushing of changes to an aliases file.
 
-    :param tool_name: tool name for isolating applicable aliases from the catalog
-    :param catalog_path: path to catalog file (defaults to default catalog path)
-    :return: open catalog context manager
+    Args:
+        tool_name: tool name for isolating applicable aliases from the catalog
+        catalog_path: path to catalog file (defaults to default catalog path)
+
+    Returns:
+        open catalog context manager
     """
     with AliasCatalog(tool_name, catalog_path) as catalog:
         yield catalog

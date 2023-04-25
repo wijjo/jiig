@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Pdoc3 documentation server task.
-"""
+"""Pdoc3 documentation server task."""
 
 import jiig
 
@@ -28,10 +26,10 @@ def server(
     runtime: jiig.Runtime,
     port: jiig.f.integer(),
 ):
-    """
-    Use Pdoc3 to serve documentation using HTTP.
+    """Use Pdoc3 to serve documentation using HTTP.
 
-    :param runtime: Jiig runtime API.
-    :param port: HTTP server port (default: 8080).
+    Args:
+        runtime: Jiig runtime API.
+        port: HTTP server port (default: 8080).
     """
     raise NotImplementedError

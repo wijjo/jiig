@@ -15,8 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-General-purpose (independent) utilities.
+"""General-purpose (independent) utilities.
 
 Make sure that any other utility module can import this module without circular
 import references. I.e. DO NOT import other utility modules here.
@@ -37,16 +36,18 @@ def format_table(*rows: Iterable[Any],
                  display_empty: bool = False,
                  max_width: int = None
                  ) -> Iterator[str]:
-    """
-    Generate tabular output from input rows with optional headings.
+    """Generate tabular output from input rows with optional headings.
 
-    :param rows: row data sequences
-    :param headers: column header strings
-    :param formats: column format strings
-    :param display_empty: display headers when there are no rows
-    :param max_width: optional maximum full line width used for wrapping the
-                      last column as needed
-    :return: formatted line generator
+    Args:
+        *rows: row data sequences
+        headers: column header strings
+        formats: column format strings
+        display_empty: display headers when there are no rows
+        max_width: optional maximum full line width used for wrapping the last
+            column as needed
+
+    Returns:
+        formatted line generator
     """
     widths: list[int] = []
     format_list = list(formats) if formats is not None else []

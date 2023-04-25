@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Alias set task.
-"""
+"""Alias set task."""
 
 import jiig
 
@@ -30,14 +28,14 @@ def set_(
     command: jiig.f.text(),
     command_arguments: jiig.f.text(repeat=(1, None)),
 ):
-    """
-    Create or update alias.
+    """Create or update alias.
 
-    :param runtime: jiig Runtime API.
-    :param description: New alias description.
-    :param alias: Name of alias to create or update.
-    :param command: Aliased command name.
-    :param command_arguments: Aliased command arguments.
+    Args:
+        runtime: jiig Runtime API.
+        description: New alias description.
+        alias: Name of alias to create or update.
+        command: Aliased command name.
+        command_arguments: Aliased command arguments.
     """
     with runtime.open_alias_catalog() as catalog:
         if catalog.get_alias(alias):

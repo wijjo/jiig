@@ -53,12 +53,12 @@ class CLICommand:
                  description: str,
                  visibility: int,
                  ):
-        """
-        Command constructor.
+        """Command constructor.
 
-        :param name: command name
-        :param description: command description
-        :param visibility: 0=normal, 1=secondary, 2=hidden
+        Args:
+            name: command name
+            description: command description
+            visibility: 0=normal, 1=secondary, 2=hidden
         """
         self.name = name
         self.description = description

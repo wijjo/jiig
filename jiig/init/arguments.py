@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Runtime arguments, e.g. for CLI.
-"""
+"""Runtime arguments, e.g. for CLI."""
 
 import sys
 from dataclasses import dataclass
@@ -38,12 +36,14 @@ class RuntimeArguments:
 def prepare_runtime_arguments(runner_args: list[str] | None,
                               cli_args: list[str] | None,
                               ) -> RuntimeArguments:
-    """
-    Prepare runtime arguments.
+    """Prepare runtime arguments.
 
-    :param runner_args: runner arguments
-    :param cli_args: CLI arguments
-    :return: RuntimeArguments instance
+    Args:
+        runner_args: runner arguments
+        cli_args: CLI arguments
+
+    Returns:
+        RuntimeArguments instance
     """
     # Filter out leading '--' used when restarting in virtual environment.
     if runner_args is None:
@@ -62,14 +62,17 @@ def expand_arguments(arguments: list[str],
                      paths: ToolPaths,
                      default_command: str,
                      ) -> list[str]:
-    """
-    Expand alias as needed to produce final argument list.
+    """Expand alias as needed to produce final argument list.
 
-    :param arguments: argument list, possibly preceded by alias
-    :param tool_name: tool name
-    :param paths: runtime paths
-    :param default_command: default command name used when no arguments are provided
-    :return: expanded argument list
+    Args:
+        arguments: argument list, possibly preceded by alias
+        tool_name: tool name
+        paths: runtime paths
+        default_command: default command name used when no arguments are
+            provided
+
+    Returns:
+        expanded argument list
     """
     expanded_arguments: list[str] = []
     if arguments:

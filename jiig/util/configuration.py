@@ -27,18 +27,23 @@ from .collections import AttributeDictionary
 def read_toml_configuration(config_path: Path | str,
                             ignore_decode_error: bool = False,
                             ) -> AttributeDictionary | None:
-    """
-    Read TOML format configuration file.
+    """Read TOML format configuration file.
 
     Expect configuration data to produce a dictionary.
 
-    :param config_path: configuration file path
-    :param ignore_decode_error: ignore decode errors and return None if True
-    :return: dictionary data or None if ignore_decode_error is True and decoding failed
-    :raise TypeError: if data is not a dictionary
-    :raise ValueError: if decoding fails
-    :raise IOError: if a problem occurs while opening or reading the file
-    :raise OSError: if an OS error occurs while accessing the file
+    Args:
+        config_path: configuration file path
+        ignore_decode_error: ignore decode errors and return None if True
+
+    Returns:
+        dictionary data or None if ignore_decode_error is True and decoding
+        failed
+
+    Raises:
+        TypeError: if data is not a dictionary
+        ValueError: if decoding fails
+        IOError: if a problem occurs while opening or reading the file
+        OSError: if an OS error occurs while accessing the file
     """
     with open(config_path, 'rb') as config_file:
         try:
@@ -58,19 +63,24 @@ def read_json_configuration(config_path: Path | str,
                             skip_file_header: bool = False,
                             ignore_decode_error: bool = False,
                             ) -> AttributeDictionary | None:
-    """
-    Read JSON format configuration file.
+    """Read JSON format configuration file.
 
     Expect configuration data to produce a dictionary.
 
-    :param config_path: configuration file path
-    :param skip_file_header: skip to first line that starts with "{"
-    :param ignore_decode_error: ignore decode errors and return None if True
-    :return: dictionary data or None if ignore_decode_error is True and decoding failed
-    :raise TypeError: if data is not a dictionary
-    :raise ValueError: if decoding fails
-    :raise IOError: if a problem occurs while opening or reading the file
-    :raise OSError: if an OS error occurs while accessing the file
+    Args:
+        config_path: configuration file path
+        skip_file_header: skip to first line that starts with "{"
+        ignore_decode_error: ignore decode errors and return None if True
+
+    Returns:
+        dictionary data or None if ignore_decode_error is True and decoding
+        failed
+
+    Raises:
+        TypeError: if data is not a dictionary
+        ValueError: if decoding fails
+        IOError: if a problem occurs while opening or reading the file
+        OSError: if an OS error occurs while accessing the file
     """
     with open(config_path, encoding='utf-8') as config_file:
         lines = config_file.readlines()

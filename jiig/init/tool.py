@@ -94,11 +94,13 @@ def _read_json_configuration(config_path: Path,
 
 
 def read_script_configuration(script_path: Path) -> AttributeDictionary:
-    """
-    Read TOML format configuration data from script or separate file.
+    """Read TOML format configuration data from script or separate file.
 
-    :param script_path: script path
-    :return: configuration data
+    Args:
+        script_path: script path
+
+    Returns:
+        configuration data
     """
     # First try parsing the script for TOML or JSON data.
     config_data = _read_toml_configuration(script_path,
@@ -128,13 +130,15 @@ def load_tool_configuration(script_path: Path,
                             is_jiig: bool,
                             jiig_source_root: Path | None,
                             ) -> Tool:
-    """
-    Load tool.
+    """Load tool.
 
-    :param script_path: tool script path
-    :param is_jiig: running Jiig tool if True
-    :param jiig_source_root: optional Jiig source root folder
-    :return: loaded Tool object
+    Args:
+        script_path: tool script path
+        is_jiig: running Jiig tool if True
+        jiig_source_root: optional Jiig source root folder
+
+    Returns:
+        loaded Tool object
     """
     # TOML configuration data can either be embedded in the script or in a
     # separate file.

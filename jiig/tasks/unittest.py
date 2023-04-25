@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Jiig task that can run unit tests.
-"""
+"""Jiig task that can run unit tests."""
 
 import os
 import unittest
@@ -35,11 +33,11 @@ def unittest(
     runtime: jiig.Runtime,
     tests: jiig.fields.text(repeat=()),
 ):
-    """
-    Run unit tests using Python standard library unittest module.
+    """Run unit tests using Python standard library unittest module.
 
-    :param runtime: jiig Runtime API.
-    :param tests: Test names to run, or all tests if omitted.
+    Args:
+        runtime: jiig Runtime API.
+        tests: Test names to run, or all tests if omitted.
     """
     check_folder_exists(runtime.paths.test)
     module_map = {

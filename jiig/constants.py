@@ -20,22 +20,41 @@
 import os
 from pathlib import Path
 
+#: User home folder path.
 HOME_FOLDER_PATH = Path(os.environ['HOME'])
+#: Jiig root folder path.
 JIIG_ROOT = Path(__file__).parent.parent
+#: Default Jiig TOML format configuration file name.
 JIIG_TOML_CONFIGURATION_NAME = 'jiig.toml'
+#: Default Jiig JSON format configuration file name.
 JIIG_JSON_CONFIGURATION_NAME = 'jiig.json'
+#: Root folder path containing generated virtual environments.
 JIIG_VENV_ROOT = HOME_FOLDER_PATH / '.jiig-venv'
+#: Default tool author string.
 DEFAULT_AUTHOR = '(unknown author)'
+#: Default tool copyright string.
 DEFAULT_COPYRIGHT = '(unknown copyright)'
+#: Default tool email string.
 DEFAULT_EMAIL = ''
+#: Default tool description string.
 DEFAULT_TOOL_DESCRIPTION = '(no tool description)'
+#: Default tool URL.
 DEFAULT_URL = ''
+#: Default tool version number.
 DEFAULT_VERSION = '(unknown version)'
+#: Default folder path for generated documentation.
 DEFAULT_DOC_FOLDER = Path('doc')
+#: Default test folder path.
 DEFAULT_TEST_FOLDER = Path('tests')
+#: Default file path for Jiig aliases.
 DEFAULT_ALIASES_PATH = HOME_FOLDER_PATH / '.jiig-aliases'
+#: Default build folder path.
 DEFAULT_BUILD_FOLDER = Path('build')
+#: Default name for root (top level) task.
 DEFAULT_ROOT_TASK_NAME = '(root)'
+#: Default help label for sub-tasks.
 SUB_TASK_LABEL = 'SUB_TASK'
+#: Default help label for top task.
 TOP_TASK_LABEL = 'TASK'
+#: Default argparse dest name for tasks.
 TOP_TASK_DEST_NAME = 'TASK'

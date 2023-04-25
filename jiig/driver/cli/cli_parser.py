@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-CLI parser based on argparse standard library module.
-"""
+"""CLI parser based on argparse standard library module."""
 
 import argparse
 import os
@@ -64,11 +62,11 @@ class _ArgumentParser(argparse.ArgumentParser):
             self._abort('ArgumentParser', exc)
 
     def add_subparsers(self, *args, **kwargs):
-        """
-        Overridden for logging and exception handling.
+        """Overridden for logging and exception handling.
 
-        :param args: argparse.ArgumentParser.add_subparsers() positional arguments
-        :param kwargs: argparse.ArgumentParser.add_subparsers() keyword arguments
+        Args:
+            *args: argparse.ArgumentParser.add_subparsers() positional arguments
+            **kwargs: argparse.ArgumentParser.add_subparsers() keyword arguments
         """
         self.dump('add_subparsers', *args, **kwargs)
         try:
@@ -99,11 +97,11 @@ class _ArgumentParser(argparse.ArgumentParser):
             self._abort('add_subparsers', exc, *args, **kwargs)
 
     def add_argument(self, *args, **kwargs):
-        """
-        Overridden for logging and exception handling.
+        """Overridden for logging and exception handling.
 
-        :param args: argparse.ArgumentParser.add_argument() positional arguments
-        :param kwargs: argparse.ArgumentParser.add_argument() keyword arguments
+        Args:
+            *args: argparse.ArgumentParser.add_argument() positional arguments
+            **kwargs: argparse.ArgumentParser.add_argument() keyword arguments
         """
         # Remove any keywords that argparse does not handle.
         if 'common_footnotes' in kwargs:
@@ -120,12 +118,12 @@ class _ArgumentParser(argparse.ArgumentParser):
                    namespace: argparse.Namespace = None,
                    raise_exceptions: bool = False
                    ) -> argparse.Namespace:
-        """
-        Overridden for logging and exception handling.
+        """Overridden for logging and exception handling.
 
-        :param args: command line arguments
-        :param namespace: incoming namespace
-        :param raise_exceptions: raise exceptions if True
+        Args:
+            args: command line arguments
+            namespace: incoming namespace
+            raise_exceptions: raise exceptions if True
         """
         if self.debug:
             self.dump('parse_args',
@@ -143,12 +141,12 @@ class _ArgumentParser(argparse.ArgumentParser):
                          namespace: argparse.Namespace = None,
                          raise_exceptions: bool = False
                          ) -> tuple[argparse.Namespace, list[str]]:
-        """
-        Overridden for logging and exception handling.
+        """Overridden for logging and exception handling.
 
-        :param args: command line arguments
-        :param namespace: incoming namespace
-        :param raise_exceptions: raise exceptions if True
+        Args:
+            args: command line arguments
+            namespace: incoming namespace
+            raise_exceptions: raise exceptions if True
         """
         if self.debug:
             self.dump('parse_known_args',
@@ -162,11 +160,13 @@ class _ArgumentParser(argparse.ArgumentParser):
             return super().parse_known_args(args=args, namespace=namespace)
 
     def error(self, message: str):
-        """
-        Error handling.
+        """Error handling.
 
-        :param message: error message
-        :raise CLIParserError: if any error occurs
+        Args:
+            message: error message
+
+        Raises:
+            CLIParserError: if any error occurs
         """
         if self.raise_exceptions:
             raise CLIParserError(message)
@@ -224,13 +224,15 @@ class Parser:
                   raise_exceptions: bool,
                   options: Sequence[CLIOptionArgument] = None,
                   ) -> tuple[object, list[str]]:
-        """
-        Pre-parse the command line.
+        """Pre-parse the command line.
 
-        :param command_line_arguments: command line argument list
-        :param raise_exceptions: raise exceptions if True
-        :param options: optional list of options to use for pre-parsing
-        :return: (argument data attributes, trailing argument list) tuple
+        Args:
+            command_line_arguments: command line argument list
+            raise_exceptions: raise exceptions if True
+            options: optional list of options to use for pre-parsing
+
+        Returns:
+            (argument data attributes, trailing argument list) tuple
         """
         # Don't use the primary argparse parser, since it may be initialized later.
         pre_parser = _ArgumentParser()
@@ -249,16 +251,18 @@ class Parser:
               capture_trailing: bool = False,
               raise_exceptions: bool = False,
               ) -> tuple[object, list[str], list[str]]:
-        """
-        Parse the command line.
+        """Parse the command line.
 
-        :param command_line_arguments: command line argument list
-        :param name: program name
-        :param description: program description
-        :param root_command: root command
-        :param capture_trailing: capture trailing arguments if True
-        :param raise_exceptions: raise exceptions if True
-        :return: (argument data attributes, command names, trailing arguments) tuple
+        Args:
+            command_line_arguments: command line argument list
+            name: program name
+            description: program description
+            root_command: root command
+            capture_trailing: capture trailing arguments if True
+            raise_exceptions: raise exceptions if True
+
+        Returns:
+            (argument data attributes, command names, trailing arguments) tuple
         """
         parser = _ArgumentParser(name, description)
         parser.dump('parse ArgumentParser', name=name, description=description)

@@ -15,9 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Jiig task decorator and discovery.
-"""
+"""Jiig task decorator and classes for task discovery."""
+
 import os
 import sys
 import textwrap
@@ -66,8 +65,7 @@ class _BaseTask:
 
 
 class Task(_BaseTask):
-    """
-    Task specification.
+    """Task specification.
 
     For clarity, requires only keyword arguments.
     """
@@ -81,17 +79,18 @@ class Task(_BaseTask):
                  footnotes: NotesDict | None = None,
                  **hints,
                  ):
-        """
-        Task constructor.
+        """Task constructor.
 
-        :param name: task name
-        :param impl: optional Task implementation reference (default: the name
-                     is a module in the containing TaskGroup package)
-        :param visibility: 0=normal, 1=secondary, 2=hidden
-        :param description: optional description
-        :param notes: optional notes as string or string list
-        :param footnotes: optional footnotes dictionary
-        :param hints: optional driver hints (avoid collisions with other keywords)
+        Args:
+            name: task name
+            impl: optional Task implementation reference (default: the name is a
+                module in the containing TaskGroup package)
+            visibility: 0=normal, 1=secondary, 2=hidden
+            description: optional description
+            notes: optional notes as string or string list
+            footnotes: optional footnotes dictionary
+            **hints: optional driver hints (avoid collisions with other
+                keywords)
         """
         self.name = name
         self.visibility = visibility
@@ -102,12 +101,14 @@ class Task(_BaseTask):
         self.hints: dict = hints
 
     def copy(self, visibility: int = None, impl: TaskReference | None = None) -> Self:
-        """
-        Copy this task.
+        """Copy this task.
 
-        :param visibility: optional override visibility
-        :param impl: optional override implementation reference
-        :return: task copy
+        Args:
+            visibility: optional override visibility
+            impl: optional override implementation reference
+
+        Returns:
+            task copy
         """
         task_copy = Task(
             name=self.name,
@@ -122,12 +123,14 @@ class Task(_BaseTask):
 
     @classmethod
     def from_raw_data(cls, name: str, raw_data: Any) -> Self:
-        """
-        Task creation based in raw input data (should be dictionary).
+        """Task creation based in raw input data (should be dictionary).
 
-        :param name: task name
-        :param raw_data: raw input data
-        :return: Task object
+        Args:
+            name: task name
+            raw_data: raw input data
+
+        Returns:
+            Task object
         """
         converter = _TaskTreeElementConverter(raw_data)
         return cls(
@@ -141,11 +144,13 @@ class Task(_BaseTask):
          )
 
     def dump(self, indent: str = None) -> str:
-        """
-        Format data as text block for logging.
+        """Format data as text block for logging.
 
-        :param indent: indent string if nested
-        :return: formatted text block
+        Args:
+            indent: indent string if nested
+
+        Returns:
+            formatted text block
         """
         return self.format_dump(
             self.name,
@@ -159,8 +164,7 @@ class Task(_BaseTask):
 
 
 class TaskGroup(_BaseTask):
-    """
-    Group of tasks and or nested task groups.
+    """Group of tasks and or nested task groups.
 
     For clarity, requires only keyword arguments.
     """
@@ -175,21 +179,23 @@ class TaskGroup(_BaseTask):
                  footnotes: NotesDict | None = None,
                  **hints,
                  ):
-        """
-        TaskGroup constructor.
+        """TaskGroup constructor.
 
         Task group description is required because there is nowhere else to get
         it. There is no associated function or object with a doc string.
 
-        :param name: task group name
-        :param sub_tasks: nested sub-tasks and or sub-groups
-        :param package: optional package containing task modules - allows simple
-                        name task implementation references
-        :param description: optional description (default: task package description)
-        :param visibility: 0=normal, 1=secondary, 2=hidden
-        :param notes: optional notes as string or string list
-        :param footnotes: optional footnotes dictionary
-        :param hints: optional driver hints (avoid collisions with other keywords)
+        Args:
+            name: task group name
+            sub_tasks: nested sub-tasks and or sub-groups
+            package: optional package containing task modules - allows simple
+                name task implementation references
+            description: optional description (default: task package
+                description)
+            visibility: 0=normal, 1=secondary, 2=hidden
+            notes: optional notes as string or string list
+            footnotes: optional footnotes dictionary
+            **hints: optional driver hints (avoid collisions with other
+                keywords)
         """
         self.name = name
         self.visibility = visibility
@@ -205,11 +211,13 @@ class TaskGroup(_BaseTask):
         self.hints: dict = hints
 
     def copy(self, visibility: int = None) -> Self:
-        """
-        Copy this task group.
+        """Copy this task group.
 
-        :param visibility: optional visibility override
-        :return: task group copy
+        Args:
+            visibility: optional visibility override
+
+        Returns:
+            task group copy
         """
         group_copy = TaskGroup(
             name=self.name,
@@ -227,14 +235,16 @@ class TaskGroup(_BaseTask):
 
     @classmethod
     def from_raw_data(cls, name: str, raw_data: Any) -> Self:
-        """
-        TaskGroup creation based in raw input data (should be dictionary).
+        """TaskGroup creation based in raw input data (should be dictionary).
 
         Recursively creates contained TaskGroup and Task objects.
 
-        :param name: task group name
-        :param raw_data: raw input data
-        :return: TaskGroup object
+        Args:
+            name: task group name
+            raw_data: raw input data
+
+        Returns:
+            TaskGroup object
         """
         converter = _TaskTreeElementConverter(raw_data)
         return cls(
@@ -249,11 +259,13 @@ class TaskGroup(_BaseTask):
         )
 
     def dump(self, indent: str = None) -> str:
-        """
-        Format data as text block for logging.
+        """Format data as text block for logging.
 
-        :param indent: indent string if nested
-        :return: formatted text block
+        Args:
+            indent: indent string if nested
+
+        Returns:
+            formatted text block
         """
         if indent is None:
             indent = ''
@@ -278,8 +290,7 @@ class TaskGroup(_BaseTask):
 
 
 class TaskTree(TaskGroup):
-    """
-    Application task tree.
+    """Application task tree.
 
     For clarity, requires only keyword arguments.
     """
@@ -289,13 +300,13 @@ class TaskTree(TaskGroup):
                  sub_tasks: Sequence[Task | TaskGroup],
                  package: ModuleReference | None = None,
                  ):
-        """
-        TaskGroup constructor.
+        """TaskGroup constructor.
 
-        :param name: task tree name
-        :param sub_tasks: nested sub-tasks and or sub-groups
-        :param package: optional package containing top level task modules -
-                        allows simple name task implementation references
+        Args:
+            name: task tree name
+            sub_tasks: nested sub-tasks and or sub-groups
+            package: optional package containing top level task modules - allows
+                simple name task implementation references
         """
         super().__init__(name=name,
                          sub_tasks=sub_tasks,
@@ -304,11 +315,13 @@ class TaskTree(TaskGroup):
                          visibility=2)
 
     def copy(self, visibility: int = None) -> Self:
-        """
-        Copy this task group.
+        """Copy this task group.
 
-        :param visibility: optional visibility override
-        :return: task group copy
+        Args:
+            visibility: optional visibility override
+
+        Returns:
+            task group copy
         """
         tree_copy = TaskTree(
             name=self.name,
@@ -321,14 +334,16 @@ class TaskTree(TaskGroup):
 
     @classmethod
     def from_raw_data(cls, name: str, raw_data: Any) -> Self:
-        """
-        TaskTree creation based in raw input data (should be dictionary).
+        """TaskTree creation based in raw input data (should be dictionary).
 
         Recursively creates contained TaskGroup and Task objects.
 
-        :param name: task tree name
-        :param raw_data: raw input data
-        :return: TaskTree object
+        Args:
+            name: task tree name
+            raw_data: raw input data
+
+        Returns:
+            TaskTree object
         """
         converter = _TaskTreeElementConverter(raw_data)
         task_tree = cls(
@@ -342,10 +357,10 @@ class TaskTree(TaskGroup):
         return task_tree
 
     def log_dump_all(self, heading: str = None):
-        """
-        Dump task tree to log, e.g. console.
+        """Dump task tree to log, e.g. console.
 
-        :param heading: optional heading text
+        Args:
+            heading: optional heading text
         """
         log_heading(heading or 'task tree', is_error=True)
         log_message(self.dump(), is_error=True)
@@ -374,14 +389,17 @@ def task(
     notes: NotesSpec = None,
     footnotes: NotesDict = None,
 ) -> TaskFunction:
-    """
-    Task function decorator.
+    """Task function decorator.
 
-    :param naked_task_function: not used explicitly, only non-None for naked @task functions
-    :param description: task description (default: parsed from doc string)
-    :param notes: optional note or notes text
-    :param footnotes: optional footnotes dictionary
-    :return: wrapper task function
+    Args:
+        naked_task_function: not used explicitly, only non-None for naked @task
+            functions
+        description: task description (default: parsed from doc string)
+        notes: optional note or notes text
+        footnotes: optional footnotes dictionary
+
+    Returns:
+        wrapper task function
     """
     if naked_task_function is None:
         # The decorator was called with parenthesized arguments.
@@ -466,10 +484,10 @@ class _TaskTreeElementConverter:
         return self.raw_data.get(name)
 
     def get_name(self) -> str:
-        """
-        Convert raw data to name, with handling of unnamed elements.
+        """Convert raw data to name, with handling of unnamed elements.
 
-        :return: name
+        Returns:
+            name
         """
         raw_data = self._get_raw_data('name')
         if not raw_data:
@@ -478,10 +496,10 @@ class _TaskTreeElementConverter:
         return str(raw_data)
 
     def get_description(self) -> str | None:
-        """
-        Convert raw data to description.
+        """Convert raw data to description.
 
-        :return: description or None
+        Returns:
+            description or None
         """
         raw_data = self._get_raw_data('description')
         if raw_data is None:
@@ -491,10 +509,10 @@ class _TaskTreeElementConverter:
         return raw_data
 
     def get_visibility(self) -> int:
-        """
-        Convert raw data to visibility.
+        """Convert raw data to visibility.
 
-        :return: visibility
+        Returns:
+            visibility
         """
         raw_data = self._get_raw_data('visibility')
         if raw_data is None:
@@ -505,10 +523,10 @@ class _TaskTreeElementConverter:
         return raw_data
 
     def get_notes(self) -> NotesList | None:
-        """
-        Convert raw data to notes.
+        """Convert raw data to notes.
 
-        :return: notes list or None
+        Returns:
+            notes list or None
         """
         raw_data = self._get_raw_data('notes')
         if raw_data is None:
@@ -522,10 +540,10 @@ class _TaskTreeElementConverter:
         return [str(raw_data)]
 
     def get_footnotes(self) -> NotesDict | None:
-        """
-        Convert raw data to footnotes.
+        """Convert raw data to footnotes.
 
-        :return: footnotes dictionary or None
+        Returns:
+            footnotes dictionary or None
         """
         raw_data = self._get_raw_data('footnotes')
         if raw_data is None:
@@ -539,10 +557,10 @@ class _TaskTreeElementConverter:
         return None
 
     def get_hints(self) -> dict:
-        """
-        Extract hints from raw data based on unused dictionary keys.
+        """Extract hints from raw data based on unused dictionary keys.
 
-        :return: hints dictionary
+        Returns:
+            hints dictionary
         """
         return {
             name: value
@@ -551,10 +569,10 @@ class _TaskTreeElementConverter:
         }
 
     def get_sub_tasks(self) -> list[Task | TaskGroup]:
-        """
-        Convert raw data to sub_tasks list.
+        """Convert raw data to sub_tasks list.
 
-        :return: sub-tasks list
+        Returns:
+            sub-tasks list
         """
         raw_data = self._get_raw_data('sub_tasks')
         if raw_data is None:
@@ -571,10 +589,10 @@ class _TaskTreeElementConverter:
         return sub_tasks
 
     def get_package(self) -> ModuleReference | None:
-        """
-        Convert raw data to package module reference.
+        """Convert raw data to package module reference.
 
-        :return: package module reference or None
+        Returns:
+            package module reference or None
         """
         raw_data = self._get_raw_data('package')
         if raw_data is None:
@@ -585,10 +603,10 @@ class _TaskTreeElementConverter:
         return raw_data
 
     def get_impl(self) -> TaskReference | None:
-        """
-        Convert raw data to task reference.
+        """Convert raw data to task reference.
 
-        :return: task reference or None
+        Returns:
+            task reference or None
         """
         raw_data = self._get_raw_data('impl')
         if raw_data is None:

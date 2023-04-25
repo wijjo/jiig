@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Pdoc3 PDF documentation generation task.
-"""
+"""Pdoc3 PDF documentation generation task."""
 
 import jiig
 
@@ -25,9 +23,9 @@ import jiig
 # noinspection PyUnusedLocal
 @jiig.task
 def pdf(runtime: jiig.Runtime):
-    """
-    Use Pdoc3 to build PDF format documentation.
+    """Use Pdoc3 to build PDF format documentation.
 
-    :param runtime: Jiig runtime API.
+    Args:
+        runtime: Jiig runtime API.
     """
     raise NotImplementedError

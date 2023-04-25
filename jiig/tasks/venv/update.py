@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Virtual environment update task.
-"""
+"""Virtual environment update task."""
 
 import jiig
 from jiig.util.python import update_virtual_environment
@@ -25,10 +23,10 @@ from jiig.util.python import update_virtual_environment
 
 @jiig.task
 def update(runtime: jiig.Runtime):
-    """
-    Update the tool virtual environment.
+    """Update the tool virtual environment.
 
-    :param runtime: jiig Runtime API.
+    Args:
+        runtime: jiig Runtime API.
     """
     runtime.heading(1, 'Update virtual environment packages.')
     update_virtual_environment(runtime.paths.venv, packages=runtime.meta.pip_packages)

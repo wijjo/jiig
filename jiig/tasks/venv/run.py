@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Virtual environment general command execution task.
-"""
+"""Virtual environment general command execution task."""
 
 import os
 
@@ -30,12 +28,12 @@ def run(
     command: jiig.f.text(),
     trailing_arguments: jiig.f.text(repeat=()),
 ):
-    """
-    Run miscellaneous command from virtual environment.
+    """Run miscellaneous command from virtual environment.
 
-    :param runtime: jiig Runtime API.
-    :param command: Virtual environment command.
-    :param trailing_arguments: Trailing CLI arguments.
+    Args:
+        runtime: jiig Runtime API.
+        command: Virtual environment command.
+        trailing_arguments: Trailing CLI arguments.
     """
     command_path = runtime.format_path(f'{{venv_folder}}/bin/{command}')
     if not os.path.isfile(command_path):

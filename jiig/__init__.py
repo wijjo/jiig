@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Jiig library.
-"""
+"""Jiig library."""
 
 # Top-level imports to allow task implementations to just import jiig. These
 # must have minimal dependencies in order to avoid inadvertent circular imports.

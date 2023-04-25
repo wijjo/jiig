@@ -15,19 +15,19 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-General-purpose text conversion.
-"""
+"""General-purpose text conversion."""
 
 from typing import Any
 
 
 def make_string(item: Any | None) -> str:
-    """
-    Coerce any value to a string with None becoming an empty string.
+    """Coerce any value to a string with None becoming an empty string.
 
-    :param item: item to convert
-    :return: converted string
+    Args:
+        item: item to convert
+
+    Returns:
+        converted string
     """
     if item is None:
         return ''

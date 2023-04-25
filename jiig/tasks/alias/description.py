@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Alias description task.
-"""
+"""Alias description task."""
 
 import jiig
 
@@ -28,12 +26,12 @@ def description_(
     alias: jiig.f.text(),
     description: jiig.f.text(),
 ):
-    """
-    Set alias description.
+    """Set alias description.
 
-    :param runtime: Jiig runtime API.
-    :param alias: Target alias name for description.
-    :param description: Alias description.
+    Args:
+        runtime: Jiig runtime API.
+        alias: Target alias name for description.
+        description: Alias description.
     """
     with runtime.open_alias_catalog() as catalog:
         description_text = ' '.join(description)

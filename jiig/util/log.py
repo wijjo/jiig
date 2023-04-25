@@ -36,12 +36,12 @@ class LogWriter:
     """Abstract base class for log writers."""
 
     def write_line(self, text: str, is_error: bool = False, extra_space: bool = False):
-        """
-        Write a log line.
+        """Write a log line.
 
-        :param text: line text
-        :param is_error: True if the line represents an error
-        :param extra_space: True to add extra space before and after the line
+        Args:
+            text: line text
+            is_error: True if the line represents an error
+            extra_space: True to add extra space before and after the line
         """
         raise NotImplementedError
 
@@ -50,12 +50,12 @@ class ConsoleLogWriter(LogWriter):
     """Log writer for stdout/stderr."""
 
     def write_line(self, text: str, is_error: bool = False, extra_space: bool = False):
-        """
-        Write a log line.
+        """Write a log line.
 
-        :param text: line text
-        :param is_error: True if the line represents an error
-        :param extra_space: True to add extra space before and after the line
+        Args:
+            text: line text
+            is_error: True if the line represents an error
+            extra_space: True to add extra space before and after the line
         """
         stream = sys.stderr if is_error else sys.stdout
         global LINES_WRITTEN
@@ -86,8 +86,7 @@ def set_log_writer(log_writer: LogWriter):
 
 
 def log_message(text: Any, *args, **kwargs):
-    """
-    Display message line(s) and indented lines for relevant keyword data.
+    """Display message line(s) and indented lines for relevant keyword data.
 
     Special keywords:
        tag                        prefix for all lines displayed in uppercase
@@ -100,9 +99,10 @@ def log_message(text: Any, *args, **kwargs):
        string_file_name           file name to replace <string> in exception output for exec'd file
        skip_non_source_frames     exclude non-source file frames if True
 
-    :param text: message(s) (can be sequence)
-    :param args: logged positional arguments
-    :param kwargs: logged keyword arguments + special keywords
+    Args:
+        text: message(s) (can be sequence)
+        *args: logged positional arguments
+        **kwargs: logged keyword arguments + special keywords
     """
     tag = kwargs.pop('tag', None)
     verbose = kwargs.pop('verbose', None)
@@ -166,12 +166,13 @@ def log_message(text: Any, *args, **kwargs):
 
 
 def abort(text: Any, *args, **kwargs):
-    """
-    Display, and in the future log, a fatal _error message (to stderr) and quit.
+    """Display, and in the future log, a fatal _error message (to stderr) and quit.
 
-    :param text: message(s) (can be sequence)
-    :param args: logged positional arguments
-    :param kwargs: logged keyword arguments + special keywords (see log_message())
+    Args:
+        text: message(s) (can be sequence)
+        *args: logged positional arguments
+        **kwargs: logged keyword arguments + special keywords (see
+            log_message())
     """
     skip = kwargs.pop('skip', 0)
     kwargs['tag'] = 'FATAL'
@@ -188,12 +189,13 @@ def abort(text: Any, *args, **kwargs):
 
 
 def log_warning(text: Any, *args, **kwargs):
-    """
-    Display, and in the future log, a warning message (to stderr).
+    """Display, and in the future log, a warning message (to stderr).
 
-    :param text: message(s) (can be sequence)
-    :param args: logged positional arguments
-    :param kwargs: logged keyword arguments + special keywords (see log_message())
+    Args:
+        text: message(s) (can be sequence)
+        *args: logged positional arguments
+        **kwargs: logged keyword arguments + special keywords (see
+            log_message())
     """
     kwargs['tag'] = 'WARNING'
     kwargs['is_error'] = True
@@ -201,12 +203,13 @@ def log_warning(text: Any, *args, **kwargs):
 
 
 def log_error(text: Any, *args, **kwargs):
-    """
-    Display, and in the future log, an _error message (to stderr).
+    """Display, and in the future log, an _error message (to stderr).
 
-    :param text: message(s) (can be sequence)
-    :param args: logged positional arguments
-    :param kwargs: logged keyword arguments + special keywords (see log_message())
+    Args:
+        text: message(s) (can be sequence)
+        *args: logged positional arguments
+        **kwargs: logged keyword arguments + special keywords (see
+            log_message())
     """
     kwargs['tag'] = 'ERROR'
     kwargs['is_error'] = True
@@ -218,13 +221,13 @@ def log_heading(heading: str,
                 is_error: bool = False,
                 compact: bool = False,
                 ):
-    """
-    Display, and in the future log, a heading message to delineate blocks.
+    """Display, and in the future log, a heading message to delineate blocks.
 
-    :param heading: heading text
-    :param level: heading level 0-n
-    :param is_error: log to stderr instead of stdout if True
-    :param compact: omit gap lines if True
+    Args:
+        heading: heading text
+        level: heading level 0-n
+        is_error: log to stderr instead of stdout if True
+        compact: omit gap lines if True
     """
     decoration = f'=====' if level <= 1 else f'---'
     if heading:
@@ -235,22 +238,22 @@ def log_heading(heading: str,
 
 
 def log_block_begin(level: int, heading: str):
-    """
-    Display, and in the future log, a heading message to delineate blocks.
+    """Display, and in the future log, a heading message to delineate blocks.
 
     For now it just calls log_heading().
 
-    :param level: block level 0-n
-    :param heading: heading text
+    Args:
+        level: block level 0-n
+        heading: heading text
     """
     log_heading(heading, level=level)
 
 
 def log_block_end(level: int):
-    """
-    Display, and in the future log, a message to delineate block endings.
+    """Display, and in the future log, a message to delineate block endings.
 
-    :param level: block level 0-n
+    Args:
+        level: block level 0-n
     """
     log_heading('', level=level)
 
@@ -259,83 +262,83 @@ class Logger:
     """A pre-configured logger, e.g. to add a sub-tag to every output line."""
 
     def __init__(self, sub_tag: str = None):
-        """
-        Logger constructor.
+        """Logger constructor.
 
-        :param sub_tag: optional sub-tag to add to tagged lines
+        Args:
+            sub_tag: optional sub-tag to add to tagged lines
         """
         self.sub_tag = sub_tag
 
     def error(self, text: Any, *args, **kwargs):
-        """
-        Display an error.
+        """Display an error.
 
-        :param text: message text
-        :param args: positional data arguments
-        :param kwargs: keywords data arguments
+        Args:
+            text: message text
+            *args: positional data arguments
+            **kwargs: keywords data arguments
         """
         log_error(text, *args, **kwargs, sub_tag=self.sub_tag)
 
     def warning(self, text: Any, *args, **kwargs):
-        """
-        Display a warning.
+        """Display a warning.
 
-        :param text: message text
-        :param args: positional data arguments
-        :param kwargs: keywords data arguments
+        Args:
+            text: message text
+            *args: positional data arguments
+            **kwargs: keywords data arguments
         """
         log_warning(text, *args, **kwargs, sub_tag=self.sub_tag)
 
     def message(self, text: Any, *args, **kwargs):
-        """
-        Display an informational message.
+        """Display an informational message.
 
         Checked for uniqueness so that a particular note only appears once.
 
-        :param text: message text
-        :param args: positional data arguments
-        :param kwargs: keywords data arguments
+        Args:
+            text: message text
+            *args: positional data arguments
+            **kwargs: keywords data arguments
         """
         log_message(text, *args, **kwargs, sub_tag=self.sub_tag)
 
     def abort(self, text: Any, *args, **kwargs):
-        """
-        Display a fatal error and exit.
+        """Display a fatal error and exit.
 
-        :param text: message text
-        :param args: positional data arguments
-        :param kwargs: keywords data arguments
+        Args:
+            text: message text
+            *args: positional data arguments
+            **kwargs: keywords data arguments
         """
         abort(text, *args, **kwargs, sub_tag=self.sub_tag)
 
     @staticmethod
     def heading(level: int, heading: str):
-        """
-        Display, and in the future log, a heading message to delineate blocks.
+        """Display, and in the future log, a heading message to delineate blocks.
 
-        :param level: heading level, 1-n
-        :param heading: heading text
+        Args:
+            level: heading level, 1-n
+            heading: heading text
         """
         log_heading(heading, level=level)
 
     @staticmethod
     def block_begin(level: int, heading: str):
-        """
-        Display, and in the future log, a heading message to delineate blocks.
+        """Display, and in the future log, a heading message to delineate blocks.
 
         For now it just calls log_heading().
 
-        :param level: heading level, 1-n
-        :param heading: heading text
+        Args:
+            level: heading level, 1-n
+            heading: heading text
         """
         log_block_begin(level, heading)
 
     @staticmethod
     def block_end(level: int):
-        """
-        Display, and in the future log, a message to delineate block endings.
+        """Display, and in the future log, a message to delineate block endings.
 
-        :param level: heading level, 1-n
+        Args:
+            level: heading level, 1-n
         """
         log_block_end(level)
 
@@ -347,13 +350,14 @@ class TopicLogger:
                  delayed: bool = None,
                  parent: 'TopicLogger' = None,
                  sub_tag: str = None):
-        """
-        Construct a topic or sub-topic.
+        """Construct a topic or sub-topic.
 
-        :param topic: topic heading text or used as preamble if parent is not None
-        :param delayed: collect output and display at the end (inherited by default)
-        :param parent: parent TopicLogger, set if it is a sub-topic
-        :param sub_tag: optional sub-tag to add to tagged lines
+        Args:
+            topic: topic heading text or used as preamble if parent is not None
+            delayed: collect output and display at the end (inherited by
+                default)
+            parent: parent TopicLogger, set if it is a sub-topic
+            sub_tag: optional sub-tag to add to tagged lines
         """
         self._logger = Logger(sub_tag=sub_tag)
         self.topic: str = topic
@@ -376,12 +380,12 @@ class TopicLogger:
             self._logger.heading(self.heading_level, self.topic)
 
     def error(self, text: Any, *args, **kwargs):
-        """
-        Add an error.
+        """Add an error.
 
-        :param text: message text
-        :param args: positional data arguments
-        :param kwargs: keywords data arguments
+        Args:
+            text: message text
+            *args: positional data arguments
+            **kwargs: keywords data arguments
         """
         if self.delayed:
             if self.parent is None:
@@ -392,12 +396,12 @@ class TopicLogger:
             self._logger.error(text, *args, **kwargs)
 
     def warning(self, text: Any, *args, **kwargs):
-        """
-        Add a warning.
+        """Add a warning.
 
-        :param text: message text
-        :param args: positional data arguments
-        :param kwargs: keywords data arguments
+        Args:
+            text: message text
+            *args: positional data arguments
+            **kwargs: keywords data arguments
         """
         if self.delayed:
             if self.parent is None:
@@ -408,14 +412,14 @@ class TopicLogger:
             self._logger.warning(text, *args, **kwargs)
 
     def message(self, text: Any, *args, **kwargs):
-        """
-        Add a message.
+        """Add a message.
 
         Checked for uniqueness so that a particular note only appears once.
 
-        :param text: message text
-        :param args: positional data arguments
-        :param kwargs: keywords data arguments
+        Args:
+            text: message text
+            *args: positional data arguments
+            **kwargs: keywords data arguments
         """
         if self.delayed:
             if self.parent is None:
@@ -430,28 +434,30 @@ class TopicLogger:
                   topic: str,
                   delayed: bool = None,
                   ) -> Iterator['TopicLogger']:
-        """
-        Context manager to start a sub-topic.
+        """Context manager to start a sub-topic.
 
-        :param topic: sub-topic heading used as message preamble
-        :param delayed: collect output and display at the end (inherited by default)
-        :return: sub-TopicLogger to call with sub-topic messages
+        Args:
+            topic: sub-topic heading used as message preamble
+            delayed: collect output and display at the end (inherited by
+                default)
+
+        Returns:
+            sub-TopicLogger to call with sub-topic messages
         """
         sub_topic_logger = TopicLogger(topic, delayed=delayed, parent=self)
         yield sub_topic_logger
         sub_topic_logger.flush()
 
     def get_counts(self) -> tuple[int, int, int]:
-        """
-        Get current error/warning/message counts.
+        """Get current error/warning/message counts.
 
-        :return: (error_count, warning_count, message_count) tuple
+        Returns:
+            (error_count, warning_count, message_count) tuple
         """
         return len(self.errors), len(self.warnings), len(self.messages)
 
     def flush(self):
-        """
-        Flush messages.
+        """Flush messages.
 
         Generally used only internally, as long as the log_topic()
         contextmanager function and sub_topic() method is used.
@@ -478,15 +484,17 @@ class TopicLogger:
 
 @contextmanager
 def log_topic(topic: str, delayed: bool = False) -> Iterator[TopicLogger]:
-    """
-    Provide a context manager to start a topic.
+    """Provide a context manager to start a topic.
 
     Topic errors, warnings, and messages are flushed at the end of the `with`
     block invoking this function.
 
-    :param topic: topic heading text
-    :param delayed: collect output and display at the end
-    :return: TopicLogger that the caller can use to add various message types
+    Args:
+        topic: topic heading text
+        delayed: collect output and display at the end
+
+    Returns:
+        TopicLogger that the caller can use to add various message types
     """
     topic_logger = TopicLogger(topic, delayed=delayed)
     yield topic_logger
@@ -494,11 +502,11 @@ def log_topic(topic: str, delayed: bool = False) -> Iterator[TopicLogger]:
 
 
 def display_data(data: Any, heading: str = None):
-    """
-    Display data block.
+    """Display data block.
 
-    :param data: data to display
-    :param heading: optional heading text
+    Args:
+        data: data to display
+        heading: optional heading text
     """
     sys.stdout.write(os.linesep)
     if heading:

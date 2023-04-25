@@ -15,8 +15,10 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Task field declaration functions.
+"""Task field declaration functions.
+
+Jiig task fields substitute for Python type hints to specify the type, but also
+to add validation and conversion.
 """
 
 from dataclasses import dataclass
@@ -52,8 +54,7 @@ FIELD_TEXT_LIST_TYPE = Type[list[str] | list[list[str]]]
 
 @dataclass
 class Field:
-    """
-    Field specification derived from type annotation.
+    """Field specification derived from type annotation.
 
     Use wrap_field(), instead of creating directly.
     """
@@ -91,15 +92,15 @@ def wrap_field(element_type: Any,
                repeat: RepeatSpec = None,
                choices: Collection = None,
                ) -> Any:
-    """
-    Create Field and wrap in Annotated hint.
+    """Create Field and wrap in Annotated hint.
 
-    :param element_type: scalar element type
-    :param description: field description
-    :param field_type: field type (defaults to element_type if missing)
-    :param adapters: field adapter function chain
-    :param repeat: optional repeat specification as count or minimum/maximum pair
-    :param choices: optional value choices
+    Args:
+        element_type: scalar element type
+        description: field description
+        field_type: field type (defaults to element_type if missing)
+        adapters: field adapter function chain
+        repeat: optional repeat specification as count or minimum/maximum pair
+        choices: optional value choices
     """
     field = Field(element_type,
                   description=description or '(no field description)',
@@ -113,12 +114,14 @@ def wrap_field(element_type: Any,
 def integer(repeat: RepeatSpec = None,
             choices: Collection[int] = None,
             ) -> FIELD_INT_TYPE:
-    """
-    Declare an integer numeric field.
+    """Declare an integer numeric field.
 
-    :param repeat: optional repetition as count or minimum/maximum pair
-    :param choices: optional permitted values
-    :return: field specification
+    Args:
+        repeat: optional repetition as count or minimum/maximum pair
+        choices: optional permitted values
+
+    Returns:
+        field specification
     """
     return wrap_field(int, adapters=[to_int], repeat=repeat, choices=choices)
 
@@ -126,12 +129,14 @@ def integer(repeat: RepeatSpec = None,
 def number(repeat: RepeatSpec = None,
            choices: Collection[int] = None,
            ) -> FIELD_NUMBER_TYPE:
-    """
-    Declare a float or integer numeric field.
+    """Declare a float or integer numeric field.
 
-    :param repeat: optional repetition as count or minimum/maximum pair
-    :param choices: optional permitted values
-    :return: field specification
+    Args:
+        repeat: optional repetition as count or minimum/maximum pair
+        choices: optional permitted values
+
+    Returns:
+        field specification
     """
     return wrap_field(float | int, adapters=[to_float], repeat=repeat, choices=choices)
 
@@ -139,22 +144,26 @@ def number(repeat: RepeatSpec = None,
 def text(repeat: RepeatSpec = None,
          choices: Collection[str] = None,
          ) -> FIELD_TEXT_TYPE:
-    """
-    Declare a text field.
+    """Declare a text field.
 
-    :param repeat: optional repetition as count or minimum/maximum pair
-    :param choices: optional permitted values
-    :return: field specification
+    Args:
+        repeat: optional repetition as count or minimum/maximum pair
+        choices: optional permitted values
+
+    Returns:
+        field specification
     """
     return wrap_field(str, repeat=repeat, choices=choices)
 
 
 def boolean(repeat: RepeatSpec = None) -> FIELD_BOOL_TYPE:
-    """
-    Declare a boolean field.
+    """Declare a boolean field.
 
-    :param repeat: optional repetition as count or minimum/maximum pair
-    :return: field specification
+    Args:
+        repeat: optional repetition as count or minimum/maximum pair
+
+    Returns:
+        field specification
     """
     return wrap_field(bool, adapters=[to_bool], repeat=repeat)
 
@@ -162,12 +171,14 @@ def boolean(repeat: RepeatSpec = None) -> FIELD_BOOL_TYPE:
 def filesystem_folder(absolute_path: bool = False,
                       repeat: RepeatSpec = None,
                       ) -> FIELD_TEXT_TYPE:
-    """
-    Declare a folder path field.
+    """Declare a folder path field.
 
-    :param absolute_path: convert to absolute path if True
-    :param repeat: optional repetition as count or minimum/maximum pair
-    :return: field specification
+    Args:
+        absolute_path: convert to absolute path if True
+        repeat: optional repetition as count or minimum/maximum pair
+
+    Returns:
+        field specification
     """
     adapters_list = [path_is_folder]
     if absolute_path:
@@ -178,12 +189,14 @@ def filesystem_folder(absolute_path: bool = False,
 def filesystem_file(absolute_path: bool = False,
                     repeat: RepeatSpec = None,
                     ) -> FIELD_TEXT_TYPE:
-    """
-    Declare a folder path field.
+    """Declare a folder path field.
 
-    :param absolute_path: convert to absolute path if True
-    :param repeat: optional repetition as count or minimum/maximum pair
-    :return: field specification
+    Args:
+        absolute_path: convert to absolute path if True
+        repeat: optional repetition as count or minimum/maximum pair
+
+    Returns:
+        field specification
     """
     adapters_list = [path_is_file]
     if absolute_path:
@@ -195,13 +208,15 @@ def filesystem_object(absolute_path: bool = False,
                       exists: bool = False,
                       repeat: RepeatSpec = None,
                       ) -> FIELD_TEXT_TYPE:
-    """
-    Declare a file or folder path field.
+    """Declare a file or folder path field.
 
-    :param absolute_path: convert to absolute path if True
-    :param exists: it must exist if True
-    :param repeat: optional repetition as count or minimum/maximum pair
-    :return: field specification
+    Args:
+        absolute_path: convert to absolute path if True
+        exists: it must exist if True
+        repeat: optional repetition as count or minimum/maximum pair
+
+    Returns:
+        field specification
     """
     adapters_list = []
     if absolute_path:
@@ -214,22 +229,28 @@ def filesystem_object(absolute_path: bool = False,
 def age(repeat: RepeatSpec = None,
         choices: Collection[int] = None,
         ) -> FIELD_FLOAT_TYPE:
-    """
-    Age based on string specification.
+    """Age based on string specification.
 
-    :param repeat: optional repetition as count or minimum/maximum pair
-    :param choices: optional permitted values
-    :return: field specification
+    See util.date_time.parse_date_time_delta() for more information about age strings.
+
+    Args:
+        repeat: optional repetition as count or minimum/maximum pair
+        choices: optional permitted values
+
+    Returns:
+        field specification
     """
     return wrap_field(float, adapters=[to_age], repeat=repeat, choices=choices)
 
 
 def timestamp(repeat: RepeatSpec = None) -> FIELD_FLOAT_TYPE:
-    """
-    Timestamp based on string specification.
+    """Timestamp based on string specification.
 
-    :param repeat: optional repetition as count or minimum/maximum pair
-    :return: field specification
+    Args:
+        repeat: optional repetition as count or minimum/maximum pair
+
+    Returns:
+        field specification
     """
     return wrap_field(float, adapters=[to_timestamp], repeat=repeat)
 
@@ -237,21 +258,25 @@ def timestamp(repeat: RepeatSpec = None) -> FIELD_FLOAT_TYPE:
 def interval(repeat: RepeatSpec = None,
              choices: Collection[int] = None,
              ) -> FIELD_FLOAT_TYPE:
-    """
-    Time interval based on string specification.
+    """Time interval based on string specification.
 
-    :param repeat: optional repetition as count or minimum/maximum pair
-    :param choices: optional permitted values
-    :return: field specification
+    Args:
+        repeat: optional repetition as count or minimum/maximum pair
+        choices: optional permitted values
+
+    Returns:
+        field specification
     """
     return wrap_field(float, adapters=[to_interval], repeat=repeat, choices=choices)
 
 
 def comma_list(repeat: RepeatSpec = None) -> FIELD_TEXT_LIST_TYPE:
-    """
-    Comma-separated string converted to list.
+    """Comma-separated string converted to list.
 
-    :param repeat: optional repetition as count or minimum/maximum pair
-    :return: field specification
+    Args:
+        repeat: optional repetition as count or minimum/maximum pair
+
+    Returns:
+        field specification
     """
     return wrap_field(list[str], adapters=[to_comma_list], repeat=repeat)

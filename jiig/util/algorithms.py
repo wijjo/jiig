@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Algorithms.
-"""
+"""Algorithms."""
 
 from typing import Any, Sequence, Callable
 
@@ -26,17 +24,19 @@ def binary_search(sequence: Sequence,
                   value: Any,
                   key: Callable[[Any], Any] = None,
                   ) -> Any | None:
-    """
-    Perform binary search on ordered sequence.
+    """Perform binary search on ordered sequence.
 
     Based on standard bisect library, but cloned and adapted code for arbitrary
     item types and an optional key() function. Unlike find(), it returns
     the found item or None, instead of a position or -1.
 
-    :param sequence: ordered item sequence to search
-    :param value: value to search for
-    :param key: optional key function a la sort() to return item key value
-    :return: found item or None if not found
+    Args:
+        sequence: ordered item sequence to search
+        value: value to search for
+        key: optional key function a la sort() to return item key value
+
+    Returns:
+        found item or None if not found
     """
     # "Borrowed" and adapted code from bisect.bisect_left().
     lo = 0

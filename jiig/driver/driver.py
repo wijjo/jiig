@@ -29,8 +29,7 @@ from .driver_options import DriverOptions
 
 @dataclass
 class DriverPreliminaryAppData:
-    """
-    Preliminary application initialization data.
+    """Preliminary application initialization data.
 
     E.g. for early access to global options.
     """
@@ -54,8 +53,7 @@ class DriverAppData:
 
 
 class Driver(ABC):
-    """
-    Jiig driver base class.
+    """Jiig driver base class.
 
     Automatically registers concrete subclasses.
     """
@@ -64,12 +62,12 @@ class Driver(ABC):
                  description: str,
                  options: DriverOptions = None,
                  ):
-        """
-        Jiig driver constructor.
+        """Jiig driver constructor.
 
-        :param name: tool name
-        :param description: tool description
-        :param options: various driver options
+        Args:
+            name: tool name
+            description: tool description
+            options: various driver options
         """
         self.name = name
         self.description = description
@@ -79,11 +77,13 @@ class Driver(ABC):
     def initialize_driver(self,
                           command_line_arguments: Sequence[str],
                           ) -> DriverPreliminaryAppData:
-        """
-        Driver initialization.
+        """Driver initialization.
 
-        :param command_line_arguments: command line arguments
-        :return: preliminary app data
+        Args:
+            command_line_arguments: command line arguments
+
+        Returns:
+            preliminary app data
         """
         self.phase = 'driver-initialization'
         return self.on_initialize_driver(command_line_arguments)
@@ -92,11 +92,13 @@ class Driver(ABC):
     def on_initialize_driver(self,
                              command_line_arguments: Sequence[str],
                              ) -> DriverPreliminaryAppData:
-        """
-        Required driver initialization call-back.
+        """Required driver initialization call-back.
 
-        :param command_line_arguments: command line arguments
-        :return: preliminary app data
+        Args:
+            command_line_arguments: command line arguments
+
+        Returns:
+            preliminary app data
         """
         ...
 
@@ -104,12 +106,14 @@ class Driver(ABC):
                                arguments: list[str],
                                root_task: RuntimeTask
                                ) -> DriverAppData:
-        """
-        Driver application initialization.
+        """Driver application initialization.
 
-        :param arguments: argument list
-        :param root_task: root task
-        :return: driver application data
+        Args:
+            arguments: argument list
+            root_task: root task
+
+        Returns:
+            driver application data
         """
         self.phase = 'application-initialization'
         driver_app_data = self.on_initialize_application(arguments, root_task)
@@ -121,12 +125,14 @@ class Driver(ABC):
                                   arguments: list[str],
                                   root_task: RuntimeTask,
                                   ) -> DriverAppData:
-        """
-        Required arguments initialization call-back.
+        """Required arguments initialization call-back.
 
-        :param arguments: argument list
-        :param root_task: root task
-        :return: driver application data
+        Args:
+            arguments: argument list
+            root_task: root task
+
+        Returns:
+            driver application data
         """
         ...
 
@@ -134,12 +140,12 @@ class Driver(ABC):
                      root_task: RuntimeTask,
                      *names: str,
                      show_hidden: bool = False):
-        """
-        Provide help output.
+        """Provide help output.
 
-        :param root_task: root task
-        :param names: name parts (task name stack)
-        :param show_hidden: show hidden task help if True
+        Args:
+            root_task: root task
+            *names: name parts (task name stack)
+            show_hidden: show hidden task help if True
         """
         self.on_provide_help(root_task, list(names), show_hidden)
 
@@ -148,20 +154,20 @@ class Driver(ABC):
                         root_task: RuntimeTask,
                         names: list[str],
                         show_hidden: bool):
-        """
-        Required override to provide help output.
+        """Required override to provide help output.
 
-        :param root_task: root task
-        :param names: name parts (task name stack)
-        :param show_hidden: show hidden task help if True
+        Args:
+            root_task: root task
+            names: name parts (task name stack)
+            show_hidden: show hidden task help if True
         """
         ...
 
     @abstractmethod
     def get_log_writer(self) -> LogWriter:
-        """
-        Required override to provide a log writer.
+        """Required override to provide a log writer.
 
-        :return: log writer
+        Returns:
+            log writer
         """
         ...

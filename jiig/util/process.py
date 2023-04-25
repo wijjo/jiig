@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Process management utilities.
-"""
+"""Process management utilities."""
 
 import os
 import re
@@ -48,24 +46,28 @@ def shell_quote_arg(arg: str) -> str:
 
 
 def shell_command_string(command: str, *args) -> str:
-    """
-    Format a shell command string with appropriate argument quoting.
+    """Format a shell command string with appropriate argument quoting.
 
-    :param command: command (without arguments)
-    :param args: trailing arguments
-    :return: command as a single string with quoted arguments
+    Args:
+        command: command (without arguments)
+        *args: trailing arguments
+
+    Returns:
+        command as a single string with quoted arguments
     """
     return ' '.join([shell_quote_arg(str(arg)) for arg in [command] + list(args)])
 
 
 def shell_quote_path(path: str | Path) -> str:
-    """
-    Wrap path in double quotes as needed.
+    """Wrap path in double quotes as needed.
 
     Does not handle everything. For one, it intentionally does not quote ~.
 
-    :param path: input path
-    :return: possibly-quoted path
+    Args:
+        path: input path
+
+    Returns:
+        possibly-quoted path
     """
     path_string = str(path)
     if (path_string and path_string[0] != '"'
@@ -85,25 +87,27 @@ def run(cmd_args: list,
         quiet: bool = False,
         capture: bool = False,
         ) -> subprocess.CompletedProcess:
-    """
-    Run a shell command.
+    """Run a shell command.
 
     Front end to subprocess.run() that adds support for some Jiig-specific
     options. Uses os.execl() when replacing the process.
 
     Also supports SSH remote execution.
 
-    :param cmd_args: raw argument list
-    :param unchecked: return when an error occurs instead of aborting if True
-    :param replace_process: replace current process if True
-    :param working_folder: folder to change to before running command
-    :param env: environment variables passed to command process
-    :param host: host for remote execution
-    :param shell: run inside a new shell process if True
-    :param run_always: execute even during a dry run if True
-    :param quiet: suppress normal messages if True
-    :param capture: capture standard output if True
-    :return: CompletedProcess object
+    Args:
+        cmd_args: raw argument list
+        unchecked: return when an error occurs instead of aborting if True
+        replace_process: replace current process if True
+        working_folder: folder to change to before running command
+        env: environment variables passed to command process
+        host: host for remote execution
+        shell: run inside a new shell process if True
+        run_always: execute even during a dry run if True
+        quiet: suppress normal messages if True
+        capture: capture standard output if True
+
+    Returns:
+        CompletedProcess object
     """
     if not cmd_args:
         abort('Called run() without a command.')
@@ -179,15 +183,17 @@ def run_shell(cmd_args: list,
               working_folder: str | Path = None,
               run_always: bool = False,
               ) -> subprocess.CompletedProcess:
-    """
-    Run command using shell.
+    """Run command using shell.
 
-    :param cmd_args: raw argument list
-    :param unchecked: return when an error occurs instead of aborting if True
-    :param replace_process: replace current process if True
-    :param working_folder: folder to change to before running command
-    :param run_always: execute even during a dry run if True
-    :return: CompletedProcess object
+    Args:
+        cmd_args: raw argument list
+        unchecked: return when an error occurs instead of aborting if True
+        replace_process: replace current process if True
+        working_folder: folder to change to before running command
+        run_always: execute even during a dry run if True
+
+    Returns:
+        CompletedProcess object
     """
     return run(cmd_args,
                unchecked=unchecked,
@@ -202,15 +208,17 @@ def run_remote(host: str,
                unchecked: bool = False,
                replace_process: bool = False,
                run_always: bool = False):
-    """
-    Run command on remote host.
+    """Run command on remote host.
 
-    :param cmd_args: raw argument list
-    :param host: host for remote execution
-    :param unchecked: return when an error occurs instead of aborting if True
-    :param replace_process: replace current process if True
-    :param run_always: execute even during a dry run if True
-    :return: CompletedProcess object
+    Args:
+        cmd_args: raw argument list
+        host: host for remote execution
+        unchecked: return when an error occurs instead of aborting if True
+        replace_process: replace current process if True
+        run_always: execute even during a dry run if True
+
+    Returns:
+        CompletedProcess object
     """
     return run(cmd_args,
                host=host,
@@ -220,11 +228,13 @@ def run_remote(host: str,
 
 
 def pipe(command: list) -> list[str]:
-    """
-    Run command and receive output.
+    """Run command and receive output.
 
-    :param command: command to execute as string or list
-    :return: output lines
+    Args:
+        command: command to execute as string or list
+
+    Returns:
+        output lines
     """
     proc = run(command, capture=True)
     if not proc.stdout:
@@ -233,11 +243,13 @@ def pipe(command: list) -> list[str]:
 
 
 def escape_line_endings(input_string: str) -> str:
-    """
-    Escape line ending characters.
+    """Escape line ending characters.
 
-    :param input_string: string to scan for line endings
-    :return: string with escaped line endings
+    Args:
+        input_string: string to scan for line endings
+
+    Returns:
+        string with escaped line endings
     """
     return input_string.replace('\n', r'\n').replace('\r', r'\r')
 
@@ -246,16 +258,18 @@ def simple_shell_quote(value: Any,
                        literal: bool = False,
                        unquoted: bool = False,
                        ) -> str:
-    """
-    Simplistic shell argument quoting.
+    """Simplistic shell argument quoting.
 
     Literals are single-quoted by shlex.quote(). Otherwise double quotes and
     internal escapes are added as required.
 
-    :param value: value to quote (after converting to a string as needed)
-    :param literal: use single quotes to prevent shell expansion of '$...', etc.
-    :param unquoted: disable quoting if True
-    :return: quoted/escaped text
+    Args:
+        value: value to quote (after converting to a string as needed)
+        literal: use single quotes to prevent shell expansion of '$...', etc.
+        unquoted: disable quoting if True
+
+    Returns:
+        quoted/escaped text
     """
     text = str(value)
     if unquoted:
@@ -283,21 +297,25 @@ def simple_shell_quote(value: Any,
 
 
 def simple_shell_quote_arguments(args: Sequence) -> str:
-    """
-    Simplistic shell argument quoting applied to sequence of arguments.
+    """Simplistic shell argument quoting applied to sequence of arguments.
 
-    :param args: raw command arguments
-    :return: command string with quoted arguments
+    Args:
+        args: raw command arguments
+
+    Returns:
+        command string with quoted arguments
     """
     return ' '.join(simple_shell_quote(arg) for arg in args)
 
 
 def format_dotenv(**variables) -> str:
-    """
-    Format .env file text for a dictionary of variables.
+    """Format .env file text for a dictionary of variables.
 
-    :param variables: names and values for .env text
-    :return: .env text
+    Args:
+        **variables: names and values for .env text
+
+    Returns:
+        .env text
     """
     lines: list[str] = []
     for name, value in variables.items():

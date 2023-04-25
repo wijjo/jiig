@@ -15,8 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Template file expansion utilities.
+"""Template file expansion utilities.
 
 Also supports a _template.json file, which can configure different kinds of
 template expansion. A sample is shown below. Note that Python string template

@@ -39,12 +39,14 @@ def inject_builtin_tasks(*,
                          task_tree: TaskTree,
                          tool_options: ToolOptions,
                          ) -> TaskTree:
-    """
-    Create PreparedApplication.
+    """Create PreparedApplication.
 
-    :param task_tree: tool task tree
-    :param tool_options: tool options
-    :return: prepared application
+    Args:
+        task_tree: tool task tree
+        tool_options: tool options
+
+    Returns:
+        prepared application
     """
     # Access built-in tasks through by loading the Jiig Tool.
     visibility = 2 if tool_options.hide_builtin_tasks else 1

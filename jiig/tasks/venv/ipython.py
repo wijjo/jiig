@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Virtual environment IPython execution task.
-"""
+"""Virtual environment IPython execution task."""
 
 import os
 
@@ -30,11 +28,11 @@ def ipython(
     runtime: jiig.Runtime,
     trailing_arguments: jiig.f.text(repeat=(1, None)),
 ):
-    """
-    Run ipython from virtual environment.
+    """Run ipython from virtual environment.
 
-    :param runtime: jiig Runtime API.
-    :param trailing_arguments: Trailing CLI arguments.
+    Args:
+        runtime: jiig Runtime API.
+        trailing_arguments: Trailing CLI arguments.
     """
     ipython_path = runtime.format_path('{venv_folder}/bin/ipython')
     if not os.path.exists(ipython_path):

@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Text block formatting.
-"""
+"""Text block formatting."""
 
 import os
 from typing import Sequence
@@ -29,17 +27,20 @@ def fit_text(text: str,
              pad: str = None,
              front: bool = False,
              ):
-    """
-    Truncate text in various ways.
+    """Truncate text in various ways.
 
     Note that this is not word-sensitive, like textwrap.shorten().
 
-    :param text: text to truncate
-    :param width: width to truncate to
-    :param placeholder: placeholder string (default: '...')
-    :param pad: character to use for padding a string shorter than width (default: not padded)
-    :param front: truncate from start of string if True
-    :return: potentially-truncated or padded text
+    Args:
+        text: text to truncate
+        width: width to truncate to
+        placeholder: placeholder string (default: '...')
+        pad: character to use for padding a string shorter than width (default:
+            not padded)
+        front: truncate from start of string if True
+
+    Returns:
+        potentially-truncated or padded text
     """
     placeholder_width = len(placeholder)
     text_width = len(text)
@@ -124,14 +125,16 @@ def format_block_lines(*blocks: str | Sequence,
                        double_spaced: bool = False,
                        keep_indent: bool = False,
                        ) -> list[str]:
-    """
-    Reformat text blocks as line strings.
+    """Reformat text blocks as line strings.
 
-    :param blocks: blocks to reformat
-    :param indent: optional number of spaces to insert for each line
-    :param double_spaced: add blank line between blocks if True
-    :param keep_indent: preserve current indentation if True
-    :return: reformatted lines (not blocks)
+    Args:
+        *blocks: blocks to reformat
+        indent: optional number of spaces to insert for each line
+        double_spaced: add blank line between blocks if True
+        keep_indent: preserve current indentation if True
+
+    Returns:
+        reformatted lines (not blocks)
     """
     lines: list[str] = []
     minimum_leading_spaces: int | None = None
@@ -172,14 +175,16 @@ def format_block_text(*blocks: str | Sequence,
                       double_spaced: bool = False,
                       keep_indent: bool = False,
                       ) -> str:
-    """
-    Reformat text blocks as a single string.
+    """Reformat text blocks as a single string.
 
-    :param blocks: blocks to reformat
-    :param indent: optional number of spaces to insert for each line
-    :param double_spaced: add blank line between blocks if True
-    :param keep_indent: preserve current indentation if True
-    :return: reformatted text string
+    Args:
+        *blocks: blocks to reformat
+        indent: optional number of spaces to insert for each line
+        double_spaced: add blank line between blocks if True
+        keep_indent: preserve current indentation if True
+
+    Returns:
+        reformatted text string
     """
     lines = format_block_lines(*blocks,
                                indent=indent,

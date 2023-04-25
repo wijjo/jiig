@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Human-friendly unit formatting.
-"""
+"""Human-friendly unit formatting."""
 
 HUMAN_BINARY_UNITS = ['KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']
 HUMAN_DECIMAL_UNITS = ['KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
@@ -26,17 +24,19 @@ HUMAN_DECIMAL_UNITS = ['KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
 def human_byte_count(byte_count: float,
                      unit_format: str | None,
                      ) -> tuple[float, str]:
-    """
-    Adjust raw byte count to add appropriate unit.
+    """Adjust raw byte count to add appropriate unit.
 
     unit_format values:
       b: binary/1024-based KiB, MiB, etc.
       d: decimal/1000-based KB, MB, etc.
       other: returns error text instead of unit
 
-    :param byte_count: input byte count
-    :param unit_format: 'd' for KB/MB/..., 'b' for KiB/MiB/..., or bytes if None
-    :return: (adjusted byte count, unit string) tuple
+    Args:
+        byte_count: input byte count
+        unit_format: 'd' for KB/MB/..., 'b' for KiB/MiB/..., or bytes if None
+
+    Returns:
+        (adjusted byte count, unit string) tuple
     """
     byte_count = float(byte_count)      # cya
     if unit_format is None:
@@ -64,18 +64,21 @@ def format_human_byte_count(byte_count: int,
                             unit_format: str = None,
                             decimal_places: int = 1
                             ) -> str:
-    """
-    Format byte count for human consumption using unit abbreviations.
+    """Format byte count for human consumption using unit abbreviations.
 
     unit_format values:
       b: binary/1024-based KiB, MiB, etc.
       d: decimal/1000-based KB, MB, etc.
       other: returns error text instead of unit
 
-    :param byte_count: number of bytes
-    :param unit_format: 'd' for KB/MB/..., 'b' for KiB/MiB/..., or bytes if None
-    :param decimal_places: number of decimal places (default=1 if unit_format specified)
-    :return: formatted string with applied unit abbreviation
+    Args:
+        byte_count: number of bytes
+        unit_format: 'd' for KB/MB/..., 'b' for KiB/MiB/..., or bytes if None
+        decimal_places: number of decimal places (default=1 if unit_format
+            specified)
+
+    Returns:
+        formatted string with applied unit abbreviation
     """
     return ('{:0.%df}{}' % (decimal_places or 1)).format(
         *human_byte_count(byte_count, unit_format))

@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Python interpreter utilities.
-"""
+"""Python interpreter utilities."""
 
 import importlib.util
 import os
@@ -66,11 +64,13 @@ def format_call_string(call_name: str, *args, **kwargs) -> str:
 
 
 def module_path_to_name(path: str | Path) -> str:
-    """
-    Convert module path to name.
+    """Convert module path to name.
 
-    :param path: module path
-    :return: name (always returns something)
+    Args:
+        path: module path
+
+    Returns:
+        name (always returns something)
     """
     if not isinstance(path, Path):
         path = Path(path)
@@ -88,12 +88,14 @@ def module_path_to_name(path: str | Path) -> str:
 def import_module_path(module_path: str | Path,
                        module_name: str = None,
                        ) -> ModuleType:
-    """
-    Dynamically import a module by name and path.
+    """Dynamically import a module by name and path.
 
-    :param module_path: module path
-    :param module_name: module name (default is based on path)
-    :return: imported module
+    Args:
+        module_path: module path
+        module_name: module name (default is based on path)
+
+    Returns:
+        imported module
     """
     if module_name is None:
         module_name = module_path_to_name(module_path)
@@ -155,13 +157,15 @@ def import_modules_from_folder(folder: str | Path,
                                package_name: str = None,
                                retry: bool = False,
                                ) -> list[str]:
-    """
-    Dynamically and recursively import modules from a folder.
+    """Dynamically and recursively import modules from a folder.
 
-    :param folder: search root folder
-    :param package_name: optional container package name
-    :param retry: retry modules with ModuleNotFoundError exceptions if True
-    :return: imported paths
+    Args:
+        folder: search root folder
+        package_name: optional container package name
+        retry: retry modules with ModuleNotFoundError exceptions if True
+
+    Returns:
+        imported paths
     """
     # Work with path strings here.
     folder = str(folder)
@@ -228,13 +232,15 @@ def execute_source(path_or_stream: str | Path | IO,
                    symbols: dict = None,
                    unchecked: bool = False,
                    ) -> dict:
-    """
-    Execute python source file.
+    """Execute python source file.
 
-    :param path_or_stream: source file path or stream
-    :param symbols: optional symbol dictionary for exec()
-    :param unchecked: pass along exceptions if True, otherwise abort
-    :return: post-exec() symbols
+    Args:
+        path_or_stream: source file path or stream
+        symbols: optional symbol dictionary for exec()
+        unchecked: pass along exceptions if True, otherwise abort
+
+    Returns:
+        post-exec() symbols
     """
     exec_symbols = symbols or {}
     with open_text_stream(path_or_stream, unchecked=unchecked) as text_stream:
@@ -255,13 +261,13 @@ def build_virtual_environment(venv_folder: str | Path,
                               rebuild: bool = False,
                               quiet: bool = False,
                               ):
-    """
-    Build virtual environment.
+    """Build virtual environment.
 
-    :param venv_folder: virtual environment folder path
-    :param packages: packages to install in the virtual environment
-    :param rebuild: force rebuild if True
-    :param quiet: suppress non-error messages if True
+    Args:
+        venv_folder: virtual environment folder path
+        packages: packages to install in the virtual environment
+        rebuild: force rebuild if True
+        quiet: suppress non-error messages if True
     """
     if not isinstance(venv_folder, Path):
         venv_folder = Path(venv_folder)
@@ -297,15 +303,15 @@ def install_missing_pip_packages(packages: Iterable[str],
                                  venv_folder: str | Path = None,
                                  quiet: bool = False,
                                  ):
-    """
-    Install missing Pip packages.
+    """Install missing Pip packages.
 
     if a virtual environment is specified uses a different/more efficient
     method, rather than executing "pip list".
 
-    :param packages: packages needed
-    :param venv_folder: optional virtual environment folder path
-    :param quiet: suppress non-error messages if True
+    Args:
+        packages: packages needed
+        venv_folder: optional virtual environment folder path
+        quiet: suppress non-error messages if True
     """
     if not packages:
         return
@@ -330,11 +336,11 @@ def install_missing_pip_packages(packages: Iterable[str],
 def pip_installed_packages(pip_path: Path | str | None = None,
                            quiet: bool = False,
                            ) -> list[str]:
-    """
-    Get installed package list by executing "pip list".
+    """Get installed package list by executing "pip list".
 
-    :param pip_path: optional path to pip executable
-    :param quiet: suppress non-error messages if True
+    Args:
+        pip_path: optional path to pip executable
+        quiet: suppress non-error messages if True
     """
     if pip_path is None:
         pip_path = 'pip'
@@ -353,13 +359,13 @@ def pip_installed_packages(pip_path: Path | str | None = None,
 def virtual_environment_installed_packages(venv_folder: Path | str,
                                            quiet: bool = False,
                                            ) -> list[str]:
-    """
-    Get installed package list directly from virtual environment.
+    """Get installed package list directly from virtual environment.
 
     Loads <venv>/lib/<python>/site-packages/pydeps/
 
-    :param venv_folder: optional virtual environment folder path
-    :param quiet: suppress non-error messages if True
+    Args:
+        venv_folder: optional virtual environment folder path
+        quiet: suppress non-error messages if True
     """
     if not isinstance(venv_folder, Path):
         venv_folder = Path(venv_folder)
@@ -387,11 +393,11 @@ def virtual_environment_installed_packages(venv_folder: Path | str,
 def update_virtual_environment(venv_folder: str | Path,
                                packages: list = None,
                                ):
-    """
-    Update packages and pip in virtual environment.
+    """Update packages and pip in virtual environment.
 
-    :param venv_folder: virtual environment folder path
-    :param packages: packages needed
+    Args:
+        venv_folder: virtual environment folder path
+        packages: packages needed
     """
     if not isinstance(venv_folder, Path):
         venv_folder = Path(venv_folder)
@@ -520,21 +526,25 @@ def module_to_dataclass(module: object,
                         protected: list[str] = None,
                         overflow: str = None,
                         ) -> object:
-    """
-    Populate dataclass from module globals.
+    """Populate dataclass from module globals.
 
     Uppercase module globals become lowercase dataclass attributes.
 
     The behavior may be altered by optional parameters.
 
-    :param module: input module object
-    :param dc_type: output dataclass type, scanned for field names, etc.
-    :param required: list of required dataclass field names
-    :param protected: list of unwanted dataclass field names
-    :param overflow: optional dataclass field name to receive unexpected symbols
-    :return: populated dataclass instance
-    :raise AttributeError: if conversion fails due to bad input data
-    :raise TypeError: if conversion fails due to bad output type
+    Args:
+        module: input module object
+        dc_type: output dataclass type, scanned for field names, etc.
+        required: list of required dataclass field names
+        protected: list of unwanted dataclass field names
+        overflow: optional dataclass field name to receive unexpected symbols
+
+    Returns:
+        populated dataclass instance
+
+    Raises:
+        AttributeError: if conversion fails due to bad input data
+        TypeError: if conversion fails due to bad output type
     """
     return symbols_to_dataclass(module.__dict__,
                                 dc_type,
@@ -547,14 +557,16 @@ def module_to_dataclass(module: object,
 def load_configuration_script(script_path: str | Path,
                               **default_symbols,
                               ) -> dict:
-    """
-    Load a Python syntax configuration script.
+    """Load a Python syntax configuration script.
 
     Obviously executing Python code is potentially unsafe.
 
-    :param script_path: script path
-    :param default_symbols: default symbols
-    :return: symbols from script and defaults
+    Args:
+        script_path: script path
+        **default_symbols: default symbols
+
+    Returns:
+        symbols from script and defaults
     """
     symbols = dict(default_symbols)
     try:
@@ -572,12 +584,12 @@ class ExtractedField:
     """Annotation and default for dataclass or function-extracted field."""
 
     def __init__(self, name: str, hint: Any, default: DefaultValue = None):
-        """
-        ExtractedField constructor.
+        """ExtractedField constructor.
 
-        :param name: field name
-        :param hint: raw hint (parsed into type hint and annotation)
-        :param default: optional default value
+        Args:
+            name: field name
+            hint: raw hint (parsed into type hint and annotation)
+            default: optional default value
         """
         self.name = name
         hint_args = get_args(hint)
@@ -601,11 +613,14 @@ class ExtractedFields:
 
 
 def get_dataclass_fields(dataclass_class: Type) -> ExtractedFields:
-    """
-    Extract fields and defaults from a dataclass.
+    """Extract fields and defaults from a dataclass.
 
-    :param dataclass_class: dataclass to probe
-    :return: Fields object with annotations and defaults by field name, plus error messages
+    Args:
+        dataclass_class: dataclass to probe
+
+    Returns:
+        Fields object with annotations and defaults by field name, plus error
+        messages
     """
     fields_by_name: dict[str, ExtractedField] = {}
     task_fields = ExtractedFields()
@@ -625,11 +640,14 @@ def get_dataclass_fields(dataclass_class: Type) -> ExtractedFields:
 
 
 def get_function_fields(function: Callable) -> ExtractedFields:
-    """
-    Extract fields and defaults from a function.
+    """Extract fields and defaults from a function.
 
-    :param function: function to probe
-    :return: Fields object with annotations and defaults by field name, plus error messages
+    Args:
+        function: function to probe
+
+    Returns:
+        Fields object with annotations and defaults by field name, plus error
+        messages
     """
     function_signature = signature(function)
     parameters = function_signature.parameters
@@ -656,16 +674,18 @@ def get_function_fields(function: Callable) -> ExtractedFields:
 def find_package_base_folder(package_name: str,
                              start_path: Path | str,
                              ) -> Path | None:
-    """
-    Look for folder containing named package given a starting path.
+    """Look for folder containing named package given a starting path.
 
     Searches containing folder stack for a sub-folder where it looks like the
     package lives. It returns the containing folder under which the package was
     found.
 
-    :param package_name: dot-separated package name
-    :param start_path: start path for search
-    :return: containing folder path if resolved or None otherwise
+    Args:
+        package_name: dot-separated package name
+        start_path: start path for search
+
+    Returns:
+        containing folder path if resolved or None otherwise
     """
     def _check_folder(folder: Path, names: list[str]) -> Path | None:
         sub_folder = folder / names[0]

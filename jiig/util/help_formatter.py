@@ -32,10 +32,10 @@ from .repetition import Repetition
 class Footnote:
     """Footnote data."""
     def __init__(self, text: str):
-        """
-        Footnote constructor.
+        """Footnote constructor.
 
-        :param text: footnote text
+        Args:
+            text: footnote text
         """
         self.text = text.strip()
         self.option_flags: list[str] = []
@@ -170,13 +170,15 @@ class HelpFormatter:
                  description: str,
                  sub_commands_label: str,
                  ):
-        """
-        Help formatter constructor.
+        """Help formatter constructor.
 
-        :param program_name: program name is used for both top level and sub-command help
-        :param command_names: command names in appearance order for Usage
-        :param description: description for description block
-        :param sub_commands_label: label for sub-commands, e.g. 'COMMAND' or 'SUB_COMMAND'
+        Args:
+            program_name: program name is used for both top level and sub-
+                command help
+            command_names: command names in appearance order for Usage
+            description: description for description block
+            sub_commands_label: label for sub-commands, e.g. 'COMMAND' or
+                'SUB_COMMAND'
         """
         self.program_name = program_name or '(no name)'
         self.command_names = command_names
@@ -197,15 +199,16 @@ class HelpFormatter:
                     has_sub_commands: bool = False,
                     receives_trailing_arguments: bool = False,
                     ):
-        """
-        Add help information for a sub-command.
+        """Add help information for a sub-command.
 
-        :param name: command name
-        :param help_text: help text for command
-        :param is_secondary: list in secondary block if True
-        :param is_hidden: hide unless option is set to show hidden
-        :param has_sub_commands: the command has sub-commands if True
-        :param receives_trailing_arguments: receives unparsed trailing arguments if True
+        Args:
+            name: command name
+            help_text: help text for command
+            is_secondary: list in secondary block if True
+            is_hidden: hide unless option is set to show hidden
+            has_sub_commands: the command has sub-commands if True
+            receives_trailing_arguments: receives unparsed trailing arguments if
+                True
         """
         data = HelpCommandData(name,
                                help_text,
@@ -227,16 +230,16 @@ class HelpFormatter:
                    choices: Sequence = None,
                    is_boolean: bool = False,
                    ):
-        """
-        Add help information for a command option.
+        """Add help information for a command option.
 
-        :param flags: option flags
-        :param name: argument name
-        :param description: argument description
-        :param repeat: repeat quantity or range as tuple pair
-        :param default: default value
-        :param choices: restricted value set
-        :param is_boolean: handle as a boolean argument or option if True
+        Args:
+            flags: option flags
+            name: argument name
+            description: argument description
+            repeat: repeat quantity or range as tuple pair
+            default: default value
+            choices: restricted value set
+            is_boolean: handle as a boolean argument or option if True
         """
         self.options.append(
             HelpOption(name,
@@ -254,14 +257,14 @@ class HelpFormatter:
                      default: DefaultValue = None,
                      choices: Sequence = None,
                      ):
-        """
-        Add help information for a command argument.
+        """Add help information for a command argument.
 
-        :param name: argument name
-        :param description: argument description
-        :param repeat: repeat quantity or range as tuple pair
-        :param default: default value
-        :param choices: restricted value set
+        Args:
+            name: argument name
+            description: argument description
+            repeat: repeat quantity or range as tuple pair
+            default: default value
+            choices: restricted value set
         """
         self.arguments.append(
             HelpArgument(name,
@@ -271,18 +274,18 @@ class HelpFormatter:
                          choices=choices))
 
     def add_note(self, note_text: str):
-        """
-        Add a note.
+        """Add a note.
 
-        :param note_text: note text to add
+        Args:
+            note_text: note text to add
         """
         self.notes.append(note_text)
 
     def add_footnote_dictionary(self, footnotes: NotesDict = None):
-        """
-        Add a footnotes dictionary.
+        """Add a footnotes dictionary.
 
-        :param footnotes: footnotes dictionary
+        Args:
+            footnotes: footnotes dictionary
         """
         self.footnote_builder.add_footnotes(footnotes)
 
@@ -456,11 +459,13 @@ class HelpProvider:
     """Abstract base class for a provider of formatted help text."""
 
     def format_help(self, *names: str, show_hidden: bool = False) -> str:
-        """
-        Format help.
+        """Format help.
 
-        :param names: name parts (name stack)
-        :param show_hidden: show hidden help if True
-        :return: formatted help text
+        Args:
+            *names: name parts (name stack)
+            show_hidden: show hidden help if True
+
+        Returns:
+            formatted help text
         """
         raise NotImplementedError

@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Attribute dictionary meta-classes, classes, and functions.
-"""
+"""Attribute dictionary meta-classes, classes, and functions."""
 
 from typing import Any, Callable, Sequence, Self
 
@@ -27,14 +25,16 @@ def make_list(value: Any,
               allow_none: bool = False,
               sep: str = None,
               ) -> list | None:
-    """
-    Coerce a sequence or non-sequence to a list.
+    """Coerce a sequence or non-sequence to a list.
 
-    :param value: item to make into a list
-    :param strings: convert to text strings if True
-    :param allow_none: return None if value is None if True, otherwise empty list
-    :param sep: split string value using this separator if not None
-    :return: resulting list or None if value is None
+    Args:
+        value: item to make into a list
+        strings: convert to text strings if True
+        allow_none: return None if value is None if True, otherwise empty list
+        sep: split string value using this separator if not None
+
+    Returns:
+        resulting list or None if value is None
     """
     def _fix(items: list) -> list:
         if not strings:
@@ -55,13 +55,15 @@ def make_tuple(value: Any,
                strings: bool = False,
                allow_none: bool = False,
                ) -> tuple | None:
-    """
-    Coerce a sequence or non-sequence to a tuple.
+    """Coerce a sequence or non-sequence to a tuple.
 
-    :param value: item to make into a tuple
-    :param strings: convert to text strings if True
-    :param allow_none: return None if value is None if True, otherwise empty list
-    :return: resulting tuple or None if value is None
+    Args:
+        value: item to make into a tuple
+        strings: convert to text strings if True
+        allow_none: return None if value is None if True, otherwise empty list
+
+    Returns:
+        resulting tuple or None if value is None
     """
     def _fix(items: tuple) -> tuple:
         if not strings:
@@ -87,15 +89,16 @@ class MetaAttributeDictionary(type):
                 read_only: bool = False,
                 max_depth: int = None,
                 ):
-        """
-        Create a new attribute-dictionary class.
+        """Create a new attribute-dictionary class.
 
-        :param mcs_name: class name
-        :param bases: base classes
-        :param namespace: class attributes
-        :param no_defaults: raise AttributeError for missing keys if True
-        :param read_only: disable write access if True
-        :param max_depth: maximum depth for wrapping sub-dictionaries (default: no limit)
+        Args:
+            mcs_name: class name
+            bases: base classes
+            namespace: class attributes
+            no_defaults: raise AttributeError for missing keys if True
+            read_only: disable write access if True
+            max_depth: maximum depth for wrapping sub-dictionaries (default: no
+                limit)
         """
 
         # Safety check that the class inherits from dict.
@@ -171,14 +174,17 @@ class AttributeDictionary(dict):
             read_only: bool = False,
             max_depth: int = None,
             ) -> Self:
-        """
-        Create and initialize a custom dictionary with attribute-based item access.
+        """Create and initialize a custom dictionary with attribute-based item access.
 
-        :param symbols: optional initial symbols
-        :param no_defaults: raise AttributeError for missing keys if True
-        :param read_only: disable write access if True
-        :param max_depth: maximum depth for wrapping sub-dictionaries (default: no limit)
-        :return: attribute-based dictionary
+        Args:
+            symbols: optional initial symbols
+            no_defaults: raise AttributeError for missing keys if True
+            read_only: disable write access if True
+            max_depth: maximum depth for wrapping sub-dictionaries (default: no
+                limit)
+
+        Returns:
+            attribute-based dictionary
         """
         class CustomAttributeDictionary(cls,
                                         metaclass=MetaAttributeDictionary,
@@ -194,12 +200,15 @@ class AttributeDictionary(dict):
 def filter_dict(function: Callable[[Any, Any], bool],
                 input_data: dict | Sequence[tuple[Any, Any]],
                 ) -> dict:
-    """
-    Apply filter function to a dictionary or pair sequence.
+    """Apply filter function to a dictionary or pair sequence.
 
-    :param function: function passed key and value arguments and returns True to keep
-    :param input_data: input dictionary or pair sequence
-    :return: filtered output dictionary
+    Args:
+        function: function passed key and value arguments and returns True to
+            keep
+        input_data: input dictionary or pair sequence
+
+    Returns:
+        filtered output dictionary
     """
     # If input data is not a dictionary assume it's a pair sequence.
     return dict(

@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Driver factory.
-"""
+"""Driver factory."""
 
 from types import ModuleType
 
@@ -32,14 +30,16 @@ def load_driver(*,
                 global_option_names: list[str],
                 description: str,
                 ) -> Driver:
-    """
-    Create configured driver instance.
+    """Create configured driver instance.
 
-    :param driver_spec: driver specification
-    :param tool_name: tool name
-    :param global_option_names: global option names
-    :param description: tool description
-    :return: prepared driver
+    Args:
+        driver_spec: driver specification
+        tool_name: tool name
+        global_option_names: global option names
+        description: tool description
+
+    Returns:
+        prepared driver
     """
     driver_options = DriverOptions(
         raise_exceptions=True,

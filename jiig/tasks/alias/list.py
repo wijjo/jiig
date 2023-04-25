@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Alias list task.
-"""
+"""Alias list task."""
 
 from typing import Iterable, Iterator
 
@@ -31,11 +29,11 @@ def list_(
     runtime: jiig.Runtime,
     expand_names: jiig.f.boolean(),
 ):
-    """
-    List aliases.
+    """List aliases.
 
-    :param runtime: Jiig runtime API.
-    :param expand_names: Display expanded paths in names.
+    Args:
+        runtime: Jiig runtime API.
+        expand_names: Display expanded paths in names.
     """
     displayed_line_count = 0
     with runtime.open_alias_catalog() as catalog:

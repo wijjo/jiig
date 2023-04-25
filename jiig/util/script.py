@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Shell script builder.
-"""
+"""Shell script builder."""
 
 import os
 from contextlib import contextmanager
@@ -68,12 +66,12 @@ class Script:
               location: str = None,
               messages: dict = None,
               ) -> ContextManager:
-        """
-        Wrap a block with optional predicate condition and status messages.
+        """Wrap a block with optional predicate condition and status messages.
 
-        :param predicate: predicate condition (for if statement)
-        :param location: optional temporary working folder
-        :param messages: optional before, after, or skip messages
+        Args:
+            predicate: predicate condition (for if statement)
+            location: optional temporary working folder
+            messages: optional before, after, or skip messages
         """
         action_messages = AttributeDictionary.new(messages or {}, read_only=True)
         if predicate:
@@ -107,11 +105,11 @@ class Script:
                command_string_or_sequence: str | Sequence,
                messages: dict = None,
                ):
-        """
-        Add script action command(s) and display optional status messages.
+        """Add script action command(s) and display optional status messages.
 
-        :param command_string_or_sequence: command or commands
-        :param messages: optional success or failure status messages
+        Args:
+            command_string_or_sequence: command or commands
+            messages: optional success or failure status messages
         """
         # TODO: Handle message quoting/escaping for echo statements.
         action_messages = AttributeDictionary.new(messages or {}, read_only=True)
@@ -138,33 +136,35 @@ class Script:
                 self._add('fi')
 
     def working_folder(self, folder: str, messages: dict = None):
-        """
-        Set working folder in script.
+        """Set working folder in script.
 
-        :param folder: folder switch to
-        :param messages: optional status messages
+        Args:
+            folder: folder switch to
+            messages: optional status messages
         """
         self.action(f'cd {folder}', messages=messages)
 
     def wrap_command(self, command: str, need_root: bool = False) -> str:
-        """
-        Prefix with "sudo" as needed.
+        """Prefix with "sudo" as needed.
 
-        :param command: command to wrap, e.g. with sudo
-        :param need_root: prefix with sudo if True
-        :return: command with sudo prefix (if the script isn't being run by root)
+        Args:
+            command: command to wrap, e.g. with sudo
+            need_root: prefix with sudo if True
+
+        Returns:
+            command with sudo prefix (if the script isn't being run by root)
         """
         return f'sudo {command}' if need_root and not self.run_by_root else command
 
     def get_script_body(self) -> str:
-        """
-        Produce script body based on previously-formatted blocks.
+        """Produce script body based on previously-formatted blocks.
 
         IMPORTANT: Clears out previous blocks to start building a new script.
 
         Does not include "shebang" line or shell options setting.
 
-        :return: script body text
+        Returns:
+            script body text
         """
         body_text = f'{os.linesep}{os.linesep}'.join(self.blocks)
         self.blocks = []

@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Text symbol expansion.
-"""
+"""Text symbol expansion."""
 
 import os
 import sys
@@ -31,11 +29,11 @@ class StringExpansionError(RuntimeError):
     """String expansion exception."""
 
     def __init__(self, value: str, *missing: str):
-        """
-        Constructor.
+        """Constructor.
 
-        :param value: value that failed expansion
-        :param missing: missing symbols
+        Args:
+            value: value that failed expansion
+            *missing: missing symbols
         """
         self.value = value
         self.missing = list(missing)
@@ -43,22 +41,26 @@ class StringExpansionError(RuntimeError):
         super().__init__()
 
     def __str__(self) -> str:
-        """
-        Provide string for exception.
+        """Provide string for exception.
 
-        :return: exception string
+        Returns:
+            exception string
         """
         return super().__str__() + f'value="{self.value}" missing={self.missing}'
 
 
 def expand_value(value: Any, symbols: dict) -> str:
-    """
-    Produce an expanded string for a value and symbols.
+    """Produce an expanded string for a value and symbols.
 
-    :param value: value to expand
-    :param symbols: substitution symbols
-    :return: expanded string
-    :raise StringExpansionError: if symbols are missing, etc.
+    Args:
+        value: value to expand
+        symbols: substitution symbols
+
+    Returns:
+        expanded string
+
+    Raises:
+        StringExpansionError: if symbols are missing, etc.
     """
     if isinstance(value, (tuple, list)):
         return ' '.join([expand_value(element, symbols) for element in value])

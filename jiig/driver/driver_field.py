@@ -33,15 +33,15 @@ class DriverField:
                  default: DefaultValue = None,
                  choices: Sequence = None,
                  ):
-        """
-        Driver field constructor.
+        """Driver field constructor.
 
-        :param name: field name
-        :param description: field description
-        :param element_type: field element type
-        :param repeat: optional repeat data
-        :param default: optional default value
-        :param choices: optional permitted values
+        Args:
+            name: field name
+            description: field description
+            element_type: field element type
+            repeat: optional repeat data
+            default: optional default value
+            choices: optional permitted values
         """
         self.name = name
         self.description = description

@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Jiig driver package.
-"""
+"""Jiig driver package."""
 
 from . import cli
 from .cli import CLIDriver, CLI_HINT_OPTIONS, CLI_HINT_TRAILING

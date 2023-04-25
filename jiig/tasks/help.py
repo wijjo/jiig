@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Help task.
-"""
+"""Help task."""
 
 import jiig
 
@@ -28,11 +26,11 @@ def help_(
     all_tasks: jiig.f.boolean(),
     help_names: jiig.f.text(repeat=()),
 ):
-    """
-    Display tool or task-specific help.
+    """Display tool or task-specific help.
 
-    :param runtime: jiig Runtime API.
-    :param all_tasks: Show all tasks, including hidden ones.
-    :param help_names: Command task name(s) or empty for top level help.
+    Args:
+        runtime: jiig Runtime API.
+        all_tasks: Show all tasks, including hidden ones.
+        help_names: Command task name(s) or empty for top level help.
     """
     runtime.provide_help(*help_names, show_hidden=all_tasks)

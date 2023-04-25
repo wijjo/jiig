@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Network utilities.
-"""
+"""Network utilities."""
 
 import json
 import os
@@ -45,11 +43,13 @@ class CurlResponse:
 
 
 def curl(url: str) -> CurlResponse:
-    """
-    Download from a URL and return a CurlResponse object.
+    """Download from a URL and return a CurlResponse object.
 
-    :param url: URL to access
-    :return: response data
+    Args:
+        url: URL to access
+
+    Returns:
+        response data
     """
     try:
         response = urlopen(url)
@@ -71,13 +71,15 @@ def format_host_string(host: str = None, user: str = None) -> str | None:
 
 
 def split_host_string(host_string: str) -> tuple[str, str]:
-    """
-    Split host string into host/user pair.
+    """Split host string into host/user pair.
 
     Provides local user if missing.
 
-    :param host_string: host string as "user@host" or just "host"
-    :return: (host_name, user_name) tuple
+    Args:
+        host_string: host string as "user@host" or just "host"
+
+    Returns:
+        (host_name, user_name) tuple
     """
     if not host_string:
         return '', ''
@@ -88,11 +90,13 @@ def split_host_string(host_string: str) -> tuple[str, str]:
 
 
 def full_host_string(host_string: str) -> str:
-    """
-    Replace missing user in user@host with USER environment variable.
+    """Replace missing user in user@host with USER environment variable.
 
-    :param host_string: host string as "user@host" or just "host"
-    :return: host string with missing user provided
+    Args:
+        host_string: host string as "user@host" or just "host"
+
+    Returns:
+        host string with missing user provided
     """
     user, host = split_host_string(host_string)
     return f'{user}@{host}'
@@ -103,16 +107,18 @@ def download_text(url_or_request: str | Request,
                   timeout: float = None,
                   unchecked: bool = False,
                   ) -> str:
-    """
-    Download text from URL.
+    """Download text from URL.
 
     Aborts on any failure.
 
-    :param url_or_request: target URL or Request object
-    :param headers: optional HTML headers
-    :param timeout: timeout in seconds
-    :param unchecked: pass along exceptions if True, otherwise abort
-    :return: downloaded text
+    Args:
+        url_or_request: target URL or Request object
+        headers: optional HTML headers
+        timeout: timeout in seconds
+        unchecked: pass along exceptions if True, otherwise abort
+
+    Returns:
+        downloaded text
     """
     try:
         kwargs = {}
@@ -139,13 +145,15 @@ def download_json(url_or_request: str | Request,
                   headers: dict = None,
                   timeout: float = None,
                   ) -> AttributeDictionary:
-    """
-    Download JSON data from URL.
+    """Download JSON data from URL.
 
-    :param url_or_request: target URL or Request object
-    :param headers: optional headers
-    :param timeout: timeout in seconds
-    :return: downloaded and decoded JSON data
+    Args:
+        url_or_request: target URL or Request object
+        headers: optional headers
+        timeout: timeout in seconds
+
+    Returns:
+        downloaded and decoded JSON data
     """
     try:
         json_text = download_text(url_or_request, headers=headers, timeout=timeout)
@@ -159,10 +167,10 @@ def download_json(url_or_request: str | Request,
 
 
 def get_client_name() -> str:
-    """
-    Get client system name.
+    """Get client system name.
 
-    :return: client name
+    Returns:
+        client name
     """
     client = pipe(['uname', '-n'])[0]
     if client.endswith('.local'):
@@ -171,25 +179,29 @@ def get_client_name() -> str:
 
 
 def ssh_key_works(host: str) -> bool:
-    """
-    Check if SSH key works for password-less access to host.
+    """Check if SSH key works for password-less access to host.
 
-    :param host: host string
-    :return: True if the SSH key works
+    Args:
+        host: host string
+
+    Returns:
+        True if the SSH key works
     """
     return run(['ssh', host, '-o', 'PasswordAuthentication=no', 'true'],
                unchecked=True).returncode == 0
 
 
 def resolve_ip_address(host: str, checked: bool = False) -> str | None:
-    """
-    Resolve IP address for host.
+    """Resolve IP address for host.
 
     Caches IP addresses to minimize repeat call latency.
 
-    :param host: host name
-    :param checked: abort if unable to get IP address
-    :return: ip address or None if the host is inaccessible
+    Args:
+        host: host name
+        checked: abort if unable to get IP address
+
+    Returns:
+        ip address or None if the host is inaccessible
     """
     if OPTIONS.dry_run:
         return '1.1.1.1'
@@ -209,22 +221,26 @@ def resolve_ip_address(host: str, checked: bool = False) -> str | None:
 
 
 def is_host_alive(host_or_ip: str) -> bool:
-    """
-    Check if host is alive.
+    """Check if host is alive.
 
-    :param host_or_ip: host name or IP address
-    :return: True if the host is alive
+    Args:
+        host_or_ip: host name or IP address
+
+    Returns:
+        True if the host is alive
     """
     return run(['ping', '-q', '-t', '2', '-c', '1', host_or_ip], capture=True,
                unchecked=True).returncode == 0
 
 
 def is_ip_address(possible_ip_addr: str) -> bool:
-    """
-    Check if string looks like an IP address.
+    """Check if string looks like an IP address.
 
-    :param possible_ip_addr: string to check for matching IP address pattern
-    :return: True if it looks like an IP address
+    Args:
+        possible_ip_addr: string to check for matching IP address pattern
+
+    Returns:
+        True if it looks like an IP address
     """
     return bool(IP_ADDRESS_REGEX.match(possible_ip_addr))
 
@@ -274,13 +290,13 @@ class HTMLScanner:
               style_class: str = None,
               text: str = None,
               state: Any = None):
-        """
-        Decorator for methods that participate in HTML scanning and extraction.
+        """Decorator for methods that participate in HTML scanning and extraction.
 
-        :param tag: case-insensitive tag literal for filtering elements
-        :param style_class: style class regex patterns
-        :param text: regular expression for searching the inner text block
-        :param state: required state if set, or all states if not
+        Args:
+            tag: case-insensitive tag literal for filtering elements
+            style_class: style class regex patterns
+            text: regular expression for searching the inner text block
+            state: required state if set, or all states if not
         """
         if cls.scanners is None:
             cls.scanners = {}
@@ -310,14 +326,16 @@ class HTMLScanner:
              timeout: float = None,
              state: Any = NoState,
              ):
-        """
-        Scan an HTML string, file, stream, or URL.
+        """Scan an HTML string, file, stream, or URL.
 
-        :param url_or_request: HTML input URL or Request object
-        :param headers: optional HTML headers
-        :param timeout: timeout in seconds when downloading URL or Request
-        :param state: next state value
-        :return: self for chaining
+        Args:
+            url_or_request: HTML input URL or Request object
+            headers: optional HTML headers
+            timeout: timeout in seconds when downloading URL or Request
+            state: next state value
+
+        Returns:
+            self for chaining
         """
         text = download_text(url_or_request, headers=headers, timeout=timeout)
         if state is not NoState:
@@ -339,27 +357,27 @@ class HTMLScanner:
         raise StopIteration
 
     def begin(self, *args, **kwargs):
-        """
-        Begin scan.
+        """Begin scan.
 
-        :param args: positional arguments
-        :param kwargs: keyword arguments
+        Args:
+            *args: positional arguments
+            **kwargs: keyword arguments
         """
         pass
 
     def get_state(self) -> Hashable:
-        """
-        Get scan state.
+        """Get scan state.
 
-        :return: state
+        Returns:
+            state
         """
         return self._state
 
     def set_state(self, state: Hashable):
-        """
-        Set state.
+        """Set state.
 
-        :param state: state
+        Args:
+            state: state
         """
         if state not in self.scanners:
             raise RuntimeError(f'State {state} is not supported by '

@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Runner provides data and an API to task call-back functions..
-"""
+"""Runner provides data and an API to task call-back functions.."""
 
 import os
 from abc import ABC, abstractmethod
@@ -36,18 +34,17 @@ class RuntimeHelpGenerator(ABC):
 
     @abstractmethod
     def generate_help(self, *names: str, show_hidden: bool = False):
-        """
-        Provide help output.
+        """Provide help output.
 
-        :param names: name parts (task name stack)
-        :param show_hidden: show hidden task help if True
+        Args:
+            *names: name parts (task name stack)
+            show_hidden: show hidden task help if True
         """
         ...
 
 
 class Runtime(ActionContext):
-    """
-    Application Runtime class.
+    """Application Runtime class.
 
     This is the top level context presented to task call-back methods.
 
@@ -66,19 +63,19 @@ class Runtime(ActionContext):
                  paths: ToolPaths,
                  **kwargs,
                  ):
-        """
-        Construct root runtime context.
+        """Construct root runtime context.
 
         Passed to Task call-back methods to provide a runtime API and text
         symbol expansion.
 
-        :param parent: optional parent context
-        :param tool: tool data
-        :param help_generator: on-demand help generator
-        :param data: parsed command line argument data
-        :param meta: runtime metadata
-        :param paths: runtime paths
-        :param kwargs: initial symbols
+        Args:
+            parent: optional parent context
+            tool: tool data
+            help_generator: on-demand help generator
+            data: parsed command line argument data
+            meta: runtime metadata
+            paths: runtime paths
+            **kwargs: initial symbols
         """
         self.help_generator = help_generator
         self.data = data
@@ -105,8 +102,7 @@ class Runtime(ActionContext):
         )
 
     def when_done(self, when_done_callable: Callable):
-        """
-        Register "when-done" clean-up call-back.
+        """Register "when-done" clean-up call-back.
 
         When-done callables are called in LIFO (last in/first out) order.
 
@@ -114,92 +110,41 @@ class Runtime(ActionContext):
         implemented as inner functions within the task run function, and are
         aware of the local stack frame and runtime.
 
-        :param when_done_callable: callable (accepts no arguments) that is called when done
+        Args:
+            when_done_callable: callable (accepts no arguments) that is called
+                when done
         """
         self.when_done_callables.insert(0, when_done_callable)
 
     @contextmanager
     def open_alias_catalog(self) -> Iterator[AliasCatalog]:
-        """
-        Open alias catalog.
+        """Open alias catalog.
 
         For use in a `with` block to automatically close the catalog.
 
-        :return: catalog
+        Returns:
+            catalog
         """
         with open_alias_catalog(self.meta.tool_name, self.paths.aliases) as catalog:
             yield catalog
 
     def provide_help(self, *names: str, show_hidden: bool = False):
-        """
-        Provide help output.
+        """Provide help output.
 
-        :param names: name parts (task name stack)
-        :param show_hidden: show hidden task help if True
+        Args:
+            *names: name parts (task name stack)
+            show_hidden: show hidden task help if True
         """
         self.help_generator.generate_help(*names, show_hidden=show_hidden)
 
-    def host_context(self,
-                     host: str,
-                     host_ip: str = None,
-                     user: str = None,
-                     home_folder: str = None,
-                     client_ssh_key_name: str = None,
-                     host_ssh_source_key_name: str = None,
-                     client: str = None,
-                     ) -> ActionContext:
-        """
-        Construct new child context with symbols relevant to host connections.
-
-        To avoid confusion with host-related keywords, **kwargs is not supported
-        here. Use a sub-context or call update() to add more symbols.
-
-        :param host: host name
-        :param host_ip: optional host address (default: queried at runtime)
-        :param user: optional user name (default: local client user)
-        :param home_folder: optional home folder (default: /home/{user})
-        :param client_ssh_key_name: optional client SSH key file base name (default: id_rsa_client)
-        :param host_ssh_source_key_name: optional host SSH source key file base name (default: id_rsa_host)
-        :param client: optional client name (default: queried at runtime)
-        """
-        if user is None:
-            user = os.environ['USER']
-        host_string = f'{user}@{host}'
-        if home_folder is None:
-            home_folder = f'/home/{user}'
-        if host_ip is None:
-            host_ip = resolve_ip_address(host)
-            if host_ip is None:
-                self.abort(f'Unable to resolve host "{host}" IP address for host context.')
-        if client is None:
-            client = get_client_name()
-        if client_ssh_key_name is None:
-            client_ssh_key_name = 'id_rsa_client'
-        if host_ssh_source_key_name is None:
-            host_ssh_source_key_name = 'id_rsa_host'
-        client_ssh_key = os.path.expanduser(f'~/.ssh/{client_ssh_key_name}')
-        host_ssh_source_key = os.path.expanduser(f'~/.ssh/{host_ssh_source_key_name}')
-        return Runtime(self,
-                       self.help_generator,
-                       self.data,
-                       self.meta,
-                       self.paths,
-                       host=host,
-                       host_ip=host_ip,
-                       host_string=host_string,
-                       client=client,
-                       user=user,
-                       home_folder=home_folder,
-                       client_ssh_key=client_ssh_key,
-                       host_ssh_source_key=host_ssh_source_key,
-                       )
-
     def context(self, **kwargs) -> 'Runtime':
-        """
-        Create a runtime sub-context.
+        """Create a runtime sub-context.
 
-        :param kwargs: sub-context symbols
-        :return: runtime sub-context
+        Args:
+            **kwargs: sub-context symbols
+
+        Returns:
+            runtime sub-context
         """
         return Runtime(self,
                        self.help_generator,

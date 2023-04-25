@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Build source distribution.
-"""
+"""Build source distribution."""
 
 import os
 from pathlib import Path
@@ -29,10 +27,10 @@ import jiig
 def sdist(
     runtime: jiig.Runtime,
 ):
-    """
-    Build the source distribution.
+    """Build the source distribution.
 
-    :param runtime: Jiig runtime API.
+    Args:
+        runtime: Jiig runtime API.
     """
     if (Path(jiig.__file__).parent.parent / 'pyproject.toml').is_file():
         runtime.heading(1, 'Build source distribution')

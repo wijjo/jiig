@@ -15,8 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Awk-like text processing with decorated classes.
+"""Awk-like text processing with decorated classes.
 
 Basic usage involves deriving a TScanner subclass and implementing
 @handle()-decorated methods that receive matches. The subclass can collect data
@@ -57,12 +56,12 @@ class ScannerBase:
     def scan(self,
              path_or_stream: str | Path | IO,
              ):
-        """
-        Scan a block of text from a string or stream.
+        """Scan a block of text from a string or stream.
 
         I/O exceptions may be raised.
 
-        :param path_or_stream: input file path or stream
+        Args:
+            path_or_stream: input file path or stream
         """
         self.begin()
         with open(path_or_stream, encoding='utf-8') as text_stream:

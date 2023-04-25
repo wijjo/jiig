@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Virtual environment build sub-task.
-"""
+"""Virtual environment build sub-task."""
 
 import jiig
 from jiig.util.python import build_virtual_environment
@@ -28,11 +26,11 @@ def build(
     runtime: jiig.Runtime,
     rebuild_venv: jiig.f.boolean(),
 ):
-    """
-    (Re-)Build the tool virtual environment.
+    """(Re-)Build the tool virtual environment.
 
-    :param runtime: Jiig runtime API.
-    :param rebuild_venv: Force virtual environment rebuild.
+    Args:
+        runtime: Jiig runtime API.
+        rebuild_venv: Force virtual environment rebuild.
     """
     runtime.heading(1, 'Build virtual environment')
     build_virtual_environment(runtime.paths.venv,

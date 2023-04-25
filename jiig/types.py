@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Type inspection types."""
+"""Type inspection data types."""
 
 import os
 from dataclasses import dataclass, field
@@ -51,8 +51,7 @@ TOOL_METADATA_STRING_DEFAULT = '<placeholder>'
 
 @dataclass
 class ToolMetadata:
-    """
-    Runtime metadata.
+    """Runtime metadata.
 
     tool_name is the only required parameter.
     """

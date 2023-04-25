@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Context for text expansion and external command execution environment.
-"""
+"""Context for text expansion accessed by command implementations."""
 
 import os
 import sys
@@ -31,19 +29,18 @@ from .util.text.blocks import trim_text_blocks
 
 
 class Context:
-    """
-    Nestable execution context with text expansion symbols.
+    """Nestable execution context with text expansion symbols.
 
     Public data members:
     - s: Dictionary and attribute style access to expansion symbols.
     """
 
     def __init__(self, parent: Self | None, **kwargs):
-        """
-        Construct context, possibly inheriting from a parent context.
+        """Construct context, possibly inheriting from a parent context.
 
-        :param parent: optional parent context
-        :param kwargs: initial symbols
+        Args:
+            parent: optional parent context
+            **kwargs: initial symbols
         """
         if parent is not None:
             self.s = AttributeDictionary.new(no_defaults=True)
@@ -57,47 +54,49 @@ class Context:
         self.on_initialize()
 
     def context(self, **kwargs) -> Self:
-        """
-        Create a sub-context.
+        """Create a sub-context.
 
-        :param kwargs: sub-context symbols
-        :return: sub-context
+        Args:
+            **kwargs: sub-context symbols
+
+        Returns:
+            sub-context
         """
         return self.__class__(self, **kwargs)
 
     def on_initialize(self):
-        """
-        Sub-class initialization call-back.
+        """Sub-class initialization call-back.
 
         Allows some sub-classes to avoid overriding the constructor.
         """
         pass
 
     def __enter__(self) -> Self:
-        """
-        Context management protocol enter method.
+        """Context management protocol enter method.
 
         Called at the start when used in a with block. Implemented only for
         consistency with sub-classes that have actual state to save and restore.
 
-        :return: Context object
+        Returns:
+            Context object
         """
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
-        """
-        Context management protocol exit method.
+        """Context management protocol exit method.
 
-        :param exc_type: exception type
-        :param exc_val: exception value
-        :param exc_tb: exception traceback
-        :return: True to suppress an exception that occurred in the with block
+        Args:
+            exc_type: exception type
+            exc_val: exception value
+            exc_tb: exception traceback
+
+        Returns:
+            True to suppress an exception that occurred in the with block
         """
         return False
 
     def update(self, **kwargs) -> Self:
-        """
-        Update context symbols with text expansion.
+        """Update context symbols with text expansion.
 
         Expands in original caller's keyword argument order, which allows
         dependencies to resolve within this one operation. (see PEP-468)
@@ -105,7 +104,8 @@ class Context:
         This is chainable to allow use in the same `with` statement that creates
         the context.
 
-        :param kwargs: keyword symbols to expand and copy
+        Args:
+            **kwargs: keyword symbols to expand and copy
         """
         try:
             for key, value in kwargs.items():
@@ -115,23 +115,25 @@ class Context:
             self.abort(str(exc))
 
     def copy_symbols(self, **kwargs) -> Self:
-        """
-        Copy symbols to context without text expansion.
+        """Copy symbols to context without text expansion.
 
         This is chainable to allow use in the same `with` statement that creates
         the context.
 
-        :param kwargs: keyword symbols to copy
+        Args:
+            **kwargs: keyword symbols to copy
         """
         self.s.update(kwargs)
         return self
 
     def format(self, text: str | list | tuple | None) -> str | list[str] | None:
-        """
-        Format text with context symbol expansion.
+        """Format text with context symbol expansion.
 
-        :param text: text to format
-        :return: formatted text or None if text was None
+        Args:
+            text: text to format
+
+        Returns:
+            formatted text or None if text was None
         """
         if text is None:
             return None
@@ -154,12 +156,14 @@ class Context:
             self.abort(f'Bad expansion key {str(key_error)}.', text)
 
     def format_path(self, path: str, *sub_paths: str) -> str:
-        """
-        Calls format() after joining path parts and fixing slashes, as needed.
+        """Calls format() after joining path parts and fixing slashes, as needed.
 
-        :param path: top level path to expand
-        :param sub_paths: sub-paths to expand
-        :return: expanded path string
+        Args:
+            path: top level path to expand
+            *sub_paths: sub-paths to expand
+
+        Returns:
+            expanded path string
         """
         full_path = os.path.join(path, *sub_paths) if sub_paths else path
         if os.path.sep != '/':
@@ -171,57 +175,59 @@ class Context:
                       indent: int = None,
                       double_spaced: bool = False,
                       ) -> str:
-        """
-        Format text blocks.
+        """Format text blocks.
 
         Expand symbols, trim excess indentation and outer whitespace, optionally
         add indentation, and optionally double-space lines.
 
-        :param blocks: text blocks to format
-        :param indent: optional indentation amount
-        :param double_spaced: add extra line separators between blocks if true
-        :return: formatted text
+        Args:
+            *blocks: text blocks to format
+            indent: optional indentation amount
+            double_spaced: add extra line separators between blocks if true
+
+        Returns:
+            formatted text
         """
         lines = trim_text_blocks(*blocks, indent=indent, double_spaced=double_spaced)
         return os.linesep.join([self.format(line) for line in lines])
 
     def message(self, message: Any, *args, **kwargs):
-        """
-        Display console message with symbol expansion.
+        """Display console message with symbol expansion.
 
-        :param message: message to expand and display
-        :param args: positional arguments to display below message
-        :param kwargs: keyword arguments to display with names below message
+        Args:
+            message: message to expand and display
+            *args: positional arguments to display below message
+            **kwargs: keyword arguments to display with names below message
         """
         log_message(self.format(message), *args, **kwargs)
 
     def warning(self, message: Any, *args, **kwargs):
-        """
-        Display console warning message with symbol expansion.
+        """Display console warning message with symbol expansion.
 
-        :param message: message to expand and display
-        :param args: positional arguments to display below message
-        :param kwargs: keyword arguments to display with names below message
+        Args:
+            message: message to expand and display
+            *args: positional arguments to display below message
+            **kwargs: keyword arguments to display with names below message
         """
         log_warning(self.format(message), *args, **kwargs)
 
     def error(self, message: Any, *args, **kwargs):
-        """
-        Display console error message with symbol expansion.
+        """Display console error message with symbol expansion.
 
-        :param message: message to expand and display
-        :param args: positional arguments to display below message
-        :param kwargs: keyword arguments to display with names below message
+        Args:
+            message: message to expand and display
+            *args: positional arguments to display below message
+            **kwargs: keyword arguments to display with names below message
         """
         log_error(self.format(message), *args, **kwargs)
 
     def abort(self, message: Any, *args, **kwargs):
-        """
-        Display console fatal error message with symbol expansion and abort execution.
+        """Display console fatal error message with symbol expansion and abort execution.
 
-        :param message: message to expand and display
-        :param args: positional arguments to display below message
-        :param kwargs: keyword arguments to display with names below message
+        Args:
+            message: message to expand and display
+            *args: positional arguments to display below message
+            **kwargs: keyword arguments to display with names below message
         """
         lines = [self.format(message)]
         if not OPTIONS.debug:
@@ -229,10 +235,10 @@ class Context:
         abort(*lines, *args, **kwargs)
 
     def heading(self, level: int, message: Any):
-        """
-        Display console heading message with symbol expansion.
+        """Display console heading message with symbol expansion.
 
-        :param level: heading level, 1-n
-        :param message: message to expand and display
+        Args:
+            level: heading level, 1-n
+            message: message to expand and display
         """
         log_heading(self.format(message), level=level)

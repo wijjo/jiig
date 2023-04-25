@@ -25,12 +25,12 @@ def prepare_library_path(tool_source_root: Path | None,
                          jiig_library_paths: list[Path],
                          additional_library_paths: list[Path],
                          ):
-    """
-    Add necessary paths to Python library load path.
+    """Add necessary paths to Python library load path.
 
-    :param tool_source_root: tool source root, if known
-    :param jiig_library_paths: jiig library paths
-    :param additional_library_paths: additional library paths
+    Args:
+        tool_source_root: tool source root, if known
+        jiig_library_paths: jiig library paths
+        additional_library_paths: additional library paths
     """
     # Add (missing) Jiig and tool library folders to Python library load path.
     for library_folder in jiig_library_paths:

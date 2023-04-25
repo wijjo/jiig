@@ -15,8 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Jiig main function to boot the tool.
+"""Jiig main function to boot the tool.
 
 Consists of a series of function calls into the initialization package.
 
@@ -103,12 +102,12 @@ def execute_application(task_stack: list[RuntimeTask],
                         argument_data: object,
                         runtime: Runtime,
                         ):
-    """
-    Run application.
+    """Run application.
 
-    :param task_stack: task stack
-    :param argument_data: argument data
-    :param runtime: runtime interface
+    Args:
+        task_stack: task stack
+        argument_data: argument data
+        runtime: runtime interface
     """
     log_message('Executing application...', debug=True)
     # Prepare argument data using raw data and task option/argument definitions.

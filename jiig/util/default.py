@@ -1,6 +1,4 @@
-"""
-Default value wrapper.
-"""
+"""Default value wrapper."""
 
 from dataclasses import dataclass
 from typing import Any

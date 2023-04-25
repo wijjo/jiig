@@ -71,8 +71,7 @@ def parse_date_time_delta(delta_string: str | None,
                           date_only: bool = False,
                           time_only: bool = False,
                           ) -> DateTimeDelta:
-    """
-    Parse a time delta and convert to a DateTimeDelta object.
+    """Parse a time delta and convert to a DateTimeDelta object.
 
     Time delta strings are comma-separated individual deltas to apply to a
     single date/time component.
@@ -93,12 +92,16 @@ def parse_date_time_delta(delta_string: str | None,
         y       years
         (none)  based on default_letter or seconds if not specified
 
-    :param delta_string: time delta specification
-    :param negative: apply in a reverse time direction if True
-    :param default_letter: letter substituted when none provided for value (default: 's')
-    :param date_only: only accept date (ymwd) values
-    :param time_only: only accept time (HMS) values
-    :return: DateTimeDelta object
+    Args:
+        delta_string: time delta specification
+        negative: apply in a reverse time direction if True
+        default_letter: letter substituted when none provided for value
+            (default: 's')
+        date_only: only accept date (ymwd) values
+        time_only: only accept time (HMS) values
+
+    Returns:
+        DateTimeDelta object
     """
     if date_only:
         if time_only:
@@ -162,18 +165,21 @@ def apply_date_time_delta_string(delta_string: str | None,
                                  date_only: bool = False,
                                  time_only: bool = False,
                                  ) -> struct_time:
-    """
-    Parse a time delta and apply to the current time or a specific one.
+    """Parse a time delta and apply to the current time or a specific one.
 
     See parse_date_time_delta() for more information about delta strings.
 
-    :param delta_string: time delta specification
-    :param negative: apply in a reverse time direction if True
-    :param start_time: start time as time_struct (default: current time)
-    :param default_letter: letter substituted when none provided for value (default: 's')
-    :param date_only: only accept date (ymwd) values
-    :param time_only: only accept time (HMS) values
-    :return: calculated time as time_struct
+    Args:
+        delta_string: time delta specification
+        negative: apply in a reverse time direction if True
+        start_time: start time as time_struct (default: current time)
+        default_letter: letter substituted when none provided for value
+            (default: 's')
+        date_only: only accept date (ymwd) values
+        time_only: only accept time (HMS) values
+
+    Returns:
+        calculated time as time_struct
     """
     delta = parse_date_time_delta(delta_string,
                                   negative=negative,
@@ -186,12 +192,14 @@ def apply_date_time_delta_string(delta_string: str | None,
 def apply_date_time_delta(delta: DateTimeDelta,
                           start_time: struct_time = None,
                           ) -> struct_time:
-    """
-    Apply a date/time delta to the current time or a specific one.
+    """Apply a date/time delta to the current time or a specific one.
 
-    :param delta: time delta data
-    :param start_time: start time as time_struct (default: current time)
-    :return: calculated time as time_struct
+    Args:
+        delta: time delta data
+        start_time: start time as time_struct (default: current time)
+
+    Returns:
+        calculated time as time_struct
     """
     if start_time is not None:
         start_datetime = datetime.datetime.fromtimestamp(mktime(start_time))
@@ -215,8 +223,7 @@ def apply_date_time_delta(delta: DateTimeDelta,
 def parse_date_time(date_time_string: str | None,
                     quiet: bool = False,
                     ) -> struct_time | None:
-    """
-    Flexible parsing of date and or time strings.
+    """Flexible parsing of date and or time strings.
 
     The format is similar to ISO in that dates are dash-separated and in y-m-d
     order. Times are colon-separated, and less significant time components may
@@ -227,9 +234,12 @@ def parse_date_time(date_time_string: str | None,
     The string may have just a date, just a time, or both. If both are specified
     they must be space-separated.
 
-    :param date_time_string: date/time string to parse (None is the same as empty)
-    :param quiet: suppress errors, e.g. for unit testing
-    :return: date/time date as time_struct or None if parsing fails
+    Args:
+        date_time_string: date/time string to parse (None is the same as empty)
+        quiet: suppress errors, e.g. for unit testing
+
+    Returns:
+        date/time date as time_struct or None if parsing fails
     """
     if date_time_string is None:
         return None
@@ -277,11 +287,13 @@ def parse_date_time(date_time_string: str | None,
 
 
 def parse_time_interval(interval_string: str | None) -> int | None:
-    """
-    Parse time interval with same syntax as parse_date_time_delta() accepts.
+    """Parse time interval with same syntax as parse_date_time_delta() accepts.
 
-    :param interval_string: HMS time interval string (handles None)
-    :return: delta in seconds as integer
+    Args:
+        interval_string: HMS time interval string (handles None)
+
+    Returns:
+        delta in seconds as integer
     """
     if not interval_string:
         return None
@@ -292,8 +304,7 @@ def parse_time_interval(interval_string: str | None) -> int | None:
 
 
 def timestamp_to_strftime_format(timestamp_format: str = None) -> str | None:
-    """
-    Convert simplified timestamp specification to strftime format string.
+    """Convert simplified timestamp specification to strftime format string.
 
     Case-insensitive timestamp format strings can include the following
     components. Possible components include date/time specifiers (see list
@@ -313,8 +324,12 @@ def timestamp_to_strftime_format(timestamp_format: str = None) -> str | None:
     Formatting options are intentionally limited so that the resulting string is
     sortable, and works with file names.
 
-    :param timestamp_format: optional timestamp format specification (default: 'yyyymmddhhmmss')
-    :return: strftime format string or None if timestamp_format is bad
+    Args:
+        timestamp_format: optional timestamp format specification (default:
+            'yyyymmddhhmmss')
+
+    Returns:
+        strftime format string or None if timestamp_format is bad
     """
     if timestamp_format is None:
         return TIMESTAMP_DEFAULT_STRFTIME_FORMAT
@@ -349,8 +364,7 @@ def timestamp_to_strftime_format(timestamp_format: str = None) -> str | None:
 def timestamp_string(timestamp_format: str = None,
                      time_value: float | struct_time = None,
                      ) -> str:
-    """
-    Generate timestamp string based on simplified specification.
+    """Generate timestamp string based on simplified specification.
 
     Case-insensitive timestamp format strings can include the following
     components. Possible components include date/time specifiers (see list
@@ -370,9 +384,14 @@ def timestamp_string(timestamp_format: str = None,
     Formatting options are intentionally limited so that the resulting string is
     sortable, and works with file names.
 
-    :param timestamp_format: optional timestamp format specification (default: 'yyyymmddhhmmss')
-    :param time_value: optional time value as float or struct_time (default: current time)
-    :return: timestamp string
+    Args:
+        timestamp_format: optional timestamp format specification (default:
+            'yyyymmddhhmmss')
+        time_value: optional time value as float or struct_time (default:
+            current time)
+
+    Returns:
+        timestamp string
     """
     strftime_format = timestamp_to_strftime_format(timestamp_format)
     if strftime_format is None:

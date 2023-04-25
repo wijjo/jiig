@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Stream utilities.
-"""
+"""Stream utilities."""
 
 import json
 import os
@@ -44,14 +42,16 @@ TEMPORARY_ROOT = '/tmp'
 def open_text_stream(path_or_stream: str | Path | IO,
                      unchecked: bool = False
                      ) -> Iterator[IO]:
-    """
-    Open a text file or stream for reading.
+    """Open a text file or stream for reading.
 
     A stream is just returned as is.
 
-    :param path_or_stream: text file path or stream
-    :param unchecked: pass along exceptions if True, otherwise abort
-    :return: a yielded stream to use in a `with` block for proper closing
+    Args:
+        path_or_stream: text file path or stream
+        unchecked: pass along exceptions if True, otherwise abort
+
+    Returns:
+        a yielded stream to use in a `with` block for proper closing
     """
     if isinstance(path_or_stream, IO):
         yield path_or_stream
@@ -68,12 +68,14 @@ def open_text_stream(path_or_stream: str | Path | IO,
 def read_text_file(path_or_stream: str | Path | IO,
                    unchecked: bool = False
                    ) -> str:
-    """
-    Read text from a text stream, given a string, file path, stream, URL, or Request object.
+    """Read text from a text stream, given a string, file path, stream, URL, or Request object.
 
-    :param path_or_stream: text file path or stream
-    :param unchecked: pass along exceptions if True, otherwise abort
-    :return: text read from source
+    Args:
+        path_or_stream: text file path or stream
+        unchecked: pass along exceptions if True, otherwise abort
+
+    Returns:
+        text read from source
     """
     with open_text_stream(path_or_stream, unchecked=unchecked) as file_stream:
         try:
@@ -86,12 +88,14 @@ def read_text_file(path_or_stream: str | Path | IO,
 def read_json_file(path: str | Path,
                    unchecked: bool = False
                    ) -> Any:
-    """
-    Read JSON from a text stream, given a string, file path, stream, URL, or Request object.
+    """Read JSON from a text stream, given a string, file path, stream, URL, or Request object.
 
-    :param path: file path
-    :param unchecked: pass along exceptions if True, otherwise abort
-    :return: JSON data
+    Args:
+        path: file path
+        unchecked: pass along exceptions if True, otherwise abort
+
+    Returns:
+        JSON data
     """
     with open_text_stream(path, unchecked=unchecked) as file_stream:
         try:
@@ -102,8 +106,7 @@ def read_json_file(path: str | Path,
 
 
 class OutputRedirector:
-    """
-    Output redirector context manager.
+    """Output redirector context manager.
 
     Captures and can optionally filter sys.stdout and sys.stderr.
 
@@ -114,12 +117,12 @@ class OutputRedirector:
                  line_filter: Callable[[str, bool], str | None] = None,
                  auto_flush: bool = False,
                  ):
-        """
-        Copy stdout lines to stream with optional filtering.
+        """Copy stdout lines to stream with optional filtering.
 
-        :param line_filter: callable receives each stdout line and an error flag
-                            and returns text or None to skip
-        :param auto_flush: automatically flush captured output
+        Args:
+            line_filter: callable receives each stdout line and an error flag
+                and returns text or None to skip
+            auto_flush: automatically flush captured output
         """
         self._line_filter = line_filter
         self._stdout_save: IO | None = None
@@ -132,43 +135,38 @@ class OutputRedirector:
 
     @property
     def stdout_text(self) -> str:
-        """
-        Property that provides captured stdout text.
+        """Property that provides captured stdout text.
 
-        :return: captured stdout text
+        Returns:
+            captured stdout text
         """
         self.end_capture()
         return self._stdout_text
 
     @property
     def stderr_text(self) -> str:
-        """
-        Property that provides captured stderr text.
+        """Property that provides captured stderr text.
 
-        :return: captured stderr text
+        Returns:
+            captured stderr text
         """
         self.end_capture()
         return self._stderr_text
 
     def flush_stdout(self):
-        """
-        Flush captured and filtered stdout text to sys.stdout.
-        """
+        """Flush captured and filtered stdout text to sys.stdout."""
         if self.stdout_text:
             sys.stdout.write(self.stdout_text)
             sys.stdout.write(os.linesep)
 
     def flush_stderr(self):
-        """
-        Flush captured and filtered stderr text to sys.stderr.
-        """
+        """Flush captured and filtered stderr text to sys.stderr."""
         if self.stderr_text:
             sys.stderr.write(self.stderr_text)
             sys.stderr.write(os.linesep)
 
     def begin_capture(self):
-        """
-        Begin capturing stdout/stderr.
+        """Begin capturing stdout/stderr.
 
         Flush both sys streams and replace them with string streams to capture
         the output.
@@ -187,8 +185,7 @@ class OutputRedirector:
             sys.stderr = self._stderr_stream
 
     def end_capture(self):
-        """
-        Stop capturing stdout/stderr.
+        """Stop capturing stdout/stderr.
 
         Use this class as a context manager in a `with` clause, rather than
         calling this directly.
@@ -236,14 +233,16 @@ class OutputRedirector:
 def open_input_file(path: str | Path,
                     binary: bool = False,
                     ) -> IO:
-    """
-    Convenient opening of text or binary files for reading.
+    """Convenient opening of text or binary files for reading.
 
     I/O exceptions are fully the caller's responsibility.
 
-    :param path: file path
-    :param binary: open the file in binary mode (defaults to utf-8 text)
-    :return: open file object, usable in a `with` statement for automatic closing
+    Args:
+        path: file path
+        binary: open the file in binary mode (defaults to utf-8 text)
+
+    Returns:
+        open file object, usable in a `with` statement for automatic closing
     """
     kwargs = {'mode': 'r'}
     if not binary:
@@ -252,8 +251,7 @@ def open_input_file(path: str | Path,
 
 
 class OutputFile(IO):
-    """
-    Special output file wrapper additional data, i.e. the file path.
+    """Special output file wrapper additional data, i.e. the file path.
 
     Generally not used directly. It is returned by stream.open_output_file().
     """
@@ -263,14 +261,14 @@ class OutputFile(IO):
                  path: str | Path | None,
                  permissions: str | None,
                  ):
-        """
-        Output file constructor.
+        """Output file constructor.
 
         Note that permissions are only applied when used in a "with" block.
 
-        :param open_file: open file
-        :param path: file path
-        :param permissions: chmod-style permissions to apply after closing the file
+        Args:
+            open_file: open file
+            path: file path
+            permissions: chmod-style permissions to apply after closing the file
         """
         self.open_file = open_file
         self.path = path if isinstance(path, Path) else Path(path)
@@ -368,19 +366,22 @@ def open_output_file(path_spec: str | Path,
                      create_parent_folder: bool = False,
                      permissions: str = None,
                      ) -> OutputFile:
-    """
-    Convenient opening of text or binary files, temporary or permanent, for writing.
+    """Convenient opening of text or binary files, temporary or permanent, for writing.
 
     I/O exceptions are fully the caller's responsibility.
 
     Note that permissions are only applied when used in a "with" block.
 
-    :param path_spec: file path, possibly including a '?' marker to create a temporary file
-    :param binary: open the file in binary mode (defaults to utf-8 text)
-    :param keep_temporary: do not delete temporary file if True
-    :param create_parent_folder: create parent folder as needed if True
-    :param permissions: chmod-style permissions to apply after closing the file
-    :return: open file object, usable in a `with` statement for automatic closing
+    Args:
+        path_spec: file path, possibly including a '?' marker to create a
+            temporary file
+        binary: open the file in binary mode (defaults to utf-8 text)
+        keep_temporary: do not delete temporary file if True
+        create_parent_folder: create parent folder as needed if True
+        permissions: chmod-style permissions to apply after closing the file
+
+    Returns:
+        open file object, usable in a `with` statement for automatic closing
     """
     kwargs = {'mode': 'w'}
     if not binary:

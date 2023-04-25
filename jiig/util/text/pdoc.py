@@ -15,8 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Pdoc3 task utilities.
+"""Pdoc3 task utilities.
 
 Since pdoc is a third party library, this module guards against import errors by
 loading the library only as needed.
@@ -87,11 +86,13 @@ class PdocBuilder:
             yield from self._iterate_module(module)
 
     def generate_html(self, force: bool = False) -> bool:
-        """
-        Build HTML format documentation.
+        """Build HTML format documentation.
 
-        :param force: Overwrite existing files.
-        :return: True if HTML generation succeeded
+        Args:
+            force: Overwrite existing files.
+
+        Returns:
+            True if HTML generation succeeded
         """
         if not force:
             for module in self.iterate_modules():

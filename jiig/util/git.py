@@ -15,9 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""
-Git-related utilities.
-"""
+"""Git-related utilities."""
 
 import os
 from typing import Iterable
@@ -27,11 +25,13 @@ from .process import run
 
 
 def get_repo_url(repo_folder: str = None) -> str:
-    """
-    Get remote repository URL based on local repo folder.
+    """Get remote repository URL based on local repo folder.
 
-    :param repo_folder: local repository folder (default: working folder)
-    :return: remote repository URL
+    Args:
+        repo_folder: local repository folder (default: working folder)
+
+    Returns:
+        remote repository URL
     """
     if repo_folder is None:
         repo_folder = os.getcwd()
@@ -42,11 +42,13 @@ def get_repo_url(repo_folder: str = None) -> str:
 
 
 def repo_name_from_url(url: str) -> str:
-    """
-    Extract repository name from URL.
+    """Extract repository name from URL.
 
-    :param url: repository URL
-    :return: repository name
+    Args:
+        url: repository URL
+
+    Returns:
+        repository name
     """
     name = url.split('/')[-1]
     if name.endswith('.git'):
@@ -58,13 +60,15 @@ def find_url_by_name(urls: Iterable[str],
                      name: str,
                      partial: bool = False,
                      ) -> str | None:
-    """
-    Find URL by full or partial repository name.
+    """Find URL by full or partial repository name.
 
-    :param urls: iterable URLs to search
-    :param name: full or partial name to search for
-    :param partial: accept partial matches
-    :return: matched URL or None if not found
+    Args:
+        urls: iterable URLs to search
+        name: full or partial name to search for
+        partial: accept partial matches
+
+    Returns:
+        matched URL or None if not found
     """
     for url in urls:
         extracted_name = repo_name_from_url(url)

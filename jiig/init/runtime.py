@@ -37,16 +37,18 @@ def prepare_runtime_object(*,
                            help_generator: HelpGenerator,
                            extra_symbols: dict,
                            ) -> Runtime:
-    """
-    Prepare runtime object passed to task functions.
+    """Prepare runtime object passed to task functions.
 
-    :param runtime_spec: runtime class specification
-    :param metadata: runtime metadata
-    :param argument_data: argument data
-    :param paths: runtime paths
-    :param help_generator: help generator
-    :param extra_symbols: extra application symbols in Runtime object
-    :return: prepared runtime object
+    Args:
+        runtime_spec: runtime class specification
+        metadata: runtime metadata
+        argument_data: argument data
+        paths: runtime paths
+        help_generator: help generator
+        extra_symbols: extra application symbols in Runtime object
+
+    Returns:
+        prepared runtime object
     """
     if runtime_spec is None:
         runtime_spec = Runtime

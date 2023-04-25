@@ -58,14 +58,16 @@ class CLIHelpProvider(HelpProvider):
         self.help_options = help_options or CLIHelpProviderOptions()
 
     def format_help(self, *names: str, show_hidden: bool = False) -> str:
-        """
-        Format help.
+        """Format help.
 
         Required HelpProvider override called by help-related tasks.
 
-        :param names: name parts (task name stack)
-        :param show_hidden: show hidden task help if True
-        :return: formatted help text
+        Args:
+            *names: name parts (task name stack)
+            show_hidden: show hidden task help if True
+
+        Returns:
+            formatted help text
         """
         if names:
             return self.format_task_help(names, show_hidden=show_hidden)
@@ -73,10 +75,10 @@ class CLIHelpProvider(HelpProvider):
             return self.format_tool_help(show_hidden=show_hidden)
 
     def format_tool_help(self, show_hidden: bool = False) -> str:
-        """
-        Use HelpFormatter to format tool help text.
+        """Use HelpFormatter to format tool help text.
 
-        :param show_hidden: show hidden task help if True
+        Args:
+            show_hidden: show hidden task help if True
         """
         return self._format_help(
             tool_name=self.tool_name,
@@ -92,11 +94,11 @@ class CLIHelpProvider(HelpProvider):
         )
 
     def format_task_help(self, names: Sequence[str], show_hidden: bool = False) -> str:
-        """
-        Populate HelpFormatter with task help data and format help text.
+        """Populate HelpFormatter with task help data and format help text.
 
-        :param names: name parts (task name stack)
-        :param show_hidden: show hidden task help if True
+        Args:
+            names: name parts (task name stack)
+            show_hidden: show hidden task help if True
         """
         task_stack = self._resolve_task_stack(names)
 

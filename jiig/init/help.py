@@ -42,11 +42,13 @@ def prepare_help_generator(*,
                            driver: Driver,
                            root_task: RuntimeTask,
                            ) -> HelpGenerator:
-    """
-    Prepare help generator.
+    """Prepare help generator.
 
-    :param driver: active driver
-    :param root_task: root runtime task
-    :return: help generator
+    Args:
+        driver: active driver
+        root_task: root runtime task
+
+    Returns:
+        help generator
     """
     return HelpGenerator(driver, root_task)
