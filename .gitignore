@@ -78,4 +78,7 @@ dist.backup/
 .DS_Store
 
 # local sandbox
-sandbox/
+/sandbox/
+
+# Generated documentation
+/doc/
