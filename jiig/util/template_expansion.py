@@ -314,40 +314,40 @@ def _expand_template_path(source_path: str,
 
 class _TemplateFileExpander:
     def __init__(self,
-                 source_root: Path,
+                 source_base_folder: Path,
                  overwrite: bool = False,
                  symbols: dict = None,
                  ):
-        if not source_root.exists():
+        if not source_base_folder.exists():
             abort(f'Source template folder does not exist.',
-                  source_root)
-        if not source_root.is_dir():
+                  source_base_folder)
+        if not source_base_folder.is_dir():
             abort(f'Source template folder path exists, but is not a folder.',
-                  source_root)
-        self.source_root = source_root
+                  source_base_folder)
+        self.source_base_folder = source_base_folder
         self.overwrite = overwrite
         self.symbols = symbols or {}
         self.substitutions: list[tuple[re.Pattern, str]] | None = None
         self.expansion_specs_by_path = _get_template_folder_expansion_specs_by_path(
-            source_root, symbols)
+            source_base_folder, symbols)
         # Skipped file paths hard-coded for now to skip the configuration file.
         self.skipped_paths = [TEMPLATE_JSON]
 
     def expand_folder(self,
-                      target_root: Path,
+                      target_base_folder: Path,
                       sub_folder: str = None,
                       excludes: Sequence[str] = None,
                       includes: Sequence[str] = None,
                       ):
-        if target_root.exists() and not target_root.is_dir():
+        if target_base_folder.exists() and not target_base_folder.is_dir():
             abort(f'Target folder path exists, but is not a folder.',
-                  target_root)
+                  target_base_folder)
         if sub_folder is None:
-            source_folder = self.source_root
-            target_folder = target_root
+            source_folder = self.source_base_folder
+            target_folder = target_base_folder
         else:
-            source_folder = self.source_root / sub_folder
-            target_folder = target_root / sub_folder
+            source_folder = self.source_base_folder / sub_folder
+            target_folder = target_base_folder / sub_folder
         log_block_begin(1, 'Expanding templates')
         log_message('Folders:', source=source_folder, target=target_folder)
         failed = False
@@ -373,7 +373,7 @@ class _TemplateFileExpander:
                 log_block_begin(2, f'Folder: {relative_folder or "."}')
                 for relative_path in input_files:
                     try:
-                        self._expand_file(relative_path, target_root)
+                        self._expand_file(relative_path, target_base_folder)
                     except TemplateExpansionError as exc:
                         log_error(str(exc))
                         failed = True
@@ -382,7 +382,7 @@ class _TemplateFileExpander:
         if failed:
             abort('Template expansion failed.')
 
-    def _expand_file(self, relative_path: Path, target_root: Path):
+    def _expand_file(self, relative_path: Path, target_base_folder: Path):
 
         expansion_spec = self._get_expansion_spec(relative_path)
 
@@ -390,8 +390,8 @@ class _TemplateFileExpander:
         if expansion_spec.expansion == WORD_EXPANSION and self.substitutions is None:
             self.substitutions = _build_word_substitution_list(self.symbols)
 
-        source_path = self.source_root / relative_path
-        target_path = target_root / expansion_spec.output_path
+        source_path = self.source_base_folder / relative_path
+        target_path = target_base_folder / expansion_spec.output_path
 
         if target_path.exists():
             if not target_path.is_file():
@@ -467,8 +467,8 @@ ALL_EXPANSIONS = (TEMPLATE_EXPANSION, WORD_EXPANSION, COPY_EXPANSION)
 DEFAULT_EXPANSION = TEMPLATE_EXPANSION
 
 
-def expand_folder(source_root: str | Path,
-                  target_root: str | Path,
+def expand_folder(source_base_folder: str | Path,
+                  target_base_folder: str | Path,
                   sub_folder: str | Path = None,
                   includes: Sequence[str] = None,
                   excludes: Sequence[str] = None,
@@ -481,17 +481,17 @@ def expand_folder(source_root: str | Path,
     Reads source template configuration, if found to determine what kind of
     special handling may be needed.
 
-    :param source_root: template source root folder path
-    :param target_root: base target folder
+    :param source_base_folder: template source root folder path
+    :param target_base_folder: base target folder
     :param sub_folder: optional relative sub-folder path applied to source and target roots
     :param includes: optional relative paths, supporting wildcards, for files to include
     :param excludes: optional relative paths, supporting wildcards, for files to exclude
     :param overwrite: force overwriting of existing files if True
     :param symbols: symbols used for template expansion
     """
-    if not isinstance(source_root, Path):
-        source_root = Path(source_root)
-    if not isinstance(target_root, Path):
-        target_root = Path(target_root)
-    expander = _TemplateFileExpander(source_root, overwrite=overwrite, symbols=symbols)
-    expander.expand_folder(target_root, sub_folder=sub_folder, includes=includes, excludes=excludes)
+    if not isinstance(source_base_folder, Path):
+        source_base_folder = Path(source_base_folder)
+    if not isinstance(target_base_folder, Path):
+        target_base_folder = Path(target_base_folder)
+    expander = _TemplateFileExpander(source_base_folder, overwrite=overwrite, symbols=symbols)
+    expander.expand_folder(target_base_folder, sub_folder=sub_folder, includes=includes, excludes=excludes)

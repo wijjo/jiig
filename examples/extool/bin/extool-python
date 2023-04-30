@@ -8,9 +8,13 @@
 import sys
 from pathlib import Path
 
-from jiig.task import Task, TaskGroup, TaskTree
-from jiig.tool import ToolMetadata
-from jiig.startup import tool_main
+from jiig import (
+    Task,
+    TaskGroup,
+    TaskTree,
+    ToolMetadata,
+    tool_main,
+)
 
 EXTOOL_ROOT = str(Path(__file__).resolve().parent.parent)
 
@@ -36,8 +40,6 @@ def main():
             pip_packages=[],
         ),
         task_tree=TaskTree(
-            name='(extool root)',
-            package='extool.tasks',
             sub_tasks=[
                 Task(name='calc'),
                 Task(name='case',
@@ -57,6 +59,7 @@ def main():
                 )
             ],
         ),
+        script_path=__file__,
     )
 
 

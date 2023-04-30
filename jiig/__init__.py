@@ -15,20 +15,32 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Jiig library."""
+"""Jiig library.
+
+.. include:: ../README.md
+"""
 
 # Top-level imports to allow task implementations to just import jiig. These
 # must have minimal dependencies in order to avoid inadvertent circular imports.
-from .context import Context
-from .action_context import ActionContext
-from .runtime import Runtime, RuntimeHelpGenerator
+from .context import (
+    ActionContext,
+    Context,
+)
+from .runtime import (
+    Runtime,
+    RuntimeHelpGenerator,
+)
+from .startup import tool_main
 from .task import (
     Task,
     TaskGroup,
     TaskTree,
     task,
 )
-from .types import ToolMetadata, ToolPaths
+from .types import (
+    ToolMetadata,
+    ToolPaths,
+)
 from .util.options import OPTIONS
 from .util.script import Script
 
@@ -37,3 +49,6 @@ from . import adapters
 from . import adapters as a
 from . import fields
 from . import fields as f
+
+# Hide internal and tasks packages from pdoc3 generated documentation.
+__pdoc__ = {'internal': False, 'tasks': False}

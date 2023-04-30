@@ -26,7 +26,7 @@ from pathlib import Path
 from subprocess import run
 from tempfile import NamedTemporaryFile
 from types import TracebackType
-from typing import IO, Iterator, Any, AnyStr, Callable, Iterable, Type
+from typing import IO, Iterator, Any, AnyStr, Callable, Iterable, Self, Type
 
 from .log import abort, log_error
 from .filesystem import create_folder
@@ -223,8 +223,9 @@ class OutputRedirector:
                 self.flush_stdout()
                 self.flush_stderr()
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         self.begin_capture()
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.end_capture()
@@ -360,7 +361,7 @@ class OutputFile(IO):
         return ret
 
 
-def open_output_file(path_spec: str | Path,
+def open_output_file(path: str | Path,
                      binary: bool = False,
                      keep_temporary: bool = False,
                      create_parent_folder: bool = False,
@@ -373,8 +374,7 @@ def open_output_file(path_spec: str | Path,
     Note that permissions are only applied when used in a "with" block.
 
     Args:
-        path_spec: file path, possibly including a '?' marker to create a
-            temporary file
+        path: file path, possibly including '?' marker to create temporary file
         binary: open the file in binary mode (defaults to utf-8 text)
         keep_temporary: do not delete temporary file if True
         create_parent_folder: create parent folder as needed if True
@@ -386,16 +386,16 @@ def open_output_file(path_spec: str | Path,
     kwargs = {'mode': 'w'}
     if not binary:
         kwargs['encoding'] = 'utf-8'
-    path_spec_string = str(path_spec)
-    path_object = Path(path_spec)
-    temporary_path_parts = path_spec_string.split(TEMPORARY_FILE_MARKER, maxsplit=1)
+    if isinstance(path, str):
+        path = Path(path)
+    temporary_path_parts = str(path).split(TEMPORARY_FILE_MARKER, maxsplit=1)
     if len(temporary_path_parts) == 2:
         prefix, suffix = temporary_path_parts
         if prefix:
             kwargs['prefix'] = prefix
         if suffix:
             kwargs['suffix'] = suffix
-        dir_path = path_object.parent
+        dir_path = path.parent
         if dir_path:
             kwargs['dir'] = str(dir_path)
         kwargs['delete'] = not (keep_temporary or OPTIONS.debug)
@@ -404,7 +404,7 @@ def open_output_file(path_spec: str | Path,
         return OutputFile(temp_file, temp_file.name, permissions)
     # Permanent file.
     if create_parent_folder:
-        parent_folder = path_object.parent
+        parent_folder = path.parent
         if not os.path.exists(parent_folder):
             create_folder(parent_folder)
-    return OutputFile(open(path_object, **kwargs), path_object, permissions)
+    return OutputFile(path.open(**kwargs), path, permissions)

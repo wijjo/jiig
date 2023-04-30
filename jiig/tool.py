@@ -18,85 +18,16 @@
 """Tool specification classes."""
 
 import os
-from dataclasses import dataclass
-from types import ModuleType
-from typing import Any, Self
+from typing import Any
 
-from .constants import (
-    DEFAULT_ALIASES_PATH,
-    DEFAULT_BUILD_FOLDER,
-    DEFAULT_DOC_FOLDER,
-    DEFAULT_TEST_FOLDER,
-    JIIG_VENV_ROOT,
-)
 from .task import TaskTree
 from .types import (
+    ToolCustomizations,
     ToolMetadata,
+    ToolOptions,
     ToolPaths,
 )
-from .util.log import log_warning
 from .util.options import OPTIONS
-from .util.python import symbols_to_dataclass
-
-
-@dataclass
-class ToolOptions:
-    """Boolean options governing tool behavior."""
-
-    disable_alias: bool = False
-    """Disable alias feature if True."""
-
-    disable_help: bool = False
-    """Disable help feature if True."""
-
-    disable_debug: bool = False
-    """Disable debug option if True."""
-
-    disable_dry_run: bool = False
-    """Disable dry run option if True."""
-
-    disable_verbose: bool = False
-    """Disable verbose option if True."""
-
-    enable_pause: bool = False
-    """Enable pause option if True."""
-
-    enable_keep_files: bool = False
-    """Enable keep files option if True."""
-
-    hide_builtin_tasks: bool = False
-    """Hide tasks like help, alias, venv, etc. from help."""
-
-    is_jiig: bool = False
-    """Running the Jiig tool if True."""
-
-    @classmethod
-    def from_raw_data(cls, raw_tool_options: Any) -> Self:
-        """Convert raw data to tool options object.
-
-        Args:
-            raw_tool_options: raw input data
-
-        Returns:
-            tool options object
-        """
-        if raw_tool_options is None:
-            return ToolOptions()
-        if not isinstance(raw_tool_options, dict):
-            log_warning('Ignoring tool_options, because it is not a dictionary.')
-            return ToolOptions()
-        return symbols_to_dataclass(raw_tool_options, ToolOptions)
-
-
-@dataclass
-class ToolCustomizations:
-    """Tool customization data."""
-
-    runtime: type | str | ModuleType | None
-    """Custom runtime context module or class reference (Runtime subclass)."""
-
-    driver: type | str | ModuleType | None
-    """Driver class reference."""
 
 
 class Tool:
@@ -105,9 +36,9 @@ class Tool:
     def __init__(self,
                  meta: ToolMetadata,
                  task_tree: TaskTree,
+                 paths: ToolPaths,
                  options: ToolOptions = None,
                  custom: ToolCustomizations = None,
-                 paths: ToolPaths = None,
                  extra_symbols: dict[str, Any] = None,
                  global_option_names: list[str] = None,
                  ):
@@ -116,25 +47,18 @@ class Tool:
         Args:
             meta: runtime metadata
             task_tree: task specification tree
+            paths: various filesystem paths
             options: tool runtime options
             custom: tool customizations
-            paths: various filesystem paths
             extra_symbols: optional extra symbols for unknown keys
             global_option_names: global option names, e.g. used by CLI driver
                 for parsing
         """
         self.meta = meta
         self.task_tree = task_tree
+        self.paths = paths
         self.options = options or ToolOptions()
         self.custom = custom or ToolCustomizations(None, None)
-        self.paths = paths or ToolPaths(
-            libraries=[],
-            venv=JIIG_VENV_ROOT / meta.tool_name,
-            aliases=DEFAULT_ALIASES_PATH,
-            build=DEFAULT_BUILD_FOLDER,
-            doc=DEFAULT_DOC_FOLDER,
-            test=DEFAULT_TEST_FOLDER,
-        )
         self.extra_symbols = extra_symbols or {}
         self.global_option_names = global_option_names or []
         if not self.options.disable_debug:

@@ -34,7 +34,7 @@ from inspect import isfunction
 from typing import Callable
 
 from jiig.runtime import Runtime
-from jiig.runtime_task import RuntimeTask
+from jiig.task import RuntimeTask
 from jiig.util.exceptions import format_exception
 from jiig.util.log import abort, log_message
 from jiig.util.options import OPTIONS
@@ -99,19 +99,17 @@ class _ArgumentDataPreparer:
 
 
 def execute_application(task_stack: list[RuntimeTask],
-                        argument_data: object,
                         runtime: Runtime,
                         ):
     """Run application.
 
     Args:
         task_stack: task stack
-        argument_data: argument data
         runtime: runtime interface
     """
     log_message('Executing application...', debug=True)
     # Prepare argument data using raw data and task option/argument definitions.
-    data_preparer = _ArgumentDataPreparer(argument_data)
+    data_preparer = _ArgumentDataPreparer(runtime.data)
     for task in task_stack:
         data_preparer.prepare_argument_data(task)
     if len(data_preparer.errors) > 0:

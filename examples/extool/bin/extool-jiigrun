@@ -13,7 +13,6 @@ version = "0.1"
 author = "Extool Author"
 copyright = "2023, Extool Author"
 # pip_packages = ["package1", "package2"]
-tasks_package = "extool.tasks"
 
 [tasks.calc]
 

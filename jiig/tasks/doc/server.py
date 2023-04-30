@@ -15,10 +15,27 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Pdoc3 documentation tasks."""
+"""Pdoc3 documentation server task."""
 
-from . import (
-    html,
-    pdf,
-    server,
-)
+import os
+import jiig
+
+from .html import generate_html
+
+
+@jiig.task
+def server(
+    runtime: jiig.Runtime,
+    port: jiig.f.integer() = 8080,
+):
+    """Use Pdoc3 to serve documentation using HTTP.
+
+    Args:
+        runtime: Jiig runtime API.
+        port: HTTP server port (default: 8080).
+    """
+    html_folder = generate_html(runtime)
+    os.chdir(html_folder)
+    python = runtime.format_path('{venv_folder}', 'bin', 'python3')
+    runtime.message(f'URL: http://localhost:{port}')
+    os.execl(python, python, '-m', 'http.server', str(port))

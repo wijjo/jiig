@@ -1,4 +1,4 @@
-# Copyright (C) 2021-2023, Steven Cooper
+# Copyright (C) 2020-2023, Steven Cooper
 #
 # This file is part of Jiig.
 #
@@ -15,38 +15,127 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Application/tasks preparation."""
+"""Task tree initialization."""
 
 import os
 import re
 from dataclasses import dataclass
-from inspect import isfunction, ismodule
+from inspect import (
+    isfunction,
+    ismodule,
+)
+from types import ModuleType
 from typing import Sequence
 
-from jiig.fields import TaskField, Field
+import jiig.tasks.alias
+import jiig.tasks.venv
+from jiig.fields import (
+    TaskField,
+    Field,
+)
 from jiig.runtime import Runtime
-from jiig.runtime_task import RuntimeTask
-from jiig.task import Task, TaskGroup, TaskTree, RegisteredTask, TASKS_BY_MODULE_ID, TASKS_BY_FUNCTION_ID
-from jiig.types import TaskFunction, ModuleReference
-from jiig.util.log import abort, log_error
-from jiig.util.python import get_function_fields, ModuleReferenceResolver
-from jiig.util.text.footnotes import NotesList, NotesDict, FootnoteBuilder
+from jiig.task import (
+    TASKS_BY_FUNCTION_ID,
+    TASKS_BY_MODULE_ID,
+    RegisteredTask,
+    RuntimeTask,
+    Task,
+    TaskGroup,
+    TaskTree,
+)
+from jiig.types import (
+    ModuleReference,
+    TaskFunction,
+    ToolOptions,
+)
+from jiig.util.log import (
+    abort,
+    log_error,
+)
+from jiig.util.options import OPTIONS
+from jiig.util.python import (
+    ModuleReferenceResolver,
+    get_function_fields,
+)
+from jiig.util.text.footnotes import (
+    NotesList,
+    NotesDict,
+    FootnoteBuilder,
+)
+
+from .tool_environment import ToolEnvironment
 
 DEFAULT_TASK_DESCRIPTION = '(no task description, e.g. in task doc string)'
 DEFAULT_FIELD_DESCRIPTION = '(no field description, e.g. in doc string :param:)'
 DOC_STRING_PARAM_REGEX = re.compile(r'^\s*:param\s+(\w+)\s*:\s*(.*)\s*$')
 
 
-def prepare_runtime_tasks(task_tree: TaskTree,
-                          ) -> RuntimeTask:
-    """
-    Create fully-resolved runtime task tree.
+#: Task for "help" command.
+HELP_TASK = Task(
+    name='help',
+    visibility=1,
+    cli_options={'all_tasks': ['-a', '--all']},
+)
 
-    :param task_tree: task tree
-    :return: prepared application
+#: Task group for "alias" sub-commands.
+ALIAS_TASK_GROUP = TaskGroup(
+    name='alias',
+    sub_tasks=[
+        Task(name='delete'),
+        Task(name='description'),
+        Task(name='list', cli_options={'expand_names': ['-e', '--expand-names']}),
+        Task(name='rename'),
+        Task(name='set', cli_options={'description': ['-d', '--description']}),
+        Task(name='show'),
+    ],
+)
+
+#: Task group for "venv" (virtual environment) sub-commands.
+VENV_TASK_GROUP = TaskGroup(
+    name='venv',
+    sub_tasks=[
+        Task(name='build', cli_options={'rebuild_venv': ['-r', '--rebuild']}),
+        Task(name='ipython', cli_trailing='trailing_arguments'),
+        Task(name='pip', cli_trailing='trailing_arguments'),
+        Task(name='python', cli_trailing='trailing_arguments'),
+        Task(name='run', cli_trailing='trailing_arguments'),
+        Task(name='update'),
+    ],
+)
+
+BUILTIN_TASK_NAMES = ['alias', 'help', 'venv']
+
+
+def prepare_tasks(
+    task_tree: TaskTree,
+    options: ToolOptions,
+    tool_env: ToolEnvironment,
+) -> RuntimeTask:
+    """Prepare runtime task tree.
+
+    Args:
+        task_tree: raw input task tree
+        options: tool options
+        tool_env: tool environment data
+
+    Returns:
+        runtime task tree root
     """
+    # Need access to Jiig configuration for built-in tasks and library paths.
+    # Inject built-in tasks as needed.
+    full_task_tree = _inject_builtin_tasks(
+        task_tree=task_tree,
+        tool_options=options,
+    )
+
+    if OPTIONS.debug:
+        full_task_tree.log_dump_all()
+
     # Build runtime task hierarchy.
-    return _RuntimeTaskPreparer(task_tree).populate()
+    preparer = _RuntimeTaskPreparer(full_task_tree,
+                                    tool_env.tool_tasks_package,
+                                    tool_env.jiig_tasks_package)
+    return preparer.populate()
 
 
 @dataclass
@@ -59,13 +148,19 @@ class _DocData:
 
 class _RuntimeTaskPreparer:
 
-    def __init__(self, task_tree: TaskTree):
+    def __init__(self,
+                 task_tree: TaskTree,
+                 tasks_package: ModuleType,
+                 jiig_tasks_package: ModuleType | None,
+                 ):
         self.task_tree = task_tree
+        self.tasks_package = tasks_package
+        self.jiig_tasks_package = jiig_tasks_package
         self.module_resolver = ModuleReferenceResolver()
 
     def populate(self) -> RuntimeTask:
         """Convert configuration TaskTree tasks to complete RuntimeTask hierarchy."""
-        doc_string = self.get_package_doc_string(self.task_tree.package)
+        doc_string = self.get_package_doc_string(self.tasks_package)
         doc_data = self.parse_doc_string(
             doc_string,
             self.task_tree.description,
@@ -79,7 +174,7 @@ class _RuntimeTaskPreparer:
             footnotes=doc_data.footnotes,
             hints=self.task_tree.hints,
         )
-        self.populate_task_group(self.task_tree, self.task_tree.package, root_task)
+        self.populate_task_group(self.task_tree, self.tasks_package, root_task)
         return root_task
 
     def populate_task_group(self,
@@ -98,10 +193,7 @@ class _RuntimeTaskPreparer:
             if runtime_sub_task is not None:
                 runtime_task_group.sub_tasks.append(runtime_sub_task)
         for sub_group in task_group.groups:
-            if sub_group.package:
-                sub_package = sub_group.package
-            else:
-                sub_package = self.get_sub_package_reference(package, sub_group.name)
+            sub_package = self.get_sub_package_reference(package, sub_group.name)
             runtime_sub_group = self._new_group(
                 sub_group,
                 sub_package,
@@ -273,11 +365,14 @@ class _RuntimeTaskPreparer:
             )
         return task_fields
 
-    @staticmethod
-    def get_sub_package_reference(package: ModuleReference | None,
+    def get_sub_package_reference(self,
+                                  package: ModuleReference | None,
                                   name: str,
                                   ) -> str | None:
         if package:
+            # Resolve built-in tasks used by external tool with the Jiig package.
+            if self.jiig_tasks_package is not None and name in BUILTIN_TASK_NAMES:
+                package = self.jiig_tasks_package
             if ismodule(package):
                 return '.'.join([package.__name__, name])
             if isinstance(package, str):
@@ -327,3 +422,46 @@ class _RuntimeTaskPreparer:
         if registered_task.footnotes is None:
             registered_task.footnotes = default_footnotes
         return registered_task
+
+
+def _inject_builtin_tasks(*,
+                          task_tree: TaskTree,
+                          tool_options: ToolOptions,
+                          ) -> TaskTree:
+    # Access built-in tasks through by loading the Jiig Tool.
+    visibility = 2 if tool_options.hide_builtin_tasks else 1
+    add_tasks: list[Task] = []
+    add_groups: list[TaskGroup] = []
+    task_names = [task.name for task in task_tree.tasks]
+    group_names = [group.name for group in task_tree.groups]
+
+    def _add_task(task: Task):
+        if task.name not in task_names:
+            task_copy = task.copy(visibility=visibility, impl=f'jiig.tasks.{task.name}')
+            add_tasks.append(task_copy)
+
+    def _add_group(group: TaskGroup, package: ModuleType):
+        if group.name not in group_names:
+            group_copy = group.copy(visibility=visibility)
+            # Add implementation references to sub_tasks.
+            group_copy.tasks = [
+                task.copy(impl=f'jiig.tasks.{group.name}.{task.name}')
+                for task in group_copy.tasks
+            ]
+            if group_copy.groups:
+                log_error(f'Ignoring "jiig.tasks.{group.name}" sub-task groups.')
+            group_copy.package = package
+            add_groups.append(group_copy)
+
+    if not tool_options.disable_help:
+        _add_task(HELP_TASK)
+    if not tool_options.disable_alias:
+        _add_group(ALIAS_TASK_GROUP, jiig.tasks.alias)
+    _add_group(VENV_TASK_GROUP, jiig.tasks.venv)
+
+    adjusted_task_tree = task_tree.copy()
+    if add_tasks:
+        adjusted_task_tree.tasks.extend(add_tasks)
+    if add_groups:
+        adjusted_task_tree.groups.extend(add_groups)
+    return adjusted_task_tree

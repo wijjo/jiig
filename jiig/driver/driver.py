@@ -21,7 +21,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Sequence
 
-from jiig.runtime_task import RuntimeTask
+from jiig.task import RuntimeTask
+from jiig.types import RuntimeHelpGenerator
 from jiig.util.log import LogWriter, log_message
 
 from .driver_options import DriverOptions
@@ -73,20 +74,20 @@ class Driver(ABC):
         self.description = description
         self.options = options or DriverOptions()
         self.phase = 'construction'
+        self.preliminary_app_data: DriverPreliminaryAppData | None = None
+        self.app_data: DriverAppData | None = None
+        self.help_generator: RuntimeHelpGenerator | None = None
 
     def initialize_driver(self,
                           command_line_arguments: Sequence[str],
-                          ) -> DriverPreliminaryAppData:
+                          ):
         """Driver initialization.
 
         Args:
             command_line_arguments: command line arguments
-
-        Returns:
-            preliminary app data
         """
         self.phase = 'driver-initialization'
-        return self.on_initialize_driver(command_line_arguments)
+        self.preliminary_app_data = self.on_initialize_driver(command_line_arguments)
 
     @abstractmethod
     def on_initialize_driver(self,
@@ -105,7 +106,7 @@ class Driver(ABC):
     def initialize_application(self,
                                arguments: list[str],
                                root_task: RuntimeTask
-                               ) -> DriverAppData:
+                               ):
         """Driver application initialization.
 
         Args:
@@ -116,9 +117,9 @@ class Driver(ABC):
             driver application data
         """
         self.phase = 'application-initialization'
-        driver_app_data = self.on_initialize_application(arguments, root_task)
+        self.app_data = self.on_initialize_application(arguments, root_task)
+        self.help_generator = DriverHelpGenerator(self, root_task)
         log_message('Application initialized.', debug=True)
-        return driver_app_data
 
     @abstractmethod
     def on_initialize_application(self,
@@ -171,3 +172,19 @@ class Driver(ABC):
             log writer
         """
         ...
+
+
+class DriverHelpGenerator(RuntimeHelpGenerator):
+    """Application help generator."""
+
+    def __init__(self,
+                 driver: Driver,
+                 root_task: RuntimeTask,
+                 ):
+        self.driver = driver
+        self.root_task = root_task
+
+    def generate_help(self, *names: str, show_hidden: bool = False):
+        self.driver.provide_help(self.root_task,
+                                 *names,
+                                 show_hidden=show_hidden)

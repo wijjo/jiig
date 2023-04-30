@@ -19,6 +19,7 @@
 
 import os
 import sys
+from pathlib import Path
 from pprint import pformat
 from typing import Any, Self
 
@@ -242,3 +243,74 @@ class Context:
             message: message to expand and display
         """
         log_heading(self.format(message), level=level)
+
+
+class ActionContext(Context):
+    """Nestable execution context with text expansion symbols.
+
+    Supports temporary working folder location changes.
+
+    Supports text expansion capabilities provided by base Context class.
+    """
+
+    def __init__(self, parent: Context | None, **kwargs):
+        """Construct action context.
+
+        Args:
+            parent: optional parent context for symbol inheritance
+            **kwargs: initial symbols
+        """
+        super().__init__(parent, **kwargs)
+        self.initial_working_folder = Path(os.getcwd())
+        self.working_folder_changed = False
+        # Convenient access to Jiig runtime options.
+        self.options = OPTIONS
+
+    def __enter__(self) -> Self:
+        """Context management protocol enter method.
+
+        Called at the start when an ActionContext is used in a with block. Saves
+        the working directory.
+
+        Returns:
+            Context object
+        """
+        self.initial_working_folder = Path(os.getcwd())
+        self.working_folder_changed = True
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+        """Context management protocol exit method.
+
+        Called at the end when an ActionContext is used in a with block.
+        Restores the original working directory if it was changed by calling
+        working_folder() method.
+
+        Args:
+            exc_type: exception type
+            exc_val: exception value
+            exc_tb: exception traceback
+
+        Returns:
+            True to suppress an exception that occurred in the with block
+        """
+        if self.working_folder_changed:
+            os.chdir(self.initial_working_folder)
+            self.working_folder_changed = False
+        return False
+
+    def working_folder(self, folder: str | Path) -> Path:
+        """Change the working folder.
+
+        Original working folder is restored by the contextmanager wrapped around
+        the sub_context creation.
+
+        Args:
+            folder: new working folder
+
+        Returns:
+            previous working folder as pathlib.Path
+        """
+        os.chdir(folder)
+        self.working_folder_changed = True
+        return Path(os.getcwd())

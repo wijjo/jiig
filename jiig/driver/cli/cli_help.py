@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from typing import Sequence
 
 from jiig.fields import TaskField
-from jiig.runtime_task import RuntimeTask, get_task_stack
+from jiig.task import RuntimeTask, get_task_stack
 from jiig.util.default import DefaultValue
 from jiig.util.help_formatter import HelpProvider, HelpFormatter
 from jiig.util.log import abort

@@ -20,6 +20,8 @@
 import os
 from pathlib import Path
 
+#: Jiig tool name.
+JIIG_TOOL_NAME = 'jiig'
 #: User home folder path.
 HOME_FOLDER_PATH = Path(os.environ['HOME'])
 #: Jiig root folder path.

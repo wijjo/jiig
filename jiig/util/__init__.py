@@ -16,3 +16,6 @@
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
 """Jiig utility library."""
+
+# Exclude embedded third party packages from pdoc3 generated documentation.
+__pdoc__ = {'thirdparty': False}

@@ -116,6 +116,7 @@ class ModuleReferenceResolver:
     @classmethod
     def resolve(cls,
                 reference: str | ModuleType | None,
+                optional: bool = False,
                 ) -> ModuleType | None:
         """
         Resolve module reference to an imported module.
@@ -123,6 +124,7 @@ class ModuleReferenceResolver:
         Dump the Python path when the first import error is encountered.
 
         :param reference: module reference as string or already-imported module
+        :param optional: okay if module is not found if True
         :return: imported module or None if the reference could not be resolved
         """
         if reference is None:
@@ -133,6 +135,8 @@ class ModuleReferenceResolver:
             try:
                 return import_module(reference)
             except ModuleNotFoundError as exc:
+                if optional:
+                    return None
                 cls.unresolved_count += 1
                 if cls.unresolved_count == 1:
                     log_warning(f'Python path - see import error(s) below:', *sys.path)

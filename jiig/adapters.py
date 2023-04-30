@@ -239,17 +239,19 @@ def to_comma_list(value: str) -> list[str]:
     return list(value_item.strip() for value_item in value.split(','))
 
 
-def to_int(value: str, base: int = 10) -> int:
+def to_int(value: str, base: int = None) -> int:
     """Convert string to integer.
 
     Args:
         value: input hex string
-        base: conversion base (default: 10)
+        base: optional conversion base (default: 10)
 
     Returns:
         output integer value
     """
-    return int(value, base=base)
+    if base is not None:
+        return int(value, base=base)
+    return int(value)
 
 
 def to_float(value: str) -> float:

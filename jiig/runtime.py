@@ -17,30 +17,25 @@
 
 """Runner provides data and an API to task call-back functions.."""
 
-import os
-from abc import ABC, abstractmethod
 from contextlib import contextmanager
-from typing import Iterator, Callable
+from typing import (
+    Iterator,
+    Callable,
+)
 
-from .context import Context
-from .action_context import ActionContext
-from .tool import ToolMetadata, ToolPaths
-from .util.alias_catalog import AliasCatalog, open_alias_catalog
-from .util.network import resolve_ip_address, get_client_name
-
-
-class RuntimeHelpGenerator(ABC):
-    """Abstract base class implemented by a driver to generate on-demand help output."""
-
-    @abstractmethod
-    def generate_help(self, *names: str, show_hidden: bool = False):
-        """Provide help output.
-
-        Args:
-            *names: name parts (task name stack)
-            show_hidden: show hidden task help if True
-        """
-        ...
+from .context import (
+    ActionContext,
+    Context,
+)
+from .types import (
+    RuntimeHelpGenerator,
+    ToolMetadata,
+    ToolPaths,
+)
+from .util.alias_catalog import (
+    AliasCatalog,
+    open_alias_catalog,
+)
 
 
 class Runtime(ActionContext):
@@ -90,7 +85,6 @@ class Runtime(ActionContext):
             copyright=meta.copyright,
             description=meta.description,
             doc_folder=paths.doc,
-            jiig_source_root=paths.jiig_source_root,
             pip_packages=meta.pip_packages,
             project_name=meta.project_name,
             sub_task_label=meta.sub_task_label,

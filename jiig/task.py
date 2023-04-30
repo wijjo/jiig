@@ -25,9 +25,11 @@ from inspect import isfunction, ismodule
 from types import ModuleType
 from typing import Sequence, Self, TypeVar, Type, Any
 
-from .types import TaskFunction, TaskReference, ModuleReference
+from .constants import DEFAULT_ROOT_TASK_NAME
+from .fields import TaskField
+from .types import TaskFunction, TaskReference
 from .util.collections import make_list
-from .util.log import log_error, log_message, log_heading
+from .util.log import abort, log_error, log_message, log_heading
 from .util.text.footnotes import NotesSpec, NotesList, NotesDict
 
 T_task_or_group = TypeVar('T_task_or_group')
@@ -172,7 +174,6 @@ class TaskGroup(_BaseTask):
                  *,
                  name: str,
                  sub_tasks: Sequence[Task | Self],
-                 package: ModuleReference | None = None,
                  description: str = None,
                  visibility: int = 0,
                  notes: NotesSpec | None = None,
@@ -187,8 +188,6 @@ class TaskGroup(_BaseTask):
         Args:
             name: task group name
             sub_tasks: nested sub-tasks and or sub-groups
-            package: optional package containing task modules - allows simple
-                name task implementation references
             description: optional description (default: task package
                 description)
             visibility: 0=normal, 1=secondary, 2=hidden
@@ -199,7 +198,6 @@ class TaskGroup(_BaseTask):
         """
         self.name = name
         self.visibility = visibility
-        self.package = package
         self.description = description
         sub_task_scrubber = _TaskGroupSubTaskScrubber()
         self.groups: list[TaskGroup] = sub_task_scrubber.scrub_sub_tasks(
@@ -222,7 +220,6 @@ class TaskGroup(_BaseTask):
         group_copy = TaskGroup(
             name=self.name,
             sub_tasks=[],
-            package=self.package,
             description=self.description,
             visibility=visibility if visibility is not None else self.visibility,
             notes=self.notes.copy() if self.notes is not None else None,
@@ -250,7 +247,6 @@ class TaskGroup(_BaseTask):
         return cls(
             name=name,
             sub_tasks=converter.get_sub_tasks(),
-            package=converter.get_package(),
             description=converter.get_description(),
             visibility=converter.get_visibility(),
             notes=converter.get_notes(),
@@ -272,7 +268,6 @@ class TaskGroup(_BaseTask):
         group_dump = self.format_dump(
             self.name,
             indent,
-            package=self.format_dump_string(self.package),
             description=self.format_dump_string(self.description),
             visibility=self.visibility,
             notes=self.format_dump_notes(self.notes),
@@ -296,21 +291,17 @@ class TaskTree(TaskGroup):
     """
     def __init__(self,
                  *,
-                 name: str,
                  sub_tasks: Sequence[Task | TaskGroup],
-                 package: ModuleReference | None = None,
+                 name: str | None = None,
                  ):
         """TaskGroup constructor.
 
         Args:
-            name: task tree name
             sub_tasks: nested sub-tasks and or sub-groups
-            package: optional package containing top level task modules - allows
-                simple name task implementation references
+            name: optional task tree name (default: default root task name)
         """
         super().__init__(name=name,
                          sub_tasks=sub_tasks,
-                         package=package,
                          description='root task',
                          visibility=2)
 
@@ -326,7 +317,6 @@ class TaskTree(TaskGroup):
         tree_copy = TaskTree(
             name=self.name,
             sub_tasks=[],
-            package=self.package,
         )
         tree_copy.tasks = self.tasks.copy()
         tree_copy.groups = self.groups.copy()
@@ -349,7 +339,6 @@ class TaskTree(TaskGroup):
         task_tree = cls(
             name=name,
             sub_tasks=converter.get_sub_tasks(),
-            package=converter.get_package(),
         )
         hints = converter.get_hints()
         if hints:
@@ -380,6 +369,209 @@ class RegisteredTask:
 
 TASKS_BY_FUNCTION_ID: dict[int, RegisteredTask] = {}
 TASKS_BY_MODULE_ID: dict[int, RegisteredTask] = {}
+
+
+class RuntimeTask:
+    """Runtime task information, based on a registered class.
+
+    Also provides access to resolved fields and sub-tasks.
+
+    Text items like description, notes, and footnotes are populated as needed
+    with default values.
+    """
+
+    # noinspection PyUnresolvedReferences
+    def __init__(self,
+                 name: str,
+                 full_name: str,
+                 visibility: int,
+                 description: str,
+                 # For implemented task (not task group).
+                 task_function: TaskFunction | None = None,
+                 module: ModuleType | None = None,
+                 fields: list[TaskField] | None = None,
+                 # For task group.
+                 sub_tasks: Sequence[Self] | None = None,
+                 # Other optional fields.
+                 notes: NotesList | None = None,
+                 footnotes: NotesDict | None = None,
+                 driver_hints: dict | None = None,
+                 ):
+        """Construct runtime task with resolved function/module references.
+
+        INTERNAL: use new_...() methods to create RuntimeTask's.
+
+        Args:
+            name: task name
+            full_name: fully-qualified task name
+            visibility: 0=normal, 1=secondary, 2=hidden
+            description: task description
+            task_function: optional task implementation function (not used for
+                task group)
+            module: optional module (not used for task group)
+            fields: optional task fields (not used for task group)
+            sub_tasks: optional sub-tasks (for task group only)
+            notes: optional notes
+            footnotes: optional footnotes
+            driver_hints: optional driver hints
+        """
+        self.name = name
+        self.full_name = full_name
+        self.visibility = visibility
+        self.description = description
+        self.task_function = task_function
+        self.module = module
+        self.fields = fields or []
+        self.sub_tasks = list(sub_tasks) if sub_tasks is not None else []
+        self.notes = notes or []
+        self.footnotes = footnotes or {}
+        self.driver_hints = driver_hints or {}
+
+    @classmethod
+    def new_task(cls,
+                 *,
+                 name: str,
+                 full_name: str,
+                 description: str,
+                 task_function: TaskFunction,
+                 module: ModuleType,
+                 fields: list[TaskField],
+                 visibility: int,
+                 notes: NotesList,
+                 footnotes: NotesDict,
+                 hints: dict,
+                 ) -> Self | None:
+        """Resolve task reference to a RuntimeTask (if possible).
+
+        Args:
+            name: task name
+            full_name: optional override full task name
+            description: task description
+            task_function: task function
+            module: module containing task function
+            fields: task field specifications
+            visibility: visibility (0=normal, 1=secondary, 2=hidden)
+            notes: notes list
+            footnotes: footnotes dictionary
+            hints: driver hints
+
+        Returns:
+            resolved task or None if it wasn't resolved and required is False
+        """
+        return RuntimeTask(
+            name=name,
+            full_name=full_name,
+            visibility=visibility,
+            description=description,
+            task_function=task_function,
+            module=module,
+            fields=fields,
+            sub_tasks=None,
+            notes=notes,
+            footnotes=footnotes,
+            driver_hints=hints,
+        )
+
+    @classmethod
+    def new_group(cls,
+                  *,
+                  name: str,
+                  full_name: str,
+                  description: str,
+                  visibility: int,
+                  sub_tasks: Sequence[Self],
+                  notes: NotesList,
+                  footnotes: NotesDict,
+                  hints: dict,
+                  ) -> Self | None:
+        """Create RuntimeTask for task group.
+
+        Args:
+            name: task name
+            full_name: optional override full task name
+            description: optional override description
+            visibility: visibility (0=normal, 1=secondary, 2=hidden)
+            sub_tasks: sub-tasks
+            notes: optional override notes as string or string list
+            footnotes: optional override footnotes dictionary
+            hints: optional override driver hints
+
+        Returns:
+            new RuntimeTask
+        """
+        return RuntimeTask(
+            name=name,
+            full_name=full_name,
+            visibility=visibility,
+            description=description,
+            sub_tasks=sub_tasks,
+            notes=notes,
+            footnotes=footnotes,
+            driver_hints=hints,
+        )
+
+    @classmethod
+    def new_tree(cls,
+                 *,
+                 description: str,
+                 sub_tasks: Sequence[Self],
+                 notes: NotesList,
+                 footnotes: NotesDict,
+                 hints: dict,
+                 ) -> Self:
+        """Create RuntimeTask that is the root of a task tree.
+
+        Args:
+            sub_tasks: sub-tasks
+            description: optional override description
+            notes: optional override notes as string or string list
+            footnotes: optional override footnotes dictionary
+            hints: optional override driver hints
+
+        Returns:
+            new RuntimeTask
+        """
+        return RuntimeTask(
+            name=DEFAULT_ROOT_TASK_NAME,
+            full_name='',
+            sub_tasks=sub_tasks,
+            visibility=2,
+            description=description,
+            notes=notes,
+            footnotes=footnotes,
+            driver_hints=hints,
+        )
+
+
+def get_task_stack(root_task: RuntimeTask,
+                   names: Sequence[str],
+                   ) -> list[RuntimeTask]:
+    """Get task stack (list) based on names list.
+
+    Args:
+        root_task: root task
+        names: name stack as list
+
+    Returns:
+        sub-task stack as list
+    """
+    task_stack: list[RuntimeTask] = [root_task]
+
+    def _get_sub_stack(stack_task: RuntimeTask, sub_names: Sequence[str]):
+        for sub_task in stack_task.sub_tasks:
+            if sub_task.name == sub_names[0]:
+                task_stack.append(sub_task)
+                if len(sub_names) > 1:
+                    _get_sub_stack(sub_task, sub_names[1:])
+                break
+        else:
+            raise ValueError(sub_names[0])
+
+    try:
+        _get_sub_stack(root_task, names)
+        return task_stack
+    except ValueError:
+        abort(f'Failed to resolve command:', command='.'.join(names))
 
 
 def task(
@@ -587,20 +779,6 @@ class _TaskTreeElementConverter:
             else:
                 sub_tasks.append(Task.from_raw_data(name, raw_item_data))
         return sub_tasks
-
-    def get_package(self) -> ModuleReference | None:
-        """Convert raw data to package module reference.
-
-        Returns:
-            package module reference or None
-        """
-        raw_data = self._get_raw_data('package')
-        if raw_data is None:
-            return None
-        if not isinstance(raw_data, str) and not ismodule(raw_data):
-            log_error(f'Bad package module reference: {raw_data}')
-            return None
-        return raw_data
 
     def get_impl(self) -> TaskReference | None:
         """Convert raw data to task reference.

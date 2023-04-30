@@ -72,6 +72,8 @@ def search_folder_stack_for_file(folder: str | Path,
                                  ) -> Path | None:
     """Look up folder stack for a specific file or folder name.
 
+    Name can be a relative path with '/' separators.
+
     Args:
         folder: starting folder path
         name: file or folder name to look for
@@ -79,13 +81,16 @@ def search_folder_stack_for_file(folder: str | Path,
     Returns:
         found folder path or None if the name was not found
     """
-    check_folder = str(folder)
+    if isinstance(folder, str):
+        folder = Path(folder)
+    check_folder = folder
     while True:
-        if os.path.exists(os.path.join(check_folder, name)):
-            return Path(check_folder)
-        if check_folder in ['', os.path.sep]:
+        if (check_folder / name).exists():
+            return check_folder
+        next_check_folder = check_folder.parent
+        if next_check_folder == check_folder:
             return None
-        check_folder = os.path.dirname(check_folder)
+        check_folder = next_check_folder
 
 
 def short_path(long_path: str | Path,
@@ -159,7 +164,7 @@ def delete_file(file_path: str | Path, quiet: bool = False):
     if os.path.exists(file_path):
         if not quiet:
             log_message('Delete file.', short_path(file_path))
-        run(['rm', '-f', file_path])
+        run(['rm', '-f', file_path], quiet=quiet)
 
 
 def is_glob_pattern(path: str | Path) -> bool:

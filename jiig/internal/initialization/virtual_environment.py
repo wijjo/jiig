@@ -21,24 +21,24 @@ import os
 import sys
 from pathlib import Path
 
-from jiig.constants import JIIG_VENV_ROOT
 from jiig.util.log import log_message
 from jiig.util.python import (
     PYTHON_NATIVE_ENVIRONMENT_NAME,
     build_virtual_environment,
+    install_missing_pip_packages,
 )
 
 
-def check_virtual_environment(*,
-                              tool_name: str,
-                              runner_args: list[str],
-                              cli_args: list[str],
-                              packages: list = None,
-                              ) -> Path:
+def prepare_virtual_environment(*,
+                                venv_folder: Path,
+                                runner_args: list[str],
+                                cli_args: list[str],
+                                packages: list[str] | None,
+                                ):
     """Check virtual environment, build it, and restart in it as needed.
 
     Args:
-        tool_name: tool name
+        venv_folder: virtual environment folder
         runner_args: runner arguments
         cli_args: CLI arguments
         packages: optional packages to install in the virtual environment
@@ -46,13 +46,12 @@ def check_virtual_environment(*,
     Returns:
         virtual environment root Path
     """
-    venv_root = JIIG_VENV_ROOT / tool_name
-    interpreter_path = venv_root / 'bin' / 'python'
+    interpreter_path = venv_folder / 'bin' / 'python'
     if sys.executable == str(interpreter_path):
         log_message('Virtual environment is active.', debug=True)
     else:
         log_message('Activating virtual environment...', debug=True)
-        build_virtual_environment(venv_root, packages=packages, quiet=True)
+        build_virtual_environment(venv_folder, packages=packages, quiet=True)
         if cli_args:
             # Restart inside the virtual environment with '--' inserted to help parsing.
             args = [str(interpreter_path)] + runner_args
@@ -65,4 +64,9 @@ def check_virtual_environment(*,
             # os.execv() does not return.
         else:
             sys.exit(0)
-    return venv_root
+    # Install any other missing Pip packages that are needed by the tool.
+    install_missing_pip_packages(
+        packages=packages,
+        venv_folder=venv_folder,
+        quiet=True,
+    )

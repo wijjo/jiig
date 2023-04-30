@@ -20,7 +20,7 @@
 from inspect import isclass
 from typing import Sequence
 
-from jiig.runtime_task import RuntimeTask, get_task_stack
+from jiig.task import RuntimeTask, get_task_stack
 from jiig.util.collections import make_list
 from jiig.util.log import abort, log_message, log_error, ConsoleLogWriter
 from jiig.util.text.grammar import pluralize

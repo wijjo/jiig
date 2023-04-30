@@ -15,18 +15,31 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Type inspection data types."""
+"""Simple dataclasses, abstract classes, and type hinting types."""
 
-import os
-from dataclasses import dataclass, field
+from abc import (
+    ABC,
+    abstractmethod,
+)
+from dataclasses import (
+    dataclass,
+    field,
+)
 from pathlib import Path
 from types import ModuleType
-from typing import Callable, Sequence, Any
+from typing import (
+    Callable,
+    Any,
+)
 
 from .constants import (
+    DEFAULT_ALIASES_PATH,
     DEFAULT_AUTHOR,
+    DEFAULT_BUILD_FOLDER,
     DEFAULT_COPYRIGHT,
+    DEFAULT_DOC_FOLDER,
     DEFAULT_EMAIL,
+    DEFAULT_TEST_FOLDER,
     DEFAULT_TOOL_DESCRIPTION,
     DEFAULT_URL,
     DEFAULT_VERSION,
@@ -37,16 +50,14 @@ from .constants import (
 
 # The best we can do for now for a task function type hint, because Callable has
 # no syntax for variable keyword arguments.
+#: Task function callable type.
 TaskFunction = Callable
+#: Task reference type, name, module, or function reference.
 TaskReference = str | ModuleType | TaskFunction
+#: Module reference type, name or explicit module.
 ModuleReference = str | ModuleType
-SubTaskList = Sequence[TaskReference]
-SubTaskDict = dict[str, TaskReference]
-SubTaskCollection = SubTaskList | SubTaskDict
+#: Argument adapter function callable type.
 ArgumentAdapter = Callable[..., Any]
-
-
-TOOL_METADATA_STRING_DEFAULT = '<placeholder>'
 
 
 @dataclass
@@ -55,37 +66,92 @@ class ToolMetadata:
 
     tool_name is the only required parameter.
     """
+    #: Tool name, generally lowercase.
     tool_name: str
-    project_name: str = TOOL_METADATA_STRING_DEFAULT
+    #: Tool project name, generally capitalized.
+    project_name: str = None
+    #: Tool author.
     author: str = DEFAULT_AUTHOR
+    #: Tool contact email.
     email: str = DEFAULT_EMAIL
+    #: Tool copyright.
     copyright: str = DEFAULT_COPYRIGHT
+    #: Tool description.
     description: str = DEFAULT_TOOL_DESCRIPTION
+    #: Tool URL.
     url: str = DEFAULT_URL
+    #: Tool version number.
     version: str = DEFAULT_VERSION
+    #: Label for top task, used for help text.
     top_task_label: str = TOP_TASK_LABEL
+    #: Label for sub-task, used for help text.
     sub_task_label: str = SUB_TASK_LABEL
+    #: Pip packages required for virtual environment.
     pip_packages: list[str] = field(default_factory=list)
-    doc_api_packages: list[str] = field(default_factory=list)
-    doc_api_packages_excluded: list[str] = field(default_factory=list)
 
     def __post_init__(self):
-        if self.project_name == TOOL_METADATA_STRING_DEFAULT:
+        if self.project_name is None:
             self.project_name = self.tool_name.capitalize()
 
 
 @dataclass
 class ToolPaths:
     """Runtime folder paths."""
-    libraries: list[Path]
+    #: Virtual environment path.
     venv: Path
-    aliases: Path
-    build: Path
-    doc: Path
-    test: Path
-    jiig_source_root: Path | None = None
-    tool_source_root: Path | None = None
-    library_path: str = field(init=False)
+    #: Tool base folder, with package containing task modules.
+    base_folder: Path
+    #: Aliases file path.
+    aliases: Path = DEFAULT_ALIASES_PATH
+    #: Build folder path.
+    build: Path = DEFAULT_BUILD_FOLDER
+    #: Documentation folder path.
+    doc: Path = DEFAULT_DOC_FOLDER
+    #: Test folder path.
+    test: Path = DEFAULT_TEST_FOLDER
 
-    def __post_init__(self):
-        self.library_path = os.pathsep.join([str(p) for p in self.libraries])
+
+@dataclass
+class ToolOptions:
+    """Boolean options governing tool behavior."""
+    #: Disable alias feature if True.
+    disable_alias: bool = False
+    #: Disable help feature if True.
+    disable_help: bool = False
+    #: Disable debug option if True.
+    disable_debug: bool = False
+    #: Disable dry run option if True.
+    disable_dry_run: bool = False
+    #: Disable verbose option if True.
+    disable_verbose: bool = False
+    #: Enable pause option if True.
+    enable_pause: bool = False
+    #: Enable keep files option if True.
+    enable_keep_files: bool = False
+    #: Hide tasks like help, alias, venv, etc. from help.
+    hide_builtin_tasks: bool = False
+
+
+@dataclass
+class ToolCustomizations:
+    """Tool customization data."""
+
+    runtime: type | str | ModuleType | None
+    """Custom runtime context module or class reference (Runtime subclass)."""
+
+    driver: type | str | ModuleType | None
+    """Driver class reference."""
+
+
+class RuntimeHelpGenerator(ABC):
+    """Abstract base class implemented by a driver to generate on-demand help output."""
+
+    @abstractmethod
+    def generate_help(self, *names: str, show_hidden: bool = False):
+        """Provide help output.
+
+        Args:
+            *names: name parts (task name stack)
+            show_hidden: show hidden task help if True
+        """
+        ...

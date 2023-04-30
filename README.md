@@ -50,7 +50,7 @@ fussier than TOML. Comma separators must be between successive elements, but
 must not be placed after the last element of a list or dictionary. Also,
 comments are not supported. One advantage is that the task hierarchy is easier 
 to understand, compared to the TOML equivalent. The 
-`jiigadmin config toml_to_json` command can convert a TOML configuration file to
+`jiig config toml_to_json` command can convert a TOML configuration file to
 JSON. It also works with `jiigrun` scripts, because it knows how to skip to the
 first "{" line.
 
@@ -281,7 +281,6 @@ version = "0.1"
 author = "Extool Author"
 copyright = "2023, Extool Author"
 # pip_packages = ["package1", "package2"]
-tasks_package = "extool.tasks"
 
 [tasks.calc]
 
