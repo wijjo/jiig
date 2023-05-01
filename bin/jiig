@@ -25,61 +25,40 @@ import _check_jiig
 
 from jiig.startup import tool_main
 from jiig.task import (
-    Task,
-    TaskGroup,
+    BuiltinTask,
+    BuiltinTaskGroup,
     TaskTree,
 )
-from jiig.tool import ToolMetadata
+from jiig.types import (
+    ToolMetadata,
+)
 
 
 def main():
     """Jiig script main."""
-    # Tool metadata.
-    meta = ToolMetadata(
-        tool_name='jiig',
-        project_name='Jiig',
-        description='Jiig administration tool.',
-        version='0.5',
-        author='Steve Cooper',
-        copyright='2021-2023, Steve Cooper',
-        email='steve@wijjo.com',
-        url='https://github.com/wijjo/jiig',
-        pip_packages=['build', 'pdoc3', 'PySimpleGUI'],
-    )
-
-    # Declare tasks and task groups that are available via CLI.
-    task_tree = TaskTree(
-        sub_tasks=[
-            TaskGroup(
-                name='build',
-                sub_tasks=[
-                    Task(name='sdist'),
-                ],
-            ),
-            TaskGroup(
-                name='config',
-                sub_tasks=[
-                    Task(name='toml_to_json')
-                ],
-            ),
-            TaskGroup(
-                name='doc',
-                sub_tasks=[
-                    Task(name='html'),
-                    Task(name='markdown'),
-                    Task(name='pdf'),
-                    Task(name='server', cli_options={'port': ['-p', '--port']}),
-                ],
-            ),
-            Task(name='unittest'),
-        ],
-    )
-
-    # Run tool.
     tool_main(
-        meta=meta,
+        meta=ToolMetadata(
+            tool_name='jiig',
+            project_name='Jiig',
+            description='Jiig administration tool.',
+            version='0.5',
+            author='Steve Cooper',
+            copyright='2021-2023, Steve Cooper',
+            email='steve@wijjo.com',
+            url='https://github.com/wijjo/jiig',
+            pip_packages=['build', 'pdoc3', 'PySimpleGUI'],
+        ),
         script_path=__file__,
-        task_tree=task_tree,
+        task_tree=TaskTree(
+            sub_tasks=[
+                BuiltinTaskGroup(name='build', visibility=0),
+                BuiltinTaskGroup(name='config', visibility=0),
+                BuiltinTaskGroup(name='doc', visibility=0),
+                BuiltinTask(name='unittest', visibility=0),
+                BuiltinTaskGroup(name='alias', visibility=1),
+                BuiltinTask(name='help', visibility=1),
+            ],
+        ),
         runner_args=sys.argv[:1],
         cli_args=sys.argv[1:],
     )

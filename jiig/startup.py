@@ -288,7 +288,6 @@ def tool_main(meta: ToolMetadata,
     # Prepare runtime tasks.
     runtime_root_task = initialization.prepare_tasks(
         task_tree=task_tree,
-        options=options,
         tool_env=tool_env,
     )
 
@@ -341,14 +340,11 @@ def jiigrun_main(skip_venv_check: bool = False):
     extractor = _ConfigurationDataExtractor(config_data)
 
     options = ToolOptions(
-        disable_alias=extractor.boolean('options.disable_alias', False),
-        disable_help=extractor.boolean('options.disable_help', False),
         disable_debug=extractor.boolean('options.disable_debug', False),
         disable_dry_run=extractor.boolean('options.disable_dry_run', False),
         disable_verbose=extractor.boolean('options.disable_verbose', False),
         enable_pause=extractor.boolean('options.enable_pause', False),
         enable_keep_files=extractor.boolean('options.enable_keep_files', False),
-        hide_builtin_tasks=extractor.boolean('options.hide_builtin_tasks', False),
     )
 
     custom = ToolCustomizations(

@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Pdoc3 documentation tasks."""
+"""Generate documentation in various formats using Pdoc3."""
 
 from . import (
     html,

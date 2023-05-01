@@ -21,16 +21,38 @@ import os
 import sys
 import textwrap
 from dataclasses import dataclass
-from inspect import isfunction, ismodule
+from inspect import (
+    isfunction,
+    ismodule,
+)
 from types import ModuleType
-from typing import Sequence, Self, TypeVar, Type, Any
+from typing import (
+    Sequence,
+    Self,
+    TypeVar,
+    Type,
+    Any,
+)
 
+from .builtins import BUILTINS
 from .constants import DEFAULT_ROOT_TASK_NAME
 from .fields import TaskField
-from .types import TaskFunction, TaskReference
+from .types import (
+    TaskFunction,
+    TaskReference,
+)
 from .util.collections import make_list
-from .util.log import abort, log_error, log_message, log_heading
-from .util.text.footnotes import NotesSpec, NotesList, NotesDict
+from .util.log import (
+    abort,
+    log_error,
+    log_message,
+    log_heading,
+)
+from .util.text.footnotes import (
+    NotesSpec,
+    NotesList,
+    NotesDict,
+)
 
 T_task_or_group = TypeVar('T_task_or_group')
 
@@ -69,7 +91,7 @@ class _BaseTask:
 class Task(_BaseTask):
     """Task specification.
 
-    For clarity, requires only keyword arguments.
+    For clarity, requires keyword arguments.
     """
     def __init__(self,
                  *,
@@ -168,7 +190,7 @@ class Task(_BaseTask):
 class TaskGroup(_BaseTask):
     """Group of tasks and or nested task groups.
 
-    For clarity, requires only keyword arguments.
+    For clarity, requires keyword arguments.
     """
     def __init__(self,
                  *,
@@ -186,7 +208,7 @@ class TaskGroup(_BaseTask):
         it. There is no associated function or object with a doc string.
 
         Args:
-            name: task group name
+            name: task group name, or built-in task as '@name"
             sub_tasks: nested sub-tasks and or sub-groups
             description: optional description (default: task package
                 description)
@@ -200,10 +222,14 @@ class TaskGroup(_BaseTask):
         self.visibility = visibility
         self.description = description
         sub_task_scrubber = _TaskGroupSubTaskScrubber()
-        self.groups: list[TaskGroup] = sub_task_scrubber.scrub_sub_tasks(
-            self.name, sub_tasks, TaskGroup)
-        self.tasks: list[Task] = sub_task_scrubber.scrub_sub_tasks(
-            self.name, sub_tasks, Task)
+        if sub_tasks:
+            self.groups: list[TaskGroup] = sub_task_scrubber.scrub_sub_tasks(
+                self.name, sub_tasks, TaskGroup)
+            self.tasks: list[Task] = sub_task_scrubber.scrub_sub_tasks(
+                self.name, sub_tasks, Task)
+        else:
+            self.groups: list[TaskGroup] = []
+            self.tasks: list[Task] = []
         self.notes: NotesList | None = make_list(notes, allow_none=True)
         self.footnotes: NotesDict | None = footnotes
         self.hints: dict = hints
@@ -287,7 +313,7 @@ class TaskGroup(_BaseTask):
 class TaskTree(TaskGroup):
     """Application task tree.
 
-    For clarity, requires only keyword arguments.
+    For clarity, requires keyword arguments.
     """
     def __init__(self,
                  *,
@@ -354,6 +380,113 @@ class TaskTree(TaskGroup):
         log_heading(heading or 'task tree', is_error=True)
         log_message(self.dump(), is_error=True)
         log_heading('', is_error=True)
+
+
+class BuiltinTask(Task):
+    """Built-in task reference.
+
+    For clarity, requires keyword arguments.
+    """
+
+    def __init__(self,
+                 *,
+                 name: str,
+                 visibility: int = None,
+                 ):
+        """Built-in task constructor.
+
+        Args:
+            name: task name
+            visibility: optional visibility override: 0=normal, 1=secondary, 2=hidden
+        """
+        if name not in BUILTINS:
+            abort(f'Unknown built-in task name: {name}')
+        builtin_task = BUILTINS[name]
+        if not isinstance(builtin_task, Task):
+            abort(f'Built-in is not a task: {name}')
+        if visibility is None:
+            visibility = builtin_task.visibility
+        super().__init__(
+            name=builtin_task.name,
+            impl=builtin_task.impl,
+            visibility=visibility,
+            description=builtin_task.description,
+            notes=builtin_task.notes,
+            footnotes=builtin_task.footnotes,
+            **builtin_task.hints,
+        )
+
+    @classmethod
+    def from_raw_data(cls, name: str, raw_data: Any) -> Self:
+        """Built-in task creation based in raw input data (should be dictionary).
+
+        Args:
+            name: task name
+            raw_data: raw input data
+
+        Returns:
+            BuiltinTask object
+        """
+        converter = _TaskTreeElementConverter(raw_data)
+        return cls(
+             name=name,
+             visibility=converter.get_visibility(),
+         )
+
+
+class BuiltinTaskGroup(TaskGroup):
+    """Built-in task group reference.
+
+    For clarity, requires keyword arguments.
+    """
+
+    def __init__(self,
+                 *,
+                 name: str,
+                 visibility: int = None,
+                 ):
+        """Built-in task group constructor.
+
+        Args:
+            name: task group name
+            visibility: optional visibility override: 0=normal, 1=secondary, 2=hidden
+        """
+        if name not in BUILTINS:
+            abort(f'Unknown built-in task name: {name}')
+        builtin_task_group = BUILTINS[name]
+        if not isinstance(builtin_task_group, TaskGroup):
+            abort(f'Built-in is not a task group: {name}')
+        if visibility is None:
+            visibility = builtin_task_group.visibility
+        sub_tasks: list[TaskGroup | Task] = builtin_task_group.groups.copy()
+        sub_tasks.extend(builtin_task_group.tasks.copy())
+        super().__init__(
+            name=builtin_task_group.name,
+            sub_tasks=sub_tasks,
+            impl=builtin_task_group.impl,
+            visibility=visibility,
+            description=builtin_task_group.description,
+            notes=builtin_task_group.notes,
+            footnotes=builtin_task_group.footnotes,
+            **builtin_task_group.hints,
+        )
+
+    @classmethod
+    def from_raw_data(cls, name: str, raw_data: Any) -> Self:
+        """Built-in task group creation based in raw input data (should be dictionary).
+
+        Args:
+            name: task name
+            raw_data: raw input data
+
+        Returns:
+            BuiltinTaskGroup object
+        """
+        converter = _TaskTreeElementConverter(raw_data)
+        return cls(
+             name=name,
+             visibility=converter.get_visibility(),
+         )
 
 
 @dataclass
@@ -774,10 +907,21 @@ class _TaskTreeElementConverter:
             return []
         sub_tasks: list[Task | TaskGroup] = []
         for name, raw_item_data in raw_data.items():
-            if isinstance(raw_item_data, dict) and 'sub_tasks' in raw_item_data:
-                sub_tasks.append(TaskGroup.from_raw_data(name, raw_item_data))
+            # Built-in tasks and groups are indicated by names preceded by '@'.
+            if name.startswith('@'):
+                name = name[1:]
+                if name not in BUILTINS:
+                    abort(f'Unknown built-in task or group: {name} (@{name})')
+                builtin = BUILTINS[name]
+                if isinstance(builtin, TaskGroup):
+                    sub_tasks.append(BuiltinTaskGroup.from_raw_data(name, raw_item_data))
+                else:
+                    sub_tasks.append(BuiltinTask.from_raw_data(name, raw_item_data))
             else:
-                sub_tasks.append(Task.from_raw_data(name, raw_item_data))
+                if isinstance(raw_item_data, dict) and 'sub_tasks' in raw_item_data:
+                    sub_tasks.append(TaskGroup.from_raw_data(name, raw_item_data))
+                else:
+                    sub_tasks.append(Task.from_raw_data(name, raw_item_data))
         return sub_tasks
 
     def get_impl(self) -> TaskReference | None:

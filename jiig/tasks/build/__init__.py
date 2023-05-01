@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Build Jiig artifacts."""
+"""Build distribution package."""
 
 from . import (
     sdist,

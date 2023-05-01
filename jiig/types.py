@@ -114,10 +114,6 @@ class ToolPaths:
 @dataclass
 class ToolOptions:
     """Boolean options governing tool behavior."""
-    #: Disable alias feature if True.
-    disable_alias: bool = False
-    #: Disable help feature if True.
-    disable_help: bool = False
     #: Disable debug option if True.
     disable_debug: bool = False
     #: Disable dry run option if True.
@@ -128,8 +124,6 @@ class ToolOptions:
     enable_pause: bool = False
     #: Enable keep files option if True.
     enable_keep_files: bool = False
-    #: Hide tasks like help, alias, venv, etc. from help.
-    hide_builtin_tasks: bool = False
 
 
 @dataclass

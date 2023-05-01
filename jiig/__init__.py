@@ -32,11 +32,14 @@ from .runtime import (
 )
 from .startup import tool_main
 from .task import (
+    BuiltinTask,
+    BuiltinTaskGroup,
     Task,
     TaskGroup,
     TaskTree,
     task,
 )
+from .builtins import BUILTINS
 from .types import (
     ToolMetadata,
     ToolPaths,
