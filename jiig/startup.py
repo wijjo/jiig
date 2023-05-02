@@ -25,6 +25,7 @@ in the tool script.
 """
 
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -62,6 +63,11 @@ from .util.log import (
     abort,
     log_error,
 )
+from .util.stream import open_input_file
+
+RE_CONFIG_EMPTY_LINE = re.compile(r'^\s*$')
+RE_CONFIG_COMMENT_LINE = re.compile(r'^\s*#.*\s*$')
+RE_CONFIG_FIRST_LINE = re.compile(r'\s*(\[\w+\]|\{)\s*$')
 
 
 def _fatal(*messages: str):
@@ -105,16 +111,24 @@ def _read_json_configuration(config_path: Path,
 
 
 def _read_script_configuration(script_path: Path) -> AttributeDictionary:
-    # First try parsing the script for TOML or JSON data.
-    config_data = _read_toml_configuration(script_path,
-                                           ignore_decode_error=True)
-    if config_data is not None:
-        return config_data
-    config_data = _read_json_configuration(script_path,
-                                           skip_file_header=True,
-                                           ignore_decode_error=True)
-    if config_data is not None:
-        return config_data
+    # The first character of the first non-comment/non-blank line can help
+    # indentify the configuration format.
+    config_format: str | None = None
+    with open_input_file(script_path) as script_file:
+        for line in script_file:
+            if not RE_CONFIG_COMMENT_LINE.match(line) and not RE_CONFIG_EMPTY_LINE.match(line):
+                match_first_line = RE_CONFIG_FIRST_LINE.match(line)
+                if match_first_line is not None:
+                    first_chunk =  match_first_line.group(1)
+                    if first_chunk.startswith('['):
+                        config_format = 'toml'
+                    elif first_chunk.startswith('{'):
+                        config_format = 'json'
+
+    if config_format == 'toml':
+        return _read_toml_configuration(script_path)
+    if config_format == 'json':
+        return _read_json_configuration(script_path, skip_file_header=True)
     # Otherwise find and read a separate configuration file..
     config_path = search_folder_stack_for_file(script_path.parent,
                                                JIIG_TOML_CONFIGURATION_NAME)

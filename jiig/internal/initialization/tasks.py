@@ -27,15 +27,17 @@ from inspect import (
 from types import ModuleType
 from typing import Sequence
 
-from jiig.builtins import BUILTINS
 from jiig.fields import (
     TaskField,
     Field,
 )
 from jiig.runtime import Runtime
 from jiig.task import (
+    BUILTINS,
     TASKS_BY_FUNCTION_ID,
     TASKS_BY_MODULE_ID,
+    BuiltinTask,
+    BuiltinTaskGroup,
     RegisteredTask,
     RuntimeTask,
     Task,
@@ -146,7 +148,9 @@ class _RuntimeTaskPreparer:
             if runtime_sub_task is not None:
                 runtime_task_group.sub_tasks.append(runtime_sub_task)
         for sub_group in task_group.groups:
-            sub_package = self.get_sub_package_reference(package, sub_group.name)
+            sub_package = self.get_sub_package_reference(package,
+                                                         sub_group.name,
+                                                         isinstance(sub_group, BuiltinTaskGroup))
             runtime_sub_group = self._new_group(
                 sub_group,
                 sub_package,
@@ -321,10 +325,11 @@ class _RuntimeTaskPreparer:
     def get_sub_package_reference(self,
                                   package: ModuleReference | None,
                                   name: str,
+                                  is_builtin: bool,
                                   ) -> str | None:
         if package:
             # Resolve built-in tasks used by external tool with the Jiig package.
-            if self.jiig_tasks_package is not None and name in BUILTINS:
+            if is_builtin and self.jiig_tasks_package is not None and name in BUILTINS:
                 package = self.jiig_tasks_package
             if ismodule(package):
                 return '.'.join([package.__name__, name])
@@ -343,7 +348,9 @@ class _RuntimeTaskPreparer:
         if task.impl is not None:
             reference = task.impl
         else:
-            reference = self.get_sub_package_reference(package, task.name)
+            reference = self.get_sub_package_reference(package,
+                                                       task.name,
+                                                       isinstance(task, BuiltinTask))
         if reference is None:
             log_error('Task implementation reference can not be resolved.',
                       reference=reference,

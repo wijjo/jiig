@@ -34,7 +34,6 @@ from typing import (
     Any,
 )
 
-from .builtins import BUILTINS
 from .constants import DEFAULT_ROOT_TASK_NAME
 from .fields import TaskField
 from .types import (
@@ -463,7 +462,6 @@ class BuiltinTaskGroup(TaskGroup):
         super().__init__(
             name=builtin_task_group.name,
             sub_tasks=sub_tasks,
-            impl=builtin_task_group.impl,
             visibility=visibility,
             description=builtin_task_group.description,
             notes=builtin_task_group.notes,
@@ -907,11 +905,12 @@ class _TaskTreeElementConverter:
             return []
         sub_tasks: list[Task | TaskGroup] = []
         for name, raw_item_data in raw_data.items():
-            # Built-in tasks and groups are indicated by names preceded by '@'.
-            if name.startswith('@'):
-                name = name[1:]
+            # Built-in tasks and groups are indicated by names surrounded by '__' and '__'.
+            # TOML doesn't support many name characters without needing quotes.
+            if name.startswith('__') and name.endswith('__'):
+                name = name[2:-2]
                 if name not in BUILTINS:
-                    abort(f'Unknown built-in task or group: {name} (@{name})')
+                    abort(f'Unknown built-in task or group: {name} (__{name}__)')
                 builtin = BUILTINS[name]
                 if isinstance(builtin, TaskGroup):
                     sub_tasks.append(BuiltinTaskGroup.from_raw_data(name, raw_item_data))
@@ -937,3 +936,77 @@ class _TaskTreeElementConverter:
             log_error(f'Bad task implementation reference: {raw_data}')
             return None
         return raw_data
+
+
+BUILTINS: dict[str, Task | TaskGroup] = {
+    #: Task group for "alias" sub-commands.
+    'alias': TaskGroup(
+        name='alias',
+        sub_tasks=[
+            Task(name='delete'),
+            Task(name='description'),
+            Task(name='list', cli_options={'expand_names': ['-e', '--expand-names']}),
+            Task(name='rename'),
+            Task(name='set', cli_options={'description': ['-d', '--description']}),
+            Task(name='show'),
+        ],
+        visibility=1,
+    ),
+
+    #: Task group for building a distribution.
+    'build': TaskGroup(
+        name='build',
+        sub_tasks=[
+            Task(name='sdist'),
+        ],
+        visibility=1,
+    ),
+
+    #: Task group for configuration manipulation tools.
+    'config': TaskGroup(
+        name='config',
+        sub_tasks=[
+            Task(name='toml_to_json'),
+        ],
+        visibility=1,
+    ),
+
+    #: Task group for generating and serving documentation.
+    'doc': TaskGroup(
+        name='doc',
+        sub_tasks=[
+            Task(name='html'),
+            Task(name='markdown'),
+            Task(name='pdf'),
+            Task(name='server', cli_options={'port': ['-p', '--port']}),
+        ],
+        visibility=1,
+    ),
+
+    #: Task for "help" command.
+    'help': Task(
+        name='help',
+        visibility=1,
+        cli_options={'all_tasks': ['-a', '--all']},
+    ),
+
+    #: Task for running unit tests.
+    'unittest': Task(
+        name='unittest',
+        visibility=1,
+    ),
+
+    #: Task group for "venv" (virtual environment) sub-commands.
+    'venv': TaskGroup(
+        name='venv',
+        sub_tasks=[
+            Task(name='build', cli_options={'rebuild_venv': ['-r', '--rebuild']}),
+            Task(name='ipython', cli_trailing='trailing_arguments'),
+            Task(name='pip', cli_trailing='trailing_arguments'),
+            Task(name='python', cli_trailing='trailing_arguments'),
+            Task(name='run', cli_trailing='trailing_arguments'),
+            Task(name='update'),
+        ],
+        visibility=1,
+    ),
+}

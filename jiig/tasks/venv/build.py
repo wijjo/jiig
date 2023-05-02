@@ -26,7 +26,7 @@ def build(
     runtime: jiig.Runtime,
     rebuild_venv: jiig.f.boolean(),
 ):
-    """(Re-)Build the tool virtual environment.
+    """Build or rebuild the tool virtual environment.
 
     Args:
         runtime: Jiig runtime API.

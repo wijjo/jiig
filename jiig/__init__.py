@@ -32,6 +32,7 @@ from .runtime import (
 )
 from .startup import tool_main
 from .task import (
+    BUILTINS,
     BuiltinTask,
     BuiltinTaskGroup,
     Task,
@@ -39,7 +40,6 @@ from .task import (
     TaskTree,
     task,
 )
-from .builtins import BUILTINS
 from .types import (
     ToolMetadata,
     ToolPaths,

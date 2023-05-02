@@ -173,8 +173,7 @@ class HelpFormatter:
         """Help formatter constructor.
 
         Args:
-            program_name: program name is used for both top level and sub-
-                command help
+            program_name: program name is used for both top level and sub-command help
             command_names: command names in appearance order for Usage
             description: description for description block
             sub_commands_label: label for sub-commands, e.g. 'COMMAND' or
