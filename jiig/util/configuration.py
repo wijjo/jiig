@@ -84,11 +84,13 @@ def read_json_configuration(config_path: Path | str,
     """
     with open(config_path, encoding='utf-8') as config_file:
         lines = config_file.readlines()
+        skipped = 0
         if skip_file_header:
             for idx, line in enumerate(lines):
                 if line.lstrip().startswith('{'):
                     lines = lines[idx:]
                     break
+                skipped += 1
         data_string = ''.join(lines)
         try:
             config_data = json.loads(data_string)
@@ -99,5 +101,6 @@ def read_json_configuration(config_path: Path | str,
         except json.JSONDecodeError as decode_exc:
             if ignore_decode_error:
                 return None
-            ValueError(f'Unable to parse JSON configuration file:'
-                       f' {config_path}: {decode_exc}')
+            raise ValueError(f'Unable to parse JSON configuration file at line'
+                             f' {decode_exc.lineno + skipped}, column {decode_exc.colno}:'
+                             f' {config_path}: {decode_exc.msg}')
