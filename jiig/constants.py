@@ -31,7 +31,7 @@ JIIG_TOML_CONFIGURATION_NAME = 'jiig.toml'
 #: Default Jiig JSON format configuration file name.
 JIIG_JSON_CONFIGURATION_NAME = 'jiig.json'
 #: Root folder path containing generated virtual environments.
-JIIG_VENV_ROOT = HOME_FOLDER_PATH / '.jiig-venv'
+JIIG_VENV_ROOT = HOME_FOLDER_PATH / '.jiig' / 'venvs'
 #: Default tool author string.
 DEFAULT_AUTHOR = '(unknown author)'
 #: Default tool copyright string.
@@ -49,7 +49,7 @@ DEFAULT_DOC_FOLDER = Path('doc')
 #: Default test folder path.
 DEFAULT_TEST_FOLDER = Path('tests')
 #: Default file path for Jiig aliases.
-DEFAULT_ALIASES_PATH = HOME_FOLDER_PATH / '.jiig-aliases'
+DEFAULT_ALIASES_PATH = HOME_FOLDER_PATH / '.jiig' / 'aliases'
 #: Default build folder path.
 DEFAULT_BUILD_FOLDER = Path('build')
 #: Default name for root (top level) task.
