@@ -34,6 +34,7 @@ from .log import abort, log_message, log_error, log_heading
 from .options import OPTIONS
 from .process import run
 from .text.blocks import trim_text_blocks
+from .text.human_units import format_human_byte_count
 
 # noinspection RegExpRedundantClassElement
 REMOTE_PATH_REGEX = re.compile(r'^([\w\d.@-]+):([\w\d_-~/]+)$')
@@ -812,3 +813,30 @@ def add_text(path: str | Path,
             open_file.write(os.linesep)
     if permissions is not None:
         change_permissions(path, permissions)
+
+
+def format_file_size(byte_count: int | None,
+                     unit_format: str = None,
+                     decimal_places: int = 1,
+                     default: str = None
+                     ) -> str:
+    """
+    Format size with support for common size formatting options.
+
+    Note that decimal_units and binary_units should not both be True. If both
+    are False the number is converted to text without additional formatting.
+
+    Args:
+        byte_count: size as byte count to convert to text
+        unit_format: 'd' for KB/MB/..., 'b' for KiB/MiB/..., or bytes if None
+        decimal_places: number of decimal places to display
+        default: text returned when byte_count is None (default is '-')
+
+    Returns:
+        formatted byte count string, with units applied as needed
+    """
+    if byte_count is None:
+        return default or '-'
+    return format_human_byte_count(byte_count,
+                                   unit_format=unit_format,
+                                   decimal_places=decimal_places)

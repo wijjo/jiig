@@ -19,8 +19,9 @@
 
 from contextlib import contextmanager
 from typing import (
-    Iterator,
     Callable,
+    Iterator,
+    Self,
 )
 
 from .context import (
@@ -131,7 +132,7 @@ class Runtime(ActionContext):
         """
         self.help_generator.generate_help(*names, show_hidden=show_hidden)
 
-    def context(self, **kwargs) -> 'Runtime':
+    def context(self, **kwargs) -> Self:
         """Create a runtime sub-context.
 
         Args:
@@ -143,4 +144,6 @@ class Runtime(ActionContext):
         return Runtime(self,
                        self.help_generator,
                        self.data,
+                       self.meta,
+                       self.paths,
                        **kwargs)

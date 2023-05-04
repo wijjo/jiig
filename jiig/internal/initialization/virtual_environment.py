@@ -62,8 +62,6 @@ def prepare_virtual_environment(*,
             os.environ[PYTHON_NATIVE_ENVIRONMENT_NAME] = sys.executable
             os.execv(args[0], args)
             # os.execv() does not return.
-        else:
-            sys.exit(0)
     # Install any other missing Pip packages that are needed by the tool.
     install_missing_pip_packages(
         packages=packages,

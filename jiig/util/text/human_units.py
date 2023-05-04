@@ -80,5 +80,8 @@ def format_human_byte_count(byte_count: int,
     Returns:
         formatted string with applied unit abbreviation
     """
-    return ('{:0.%df}{}' % (decimal_places or 1)).format(
-        *human_byte_count(byte_count, unit_format))
+    if decimal_places is None:
+        decimal_places = 1
+    format_string = '{:0.%df}{}{}' % decimal_places
+    scaled, unit = human_byte_count(byte_count, unit_format)
+    return format_string.format(scaled, ' ' if unit else '', unit)
