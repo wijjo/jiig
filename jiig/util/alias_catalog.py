@@ -28,8 +28,9 @@ import os
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator, Any, Iterable
+from typing import Iterator, Iterable
 
+from .filesystem import create_folder
 from .log import abort, log_error, log_message, log_warning
 from .process import shell_command_string
 from .stream import read_json_file
@@ -46,57 +47,6 @@ from .stream import read_json_file
 #   },
 #   ...
 # }
-
-
-@dataclass
-class _AliasCatalogScrubber:
-    """Initialize by populating an alias catalog dictionary with validated data."""
-    raw_data: Any
-    scrubbed_data: dict = None
-    errors: int = 0
-    quiet: bool = False
-
-    def __post_init__(self):
-        catalog = {}
-        if isinstance(self.raw_data, dict):
-            for tool_name in sorted(self.raw_data.keys()):
-                tool_data = self._scrub_tool_data(tool_name, self.raw_data[tool_name])
-                if tool_data:
-                    catalog[tool_name] = tool_data
-        else:
-            self._error('Entire alias map is not a dictionary.')
-        self.scrubbed_data = catalog
-
-    def _scrub_tool_data(self, tool_name: str, tool_data: Any) -> dict | None:
-        scrubbed_tool_data = {}
-        if isinstance(tool_data, dict):
-            for alias_name in sorted(tool_data.keys()):
-                alias_data = self._scrub_alias_data(alias_name, tool_data[alias_name])
-                if alias_data:
-                    scrubbed_tool_data[alias_name] = alias_data
-        else:
-            self._error(f'Alias tool "{tool_name}" data is not a dictionary.')
-        return scrubbed_tool_data or None
-
-    def _scrub_alias_data(self, alias_name: str, alias_data: Any) -> dict | None:
-        scrubbed_alias_data = {}
-        if isinstance(alias_data, dict):
-            command = alias_data.get('command')
-            if isinstance(command, list) and command:
-                description = alias_data.get('description', '(no description)')
-                scrubbed_alias_data['description'] = description
-                scrubbed_alias_data['command'] = command
-            else:
-                self._error(f'Alias "{alias_name}" "command" value is missing,'
-                            f' empty, or not a list.')
-        else:
-            self._error(f'Alias "{alias_name}" data is not a dictionary.')
-        return scrubbed_alias_data or None
-
-    def _error(self, message: str):
-        if not self.quiet:
-            log_error(message)
-        self.errors += 1
 
 
 @dataclass
@@ -252,16 +202,14 @@ class AliasCatalog:
     flushing of changes to an aliases file.
     """
 
-    def __init__(self, tool_name: str, catalog_path: str | Path):
+    def __init__(self, catalog_path: str | Path):
         """AliasCatalog constructor.
 
         Args:
-            tool_name: tool name
             catalog_path
         """
-        self.tool_name = tool_name
         self.catalog_path = catalog_path
-        if not isinstance(self.catalog_path, Path):
+        if isinstance(self.catalog_path, str):
             self.catalog_path = Path(self.catalog_path)
         self.catalog = {}
         self.modified = False
@@ -276,7 +224,7 @@ class AliasCatalog:
         return self.catalog
 
     def iterate_aliases(self) -> Iterator[Alias]:
-        """Get all locations/aliases for current tool.
+        """Get all locations/aliases.
 
         Returns:
             Alias object iterator
@@ -297,10 +245,7 @@ class AliasCatalog:
             alias data if found or None if not
         """
         full_name = expand_alias_name(alias_name, checked=True)
-        tool_alias_map = self.catalog.get(self.tool_name)
-        if not tool_alias_map:
-            return None
-        alias_data = tool_alias_map.get(full_name)
+        alias_data = self.catalog.get(full_name)
         if not alias_data:
             return None
         return Alias(alias_name, alias_data['description'], alias_data['command'])
@@ -311,12 +256,33 @@ class AliasCatalog:
         self.modified = False
         if self.catalog_path.exists():
             raw_catalog = read_json_file(self.catalog_path)
-            scrubber = _AliasCatalogScrubber(raw_catalog)
-            self.catalog = scrubber.scrubbed_data
-            if scrubber.errors > 0:
+            # "Scrub" the loaded aliases.
+            errors: list[str] = []
+            if isinstance(raw_catalog, dict):
+                scrubbed_tool_data = {}
+                for alias_name in sorted(raw_catalog.keys()):
+                    scrubbed_alias_data = {}
+                    alias_data = raw_catalog[alias_name]
+                    if isinstance(alias_data, dict):
+                        command = alias_data.get('command')
+                        if isinstance(command, list) and command:
+                            description = alias_data.get('description', '(no description)')
+                            scrubbed_alias_data['description'] = description
+                            scrubbed_alias_data['command'] = command
+                        else:
+                            errors.append(f'Alias "{alias_name}" "command" value'
+                                          f' is missing, empty, or not a list.')
+                    else:
+                        errors.append(f'Alias "{alias_name}" data is not a dictionary.')
+                    if scrubbed_alias_data:
+                        scrubbed_tool_data[alias_name] = scrubbed_alias_data
+                self.catalog.update(scrubbed_tool_data)
+            else:
+                errors.append(f'Alias catalog is not a JSON dictionary: {self.catalog_path}')
+            if errors:
+                for error in errors:
+                    log_error(error)
                 self.disable_saving = True
-        else:
-            self.catalog = {}
         self.sorted = False
 
     def save(self):
@@ -325,6 +291,7 @@ class AliasCatalog:
             log_error(f'Not saving aliases to "{self.catalog_path}".',
                       f'Please correct previously-reported errors or delete the file.')
             return
+        create_folder(self.catalog_path.parent)
         try:
             with open(self.catalog_path, 'w', encoding='utf-8') as aliases_file:
                 json.dump(self.sorted_catalog, aliases_file, indent=2)
@@ -346,16 +313,12 @@ class AliasCatalog:
         full_name = expand_alias_name(alias_name, checked=True)
         if not list(command):
             abort(f'New alias "{alias_name}" command is empty.')
-        tool_alias_map = self.catalog.get(self.tool_name)
-        if tool_alias_map and full_name in tool_alias_map:
+        if full_name in self.catalog:
             abort(f'New alias "{alias_name}" already exists.')
         # Can't easily check the entire aliased command, so just check the task name.
-        if tool_alias_map is None:
-            tool_alias_map = {}
-            self.catalog[self.tool_name] = tool_alias_map
         description = description if description is not None else '(no description)'
         alias_data = dict(description=description, command=command)
-        tool_alias_map[full_name] = alias_data
+        self.catalog[full_name] = alias_data
         log_message(f'Alias "{alias_name}" created.')
         self.sorted = False
         self.modified = True
@@ -374,10 +337,7 @@ class AliasCatalog:
         full_name = expand_alias_name(alias_name, checked=True)
         if command is not None and not list(command):
             abort(f'Alias "{alias_name}" command is empty.')
-        tool_alias_map = self.catalog.get(self.tool_name)
-        if not tool_alias_map:
-            abort(f'No aliases exist.')
-        existing_alias_data = tool_alias_map.get(full_name)
+        existing_alias_data = self.catalog.get(full_name)
         if not existing_alias_data:
             abort(f'Alias "{alias_name}" does not exist.')
         updated = False
@@ -400,12 +360,9 @@ class AliasCatalog:
             alias_name: name of alias to delete
         """
         full_name = expand_alias_name(alias_name, checked=True)
-        tool_alias_map = self.catalog.get(self.tool_name)
-        if not tool_alias_map:
-            abort('Tool has no aliases.')
-        if full_name not in tool_alias_map:
+        if full_name not in self.catalog:
             abort(f'Alias "{alias_name}" not found for deletion.')
-        del tool_alias_map[full_name]
+        del self.catalog[full_name]
         log_message(f'Alias "{alias_name}" deleted.')
         self.modified = True
 
@@ -420,47 +377,36 @@ class AliasCatalog:
         """
         full_name = expand_alias_name(alias_name, checked=True)
         full_name_new = expand_alias_name(alias_name_new, checked=True)
-        tool_alias_map = self.catalog.get(self.tool_name)
-        if not tool_alias_map:
-            abort('Tool has no aliases.')
-        existing_alias_data = tool_alias_map.get(full_name)
+        existing_alias_data = self.catalog.get(full_name)
         if not existing_alias_data:
             abort(f'Alias "{alias_name}" does not exist.')
-        existing_alias_data_new = tool_alias_map.get(full_name_new)
+        existing_alias_data_new = self.catalog.get(full_name_new)
         if existing_alias_data_new:
             abort(f'Alias "{alias_name_new}" already exists.')
-        tool_alias_map[alias_name_new] = tool_alias_map[alias_name]
-        del tool_alias_map[alias_name]
+        self.catalog[full_name_new] = self.catalog[full_name]
+        del self.catalog[full_name]
         log_message(f'Alias "{alias_name}" renamed to "{alias_name_new}".')
         self.sorted = False
         self.modified = True
 
-    def _iterate_aliases(self, tool_name: str = None) -> Iterator[Alias]:
+    def _iterate_aliases(self) -> Iterator[Alias]:
         """Get all locations/aliases for current or specified tool.
-
-        Args:
-            tool_name: tool name (default is current tool)
 
         Returns:
             Alias object iterator
         """
-        tool_alias_map = self.catalog.get(tool_name or self.tool_name)
-        if tool_alias_map:
-            for alias_name, alias_data in tool_alias_map.items():
-                yield Alias(alias_name, alias_data['description'], alias_data['command'])
+        for alias_name, alias_data in self.catalog.items():
+            yield Alias(alias_name, alias_data['description'], alias_data['command'])
 
     def _sort_catalog(self):
         # Sort aliases by label, followed by path.
-        sorted_catalog = {}
-        for tool_name in sorted(self.catalog.keys()):
-            sorted_aliases = sorted(self._iterate_aliases(tool_name=tool_name),
-                                    key=lambda a: (a.label, a.path or ''))
-            sorted_tool_alias_map = {}
-            for alias in sorted_aliases:
-                alias_data = dict(description=alias.description, command=alias.command)
-                sorted_tool_alias_map[alias.name] = alias_data
-            sorted_catalog[tool_name] = sorted_tool_alias_map
-        self.catalog = sorted_catalog
+        sorted_tool_aliases = sorted(self._iterate_aliases(),
+                                     key=lambda a: (a.label, a.path or ''))
+        sorted_tool_alias_map = {}
+        for alias in sorted_tool_aliases:
+            alias_data = dict(description=alias.description, command=alias.command)
+            sorted_tool_alias_map[alias.name] = alias_data
+        self.catalog = sorted_tool_alias_map
         self.sorted = True
 
     def __enter__(self) -> 'AliasCatalog':
@@ -475,9 +421,7 @@ class AliasCatalog:
 
 
 @contextmanager
-def open_alias_catalog(tool_name: str,
-                       catalog_path: str | Path,
-                       ) -> Iterator[AliasCatalog]:
+def open_alias_catalog(catalog_path: str | Path) -> Iterator[AliasCatalog]:
     """Opens an alias catalog.
 
     It is not quiet. I.e. it validates read and write operations and displays
@@ -487,11 +431,10 @@ def open_alias_catalog(tool_name: str,
     flushing of changes to an aliases file.
 
     Args:
-        tool_name: tool name for isolating applicable aliases from the catalog
         catalog_path: path to catalog file (defaults to default catalog path)
 
     Returns:
         open catalog context manager
     """
-    with AliasCatalog(tool_name, catalog_path) as catalog:
+    with AliasCatalog(catalog_path) as catalog:
         yield catalog

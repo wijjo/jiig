@@ -17,13 +17,14 @@
 
 """Constants."""
 
-import os
 from pathlib import Path
 
 #: Jiig tool name.
 JIIG_TOOL_NAME = 'jiig'
 #: User home folder path.
-HOME_FOLDER_PATH = Path(os.environ['HOME'])
+HOME_FOLDER_PATH = Path.home()
+#: Default file path for Jiig aliases.
+ALIASES_FOLDER_PATH = HOME_FOLDER_PATH / '.jiig' / 'aliases'
 #: Jiig root folder path.
 JIIG_ROOT = Path(__file__).parent.parent
 #: Default Jiig TOML format configuration file name.
@@ -48,8 +49,6 @@ DEFAULT_VERSION = '(unknown version)'
 DEFAULT_DOC_FOLDER = Path('doc')
 #: Default test folder path.
 DEFAULT_TEST_FOLDER = Path('tests')
-#: Default file path for Jiig aliases.
-DEFAULT_ALIASES_PATH = HOME_FOLDER_PATH / '.jiig' / 'aliases'
 #: Default build folder path.
 DEFAULT_BUILD_FOLDER = Path('build')
 #: Default name for root (top level) task.

@@ -33,7 +33,6 @@ from typing import (
 )
 
 from .constants import (
-    DEFAULT_ALIASES_PATH,
     DEFAULT_AUTHOR,
     DEFAULT_BUILD_FOLDER,
     DEFAULT_COPYRIGHT,
@@ -102,7 +101,7 @@ class ToolPaths:
     #: Tool base folder, with package containing task modules.
     base_folder: Path
     #: Aliases file path.
-    aliases: Path = DEFAULT_ALIASES_PATH
+    aliases_path: Path
     #: Build folder path.
     build: Path = DEFAULT_BUILD_FOLDER
     #: Documentation folder path.

@@ -18,7 +18,7 @@
 """Show alias(es) task."""
 
 import jiig
-
+from jiig.util.process import shell_command_string
 
 @jiig.task
 def show(
@@ -35,6 +35,11 @@ def show(
         for name in aliases:
             resolved_alias = catalog.get_alias(name)
             if resolved_alias is not None:
-                runtime.message(resolved_alias)
+                message = f'''
+Alias: {resolved_alias.name}
+{resolved_alias.description}
+{shell_command_string(*resolved_alias.command)}
+'''.strip()
+                runtime.message(message)
             else:
                 runtime.error(f'Alias "{name}" does not exist.')

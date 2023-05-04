@@ -22,7 +22,7 @@ from types import ModuleType
 from typing import Type
 
 from jiig.constants import (
-    DEFAULT_ALIASES_PATH,
+    ALIASES_FOLDER_PATH,
     DEFAULT_BUILD_FOLDER,
     DEFAULT_DOC_FOLDER,
     DEFAULT_TEST_FOLDER,
@@ -47,7 +47,6 @@ def prepare_runtime(*,
                     meta: ToolMetadata,
                     venv_folder: str | Path | None,
                     base_folder: str | Path | None,
-                    aliases_path: str | Path | None,
                     build_folder: str | Path | None,
                     doc_folder: str | Path | None,
                     test_folder: str | Path | None,
@@ -62,7 +61,6 @@ def prepare_runtime(*,
         meta: tool metadata
         venv_folder: optional virtual environment override path
         base_folder: tool base folder containing tool package with task modules
-        aliases_path: optional aliases file path override
         build_folder: optional build folder override
         doc_folder: optional documentation folder override
         test_folder: optional test folder override
@@ -83,7 +81,7 @@ def prepare_runtime(*,
     paths = ToolPaths(
         venv=_resolve_path(venv_folder, JIIG_VENV_ROOT / meta.tool_name),
         base_folder=_resolve_path(base_folder),
-        aliases=_resolve_path(aliases_path, DEFAULT_ALIASES_PATH),
+        aliases_path=ALIASES_FOLDER_PATH / f'{meta.tool_name}.json',
         build=_resolve_path(build_folder, DEFAULT_BUILD_FOLDER),
         doc=_resolve_path(doc_folder, DEFAULT_DOC_FOLDER),
         test=_resolve_path(test_folder, DEFAULT_TEST_FOLDER),
@@ -91,9 +89,8 @@ def prepare_runtime(*,
 
     # Expand alias as needed and provide 'help' as default command.
     expanded_arguments = _expand_alias(
-        arguments=driver.preliminary_app_data.additional_arguments,
-        tool_name=meta.tool_name,
-        paths=paths,
+        driver.preliminary_app_data.additional_arguments,
+        paths.aliases_path,
     )
     if not expanded_arguments:
         expanded_arguments = ['help']
@@ -121,15 +118,14 @@ def prepare_runtime(*,
 
 
 def _expand_alias(arguments: list[str],
-                  tool_name: str,
-                  paths: ToolPaths,
+                  aliases_path: Path,
                   ) -> list[str]:
     expanded_arguments: list[str] = []
     if arguments:
         if not is_alias_name(arguments[0]):
             expanded_arguments.extend(arguments)
         else:
-            with open_alias_catalog(tool_name, paths.aliases) as alias_catalog:
+            with open_alias_catalog(aliases_path) as alias_catalog:
                 alias = alias_catalog.get_alias(arguments[0])
                 if not alias:
                     abort(f'Alias "{arguments[0]}" not found.')

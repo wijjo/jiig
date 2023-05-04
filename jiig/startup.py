@@ -119,7 +119,7 @@ def _read_script_configuration(script_path: Path) -> AttributeDictionary:
             if not RE_CONFIG_COMMENT_LINE.match(line) and not RE_CONFIG_EMPTY_LINE.match(line):
                 match_first_line = RE_CONFIG_FIRST_LINE.match(line)
                 if match_first_line is not None:
-                    first_chunk =  match_first_line.group(1)
+                    first_chunk = match_first_line.group(1)
                     if first_chunk.startswith('['):
                         config_format = 'toml'
                     elif first_chunk.startswith('{'):
@@ -226,7 +226,6 @@ def tool_main(meta: ToolMetadata,
               task_tree: TaskTree,
               script_path: str | Path,
               venv_folder: str | Path = None,
-              aliases_path: str | Path = None,
               build_folder: str | Path = None,
               doc_folder: str | Path = None,
               test_folder: str | Path = None,
@@ -247,7 +246,6 @@ def tool_main(meta: ToolMetadata,
         task_tree: task tree
         script_path: tool script path
         venv_folder: optional virtual environment override path
-        aliases_path: optional aliases file path override
         build_folder: optional build folder override
         doc_folder: optional documentation folder override
         test_folder: optional test folder override
@@ -312,7 +310,6 @@ def tool_main(meta: ToolMetadata,
         meta=meta,
         venv_folder=venv_folder,
         base_folder=tool_env.base_folder,
-        aliases_path=aliases_path,
         build_folder=build_folder,
         doc_folder=doc_folder,
         test_folder=test_folder,
@@ -390,7 +387,6 @@ def jiigrun_main(skip_venv_check: bool = False):
         task_tree=task_tree,
         venv_folder=extractor.path('venv_folder'),
         script_path=script_path,
-        aliases_path=extractor.path('aliases_path'),
         build_folder=extractor.path('build_folder'),
         doc_folder=extractor.path('doc_folder'),
         test_folder=extractor.path('test_folder'),

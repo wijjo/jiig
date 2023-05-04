@@ -80,7 +80,7 @@ class Runtime(ActionContext):
         self.when_done_callables: list[Callable] = []
         super().__init__(
             parent,
-            aliases_path=paths.aliases,
+            aliases_path=paths.aliases_path,
             author=meta.author,
             build_folder=paths.build,
             copyright=meta.copyright,
@@ -120,7 +120,7 @@ class Runtime(ActionContext):
         Returns:
             catalog
         """
-        with open_alias_catalog(self.meta.tool_name, self.paths.aliases) as catalog:
+        with open_alias_catalog(self.paths.aliases_path) as catalog:
             yield catalog
 
     def provide_help(self, *names: str, show_hidden: bool = False):

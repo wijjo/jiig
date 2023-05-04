@@ -34,5 +34,4 @@ def description_(
         description: Alias description.
     """
     with runtime.open_alias_catalog() as catalog:
-        description_text = ' '.join(description)
-        catalog.update_alias(alias, description=description_text)
+        catalog.update_alias(alias, description=description)
