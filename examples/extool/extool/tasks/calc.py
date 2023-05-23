@@ -13,8 +13,9 @@ def calc(
     """
     evaluate formula using Python interpreter
 
-    :param runtime: jiig runtime api
-    :param blocks: formula block(s) to evaluate
+    Args:
+        runtime: jiig runtime api
+        blocks: formula block(s) to evaluate
     """
     try:
         result = eval(' '.join(blocks))

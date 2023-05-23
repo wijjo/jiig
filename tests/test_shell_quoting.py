@@ -1,57 +1,55 @@
-#!/usr/bin/env wizzer
+# Copyright (C) 2020-2023, Steven Cooper
+#
+# This file is part of Jiig.
+#
+# Jiig is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Jiig is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
-from dataclasses import dataclass
-import os
-import sys
+"""Shell quoting test suite."""
+
+import unittest
 
 from jiig.util.process import simple_shell_quote
 
 
-@dataclass
-class Test:
-    value: str
-    argument: str
-    literal: str
+class TestShellQuoting(unittest.TestCase):
 
+    @staticmethod
+    def check(raw_value: str,
+              expected_argument_string: str,
+              expected_literal_string: str,
+              ):
+        argument_string = simple_shell_quote(raw_value)
+        literal_string = simple_shell_quote(raw_value, literal=True)
+        errors: list[str] = []
+        if argument_string != expected_argument_string:
+            errors.append(f'{argument_string} != {expected_argument_string}')
+        if literal_string != expected_literal_string:
+            errors.append(f'{literal_string} != {expected_literal_string}')
+        if errors:
+            raise AssertionError(f'Quoting failed: {" and ".join(errors)}')
 
-@dataclass
-class Error:
-    label: str
-    expected: str
-    received: str
+    def test_simple(self):
+        self.check('abc', 'abc', 'abc')
 
+    def test_middle_space(self):
+        self.check('ab c', '"ab c"', "'ab c'")
 
-TESTS = [
-    Test('abc', 'abc', 'abc'),
-    Test('ab c', '"ab c"', "'ab c'"),
-    Test('"abc"', r'"\"abc\""', """'"abc"'"""),
-    Test('"abc" ', r'"\"abc\" "', """'"abc" '"""),
-    Test(r'xy\z', r'"xy\z"', r"'xy\z'"),
-]
+    def test_pre_quoted(self):
+        self.check('"abc"', r'"\"abc\""', """'"abc"'""")
 
-ERRORS = []
+    def test_pre_quoted_with_trailing_space(self):
+        self.check('"abc" ', r'"\"abc\" "', """'"abc" '""")
 
-
-# noinspection DuplicatedCode
-def run_tests():
-    for test in TESTS:
-        argument = simple_shell_quote(test.value)
-        literal = simple_shell_quote(test.value, literal=True)
-        if argument != test.argument:
-            ERRORS.append(Error('argument', test.argument, argument))
-        if literal != test.literal:
-            ERRORS.append(Error('literal', test.literal, literal))
-    for error in ERRORS:
-        sys.stderr.write(f'ERROR[{error.label}]:'
-                         f' expected: {error.expected},'
-                         f' received: {error.received}{os.linesep}')
-    if ERRORS:
-        sys.stderr.write(f'* {len(ERRORS)} of {len(TESTS) * 2} tests failed *')
-    else:
-        sys.stdout.write(f'All tests passed.')
-    sys.stdout.write(os.linesep)
-    sys.exit(len(ERRORS))
-
-
-if __name__ == '__main__':
-    run_tests()
+    def test_escaped_character(self):
+        self.check(r'xy\z', r'"xy\z"', r"'xy\z'")

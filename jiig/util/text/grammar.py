@@ -24,19 +24,24 @@ To handle errors independently, avoid functions like console.log_error(), and
 either throw an exception or provide an informative return value.
 """
 
-from typing import Any
+from typing import Collection
 
 
-def pluralize(noun: str, countable: Any):
+def pluralize(noun: str, countable: Collection = None, count: int = None):
     """Simplistic text pluralization.
 
-    If `countable` length is one:
+    If `countable` length or `count` is 1:
 
     - Return unchanged.
+
+    If `countable` and `count` is None:
+
+    - Return pluralized (see below).
 
     Otherwise if countable length is zero or greater than one:
 
     - If it ends in 'y', return with ending 'y' replaced by 'ies'.
+    - If it ends in 's', adds 'es' to pluralize.
     - Otherwise return with 's' appended.
 
     ** No other irregular pluralization cases are handled. Please be aware of
@@ -44,15 +49,25 @@ def pluralize(noun: str, countable: Any):
 
     Args:
         noun: noun to pluralize as needed
-        countable: item with a length that determines if it is pluralized
+        countable: optional collection with size to determine pluralization
+        count: optional count integer to determine pluralization
+
 
     Returns:
         possibly-pluralized noun
     """
     try:
-        if len(countable) != 1:
+        if countable is not None:
+            quantity = len(countable)
+        elif count is not None:
+            quantity = count
+        else:
+            quantity = 0    # Force plural.
+        if quantity != 1:
             if noun.endswith('y'):
                 return f'{noun[:-1]}ies'
+            if noun.endswith('s'):
+                return f'{noun}es'
             return f'{noun}s'
     except TypeError:
         pass

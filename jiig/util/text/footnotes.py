@@ -62,7 +62,8 @@ class FootnoteBuilder:
         """
         Add footnotes that are available if referenced by markers.
 
-        :param footnotes: labeled footnote dictionary as keyword arguments
+        Args:
+            footnotes: labeled footnote dictionary as keyword arguments
         """
         for footnote_dictionary in footnotes:
             if footnote_dictionary:
@@ -74,7 +75,8 @@ class FootnoteBuilder:
 
         Capture non-footnote paragraphs in body_paragraphs.
 
-        :param text: text to parse
+        Args:
+            text: text to parse
         """
         lines: list[str] = text.strip().split(os.linesep)
         paragraphs: NotesList = []

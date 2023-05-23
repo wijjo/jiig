@@ -34,7 +34,9 @@ def format_table(*rows: Iterable[Any],
                  headers: Iterable[str] = None,
                  formats: Iterable[str] = None,
                  display_empty: bool = False,
-                 max_width: int = None
+                 max_width: int = None,
+                 border_left: str = '',
+                 border_right: str = '',
                  ) -> Iterator[str]:
     """Generate tabular output from input rows with optional headings.
 
@@ -45,6 +47,8 @@ def format_table(*rows: Iterable[Any],
         display_empty: display headers when there are no rows
         max_width: optional maximum full line width used for wrapping the last
             column as needed
+        border_left: left side border text - can be used for indentation
+        border_right: right side border text
 
     Returns:
         formatted line generator
@@ -91,14 +95,26 @@ def format_table(*rows: Iterable[Any],
 
     if row_count > 0 or display_empty:
 
-        format_strings = ['{:%d}' % w for w in widths[:-1]]
-        format_strings.append('{}')
-        format_string = OPTIONS.column_separator.join(format_strings)
+        format_strings: list[str] = []
+        format_strings.extend('{:%d}' % w for w in widths[:-1])
+        format_strings.append('{:%d}' % widths[-1] if border_right else '{}')
+        format_string = ''.join(
+            (
+                border_left,
+                OPTIONS.column_separator.join(format_strings),
+                border_right,
+            ),
+        )
         if headers is not None:
             yield format_string.format(*_get_strings(headers, padded=True))
-            yield OPTIONS.column_separator.join(['-' * width for width in widths])
+            yield format_string.format(*('-' * width for width in widths))
 
         for row in rows:
+            if not isinstance(row, (list, tuple)):
+                row = list(row)
+            if not row:
+                yield '(empty row)'
+                continue
             if last_width is None:
                 yield format_string.format(*_get_strings(row, padded=True))
             else:

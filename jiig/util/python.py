@@ -26,7 +26,7 @@ from importlib import import_module
 from inspect import isclass, isfunction, ismodule, signature
 from pathlib import Path
 from types import ModuleType
-from typing import Type, Any, TypeVar, get_type_hints, get_args, Callable, IO, Iterable
+from typing import Any, TypeVar, get_type_hints, get_args, Callable, IO, Iterable
 
 from .default import DefaultValue
 from .filesystem import delete_folder, short_path
@@ -44,10 +44,13 @@ def format_call_string(call_name: str, *args, **kwargs) -> str:
     """
     Format name and arguments with call syntax.
 
-    :param call_name: callable name
-    :param args: positional arguments
-    :param kwargs: keyword arguments
-    :return: formatted string
+    Args:
+        call_name: callable name
+        args: positional arguments
+        kwargs: keyword arguments
+
+    Returns:
+        formatted string
     """
     returned = kwargs.pop('returned', None)
     parts = []
@@ -123,9 +126,11 @@ class ModuleReferenceResolver:
 
         Dump the Python path when the first import error is encountered.
 
-        :param reference: module reference as string or already-imported module
-        :param optional: okay if module is not found if True
-        :return: imported module or None if the reference could not be resolved
+        Args:
+            reference: module reference as string or already-imported module
+            optional: okay if module is not found if True
+        Returns:
+            imported module or None if the reference could not be resolved
         """
         if reference is None:
             return None
@@ -421,7 +426,7 @@ T_dataclass = TypeVar('T_dataclass')
 
 
 def symbols_to_dataclass(symbols: dict,
-                         dc_type: Type[T_dataclass],
+                         dc_type: type[T_dataclass],
                          from_uppercase: bool = False,
                          required: list[str] = None,
                          optional: list[str] = None,
@@ -437,18 +442,23 @@ def symbols_to_dataclass(symbols: dict,
 
     The behavior may be altered by optional parameters.
 
-    :param symbols: input symbols
-    :param dc_type: output dataclass type, scanned for field names, etc.
-    :param from_uppercase: convert from upper to lower case if True
-    :param required: list of required dataclass field names
-    :param optional: list of optional dataclass field names
-    :param protected: list of unwanted dataclass field names
-    :param overflow: optional dataclass field name to receive unexpected symbols
-    :param defaults: optional defaults that may be used for missing attributes
-    :param ignore_extra_symbols: ignore unexpected symbols if True
-    :return: populated dataclass instance
-    :raise ValueError: if conversion fails due to bad input data
-    :raise TypeError: if conversion fails due to bad output type
+    Args:
+        symbols: input symbols
+        dc_type: output dataclass type, scanned for field names, etc.
+        from_uppercase: convert from upper to lower case if True
+        required: list of required dataclass field names
+        optional: list of optional dataclass field names
+        protected: list of unwanted dataclass field names
+        overflow: optional dataclass field name to receive unexpected symbols
+        defaults: optional defaults that may be used for missing attributes
+        ignore_extra_symbols: ignore unexpected symbols if True
+
+    Returns:
+        populated dataclass instance
+
+    Raises:
+        ValueError: if conversion fails due to bad input data
+        TypeError: if conversion fails due to bad output type
     """
     if not isclass(dc_type) or not is_dataclass(dc_type):
         raise AttributeError(f'symbols_to_dataclass() target is not a dataclass.')
@@ -492,7 +502,7 @@ def symbols_to_dataclass(symbols: dict,
         if missing_names:
             if from_uppercase:
                 missing_names = map(str.upper, missing_names)
-            attribute_word = pluralize('attribute', missing_names)
+            attribute_word = pluralize('attribute', countable=missing_names)
             message = format_message_block(f'{dc_type.__name__} data is missing'
                                            f' the following {attribute_word}:',
                                            *sorted(missing_names))
@@ -515,8 +525,9 @@ def symbols_to_dataclass(symbols: dict,
         else:
             unknown_keys.append(name)
     if unknown_keys and not ignore_extra_symbols:
-        log_warning(f'Unknown {pluralize("key", unknown_keys)} in {dc_type.__name__} source'
-                    f' dictionary: {" ".join(sorted(unknown_keys))}', symbols)
+        log_warning(f'Unknown {pluralize("key", countable=unknown_keys)} in'
+                    f' {dc_type.__name__} source dictionary:'
+                    f' {" ".join(sorted(unknown_keys))}', symbols)
 
     try:
         return dc_type(**output_symbols)
@@ -525,7 +536,7 @@ def symbols_to_dataclass(symbols: dict,
 
 
 def module_to_dataclass(module: object,
-                        dc_type: Type[T_dataclass],
+                        dc_type: type[T_dataclass],
                         required: list[str] = None,
                         protected: list[str] = None,
                         overflow: str = None,
@@ -616,7 +627,7 @@ class ExtractedFields:
         self.errors: list[str] = []
 
 
-def get_dataclass_fields(dataclass_class: Type) -> ExtractedFields:
+def get_dataclass_fields(dataclass_class: type) -> ExtractedFields:
     """Extract fields and defaults from a dataclass.
 
     Args:
@@ -713,3 +724,18 @@ def find_package_base_folder(package_name: str,
             break
         check_folder = check_folder.parent
     return None
+
+
+class NullMarker:
+    """Used to indicate absence of anything, including None."""
+    @classmethod
+    def is_null(cls, thing: Any) -> bool:
+        """Check if thing is considered null.
+
+        Args:
+            thing: thing to check
+
+        Returns:
+            True if thing is "null"
+        """
+        return issubclass(thing, cls) or isinstance(thing, cls)

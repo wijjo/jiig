@@ -20,13 +20,24 @@
 import json
 import os
 import sys
-from contextlib import contextmanager
+from contextlib import (
+    AbstractContextManager,
+    contextmanager,
+)
 from io import StringIO
 from pathlib import Path
 from subprocess import run
 from tempfile import NamedTemporaryFile
 from types import TracebackType
-from typing import IO, Iterator, Any, AnyStr, Callable, Iterable, Self, Type
+from typing import (
+    Any,
+    AnyStr,
+    Callable,
+    IO,
+    Iterator,
+    Iterable,
+    Self,
+)
 
 from .log import abort, log_error
 from .filesystem import create_folder
@@ -41,7 +52,7 @@ TEMPORARY_ROOT = '/tmp'
 @contextmanager
 def open_text_stream(path_or_stream: str | Path | IO,
                      unchecked: bool = False
-                     ) -> Iterator[IO]:
+                     ) -> AbstractContextManager[IO]:
     """Open a text file or stream for reading.
 
     A stream is just returned as is.
@@ -348,7 +359,7 @@ class OutputFile(IO):
         return self
 
     def __exit__(self,
-                 t: Type[BaseException] | None,
+                 t: type[BaseException] | None,
                  value: BaseException | None,
                  traceback: TracebackType | None,
                  ) -> bool | None:

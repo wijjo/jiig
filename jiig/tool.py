@@ -18,7 +18,6 @@
 """Tool specification classes."""
 
 import os
-from typing import Any
 
 from .task import TaskTree
 from .types import (
@@ -39,7 +38,6 @@ class Tool:
                  paths: ToolPaths,
                  options: ToolOptions = None,
                  custom: ToolCustomizations = None,
-                 extra_symbols: dict[str, Any] = None,
                  global_option_names: list[str] = None,
                  ):
         """Tool constructor.
@@ -50,7 +48,6 @@ class Tool:
             paths: various filesystem paths
             options: tool runtime options
             custom: tool customizations
-            extra_symbols: optional extra symbols for unknown keys
             global_option_names: global option names, e.g. used by CLI driver
                 for parsing
         """
@@ -59,7 +56,6 @@ class Tool:
         self.paths = paths
         self.options = options or ToolOptions()
         self.custom = custom or ToolCustomizations(None, None)
-        self.extra_symbols = extra_symbols or {}
         self.global_option_names = global_option_names or []
         if not self.options.disable_debug:
             self.global_option_names.append('debug')
@@ -98,7 +94,6 @@ class Tool:
         blocks.append(str(self.options))
         blocks.append(str(self.paths))
         blocks.append(str(self.custom))
-        blocks.append(f'extra_symbols: {self.extra_symbols}')
         blocks.append(f'global_option_names: {self.global_option_names}')
         blocks.append(f'task_tree: (tasks={len(self.task_tree.tasks)}'
                       f' groups={len(self.task_tree.groups)})')

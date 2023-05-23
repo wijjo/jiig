@@ -21,8 +21,11 @@ Jiig task fields substitute for Python type hints to specify the type, but also
 to add validation and conversion.
 """
 
-from dataclasses import dataclass
-from typing import Type, Collection, Any, Annotated
+from typing import (
+    Annotated,
+    Any,
+    Collection,
+)
 
 from .adapters import (
     path_exists,
@@ -37,52 +40,23 @@ from .adapters import (
     to_interval,
     to_timestamp,
 )
-from .types import ArgumentAdapter
+from .types import (
+    ArgumentAdapter,
+    Field,
+)
 from .util.collections import make_list
-from .util.default import DefaultValue
-from .util.repetition import Repetition, repetition_from_spec
-from .util.types import RepeatSpec
+from .util.repetition import (
+    RepeatSpec,
+    repetition_from_spec,
+)
 
 # Returned types need to handle List[...] when repeat is specified.
-FIELD_TEXT_TYPE = Type[str | list[str]]
-FIELD_BOOL_TYPE = Type[bool | list[bool]]
-FIELD_INT_TYPE = Type[int | list[int]]
-FIELD_FLOAT_TYPE = Type[float | list[float]]
-FIELD_NUMBER_TYPE = Type[int | float | list[int | float]]
-FIELD_TEXT_LIST_TYPE = Type[list[str] | list[list[str]]]
-
-
-@dataclass
-class Field:
-    """Field specification derived from type annotation.
-
-    Use wrap_field(), instead of creating directly.
-    """
-    element_type: Any
-    """scalar element type"""
-    description: str
-    """field description"""
-    field_type: Any
-    """field type (defaults to element_type if missing)"""
-    adapters: list[ArgumentAdapter] | None
-    """optional field adapter function chain"""
-    repeat: Repetition | None
-    """optional field repetition data"""
-    choices: list | None
-    """optional value choices"""
-
-
-@dataclass
-class TaskField:
-    """Data extracted from task dataclass or task function signature."""
-    name: str
-    description: str
-    element_type: Any
-    field_type: Any
-    default: DefaultValue | None
-    repeat: Repetition | None
-    choices: list | None
-    adapters: list[ArgumentAdapter]
+FIELD_TEXT_TYPE = type[str | list[str]]
+FIELD_BOOL_TYPE = type[bool | list[bool]]
+FIELD_INT_TYPE = type[int | list[int]]
+FIELD_FLOAT_TYPE = type[float | list[float]]
+FIELD_NUMBER_TYPE = type[int | float | list[int | float]]
+FIELD_TEXT_LIST_TYPE = type[list[str] | list[list[str]]]
 
 
 def wrap_field(element_type: Any,

@@ -128,10 +128,6 @@ def short_path(long_path: str | Path,
         working_folder = os.path.realpath(working_folder)
     if path.startswith(working_folder + os.path.sep):
         path = path[len(working_folder) + 1:]
-    else:
-        parent_folder = os.path.dirname(working_folder)
-        if path.startswith(parent_folder + os.path.sep):
-            path = os.path.join('..', path[len(parent_folder) + 1:])
     if not path:
         path = '.'
     if is_folder or (is_folder is not None and os.path.isdir(path)):
@@ -151,7 +147,7 @@ def delete_folder(folder_path: str | Path, quiet: bool = False):
     if os.path.exists(folder_path):
         if not quiet:
             log_message('Delete folder and contents.', short_folder_path)
-        run(['rm', '-rf', short_folder_path])
+        run(['rm', '-rf', short_folder_path], quiet=quiet)
 
 
 def delete_file(file_path: str | Path, quiet: bool = False):
@@ -685,6 +681,8 @@ def choose_program_alternative(*programs: Any,
 
 def make_relative_path(path: str | Path,
                        start: str | Path = None,
+                       shorten_user: bool = False,
+                       dot_working_folder: bool = False,
                        ) -> Path:
     """Construct a relative path.
 
@@ -694,15 +692,21 @@ def make_relative_path(path: str | Path,
     Args:
         path: path to convert to relative
         start: optional start path
+        shorten_user: replace leading home folder path with '~' if True
+        dot_working_folder: replace working folder with '.' if True
 
     Returns:
         relative path
     """
     rel_path = os.path.relpath(path, start=start)
-    if rel_path == '.':
-        return Path(rel_path[1:])
-    if rel_path.startswith('./'):
-        return Path(rel_path[2:])
+    if rel_path == '.' and not dot_working_folder:
+        rel_path = ''
+    elif rel_path.startswith('./'):
+        rel_path = rel_path[2:]
+    elif shorten_user:
+        home = os.path.expanduser('~')
+        if rel_path.startswith(home):
+            rel_path = f'~/{rel_path[len(home):]}'
     return Path(rel_path)
 
 

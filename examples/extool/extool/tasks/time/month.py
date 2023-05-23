@@ -21,8 +21,9 @@ def month(
 
     Also supports 1 digit months and 2 digit years.
 
-    :param runtime: jiig runtime api
-    :param date: optional date (string) override
+    Args:
+        runtime: jiig runtime api
+        date: optional date (string) override
     """
     t: datetime | None = None
     if date is None:

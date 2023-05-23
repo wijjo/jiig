@@ -20,12 +20,25 @@
 from inspect import isclass
 from typing import Sequence
 
-from jiig.task import RuntimeTask, get_task_stack
+from jiig.task import (
+    RuntimeTask,
+    get_task_stack,
+)
 from jiig.util.collections import make_list
-from jiig.util.log import abort, log_message, log_error, ConsoleLogWriter
+from jiig.util.log import (
+    ConsoleLogWriter,
+    abort,
+    log_error,
+    log_message,
+)
 from jiig.util.text.grammar import pluralize
 
-from ..driver import Driver, DriverPreliminaryAppData, DriverAppData
+from ..driver import (
+    Driver,
+    DriverAppData,
+    DriverArgumentCheckData,
+    DriverPreliminaryAppData,
+)
 from ..driver_options import DriverOptions
 
 from .cli_parser import Parser
@@ -88,12 +101,12 @@ class CLIDriver(Driver):
                  description: str,
                  options: DriverOptions = None,
                  ):
-        """
-        Jiig driver constructor.
+        """Jiig driver constructor.
 
-        :param name: tool name
-        :param description: tool description
-        :param options: various driver options
+        Args:
+            name: tool name
+            description: tool description
+            options: various driver options
         """
         super().__init__(name=name,
                          description=description,
@@ -107,15 +120,18 @@ class CLIDriver(Driver):
         # Populated later.
         self.trailing_by_task: dict[str, str] = {}
         self.options_by_task: dict[str, dict[str, list[str]]] = {}
+        self.root_command: CLICommand | None = None
 
     def on_initialize_driver(self,
                              command_line_arguments: Sequence[str],
                              ) -> DriverPreliminaryAppData:
-        """
-        Driver initialization.
+        """Driver initialization.
 
-        :param command_line_arguments: command line argument list
-        :return: preliminary argument list
+        Args:
+            command_line_arguments: command line argument list
+
+        Returns:
+             preliminary argument list
         """
         data, additional_arguments = self.cli_parser.pre_parse(
             command_line_arguments,
@@ -124,33 +140,58 @@ class CLIDriver(Driver):
         )
         return DriverPreliminaryAppData(data, additional_arguments)
 
+    def on_check_arguments(self,
+                           command_line_arguments: Sequence[str],
+                           ) -> DriverArgumentCheckData:
+        """Required argument checking call-back.
+
+        Args:
+            command_line_arguments: command line arguments
+
+        Returns:
+            preliminary app data
+        """
+        try:
+            data, names, trailing_arguments = self.cli_parser.parse(
+                command_line_arguments,
+                self.name,
+                'argument checking',
+                self.root_command,
+                raise_exceptions=True,
+            )
+            return DriverArgumentCheckData(data, names, trailing_arguments, None)
+        except ValueError as exc:
+            return DriverArgumentCheckData(None, [], [], str(exc))
+
     def on_initialize_application(self,
                                   arguments: list[str],
                                   root_task: RuntimeTask,
                                   ) -> DriverAppData:
-        """
-        Required arguments initialization call-back.
+        """Required arguments initialization call-back.
 
         NB: Slightly dishonest, because the returned data object may get updated
         with trailing arguments in on_initialize_tasks().
 
-        :param arguments: argument list
-        :param root_task: root task
-        :return: driver application data
+        Args:
+            arguments: argument list
+            root_task: root task
+
+        Returns:
+             driver application data
         """
-        root_command = CLICommand(root_task.name,
-                                  root_task.description,
-                                  root_task.visibility)
-        self._add_task_tree([], root_command, root_task)
-        option_names = [option.name for option in root_command.options]
+        self.root_command = CLICommand(root_task.name,
+                                       root_task.description,
+                                       root_task.visibility)
+        self._add_task_tree([], self.root_command, root_task)
+        option_names = [option.name for option in self.root_command.options]
         for global_option in self.global_options:
             if global_option.name not in option_names:
-                root_command.options.append(global_option)
+                self.root_command.options.append(global_option)
         data, names, additional_arguments = self.cli_parser.parse(
             arguments,
             self.name,
             self.phase,
-            root_command,
+            self.root_command,
             capture_trailing=True,
             raise_exceptions=False,
         )
@@ -172,7 +213,7 @@ class CLIDriver(Driver):
         else:
             if additional_arguments:
                 argument_word = pluralize(
-                    "argument", additional_arguments)
+                    "argument", countable=additional_arguments)
                 abort(f'Unexpected {argument_word} to command:', full_name)
         return DriverAppData(data, names, additional_arguments, task_stack)
 
@@ -180,12 +221,12 @@ class CLIDriver(Driver):
                         root_task: RuntimeTask,
                         names: list[str],
                         show_hidden: bool):
-        """
-        Required override to provide help output.
+        """Required override to provide help output.
 
-        :param root_task: root task
-        :param names: name parts (task name stack)
-        :param show_hidden: show hidden task help if True
+        Args:
+            root_task: root task
+            names: name parts (task name stack)
+            show_hidden: show hidden task help if True
         """
         help_options = CLIHelpProviderOptions(
             top_task_label=self.options.top_task_label,
@@ -203,10 +244,10 @@ class CLIDriver(Driver):
             log_message(text)
 
     def get_log_writer(self) -> ConsoleLogWriter:
-        """
-        Required override to provide a log writer.
+        """Required override to provide a log writer.
 
-        :return: log writer
+        Returns:
+             log writer
         """
         return ConsoleLogWriter()
 

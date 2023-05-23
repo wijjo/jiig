@@ -16,8 +16,9 @@ def now(
     """
     display current date and time with overridable format
 
-    :param runtime: jiig runtime api
-    :param format: optional format override
+    Args:
+        runtime: jiig runtime api
+        format: optional format override
     """
     t = datetime.now()
     if format is None:

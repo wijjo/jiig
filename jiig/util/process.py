@@ -39,8 +39,11 @@ def shell_quote_arg(arg: str) -> str:
     """
     Quote a normal shell argument, but leave operators unchanged.
 
-    :param arg: shell argument
-    :return: possibly-quoted argument
+    Args:
+        arg: shell argument
+
+    Returns:
+        possibly-quoted argument
     """
     return arg if arg in SHELL_OPERATORS else shlex.quote(str(arg))
 

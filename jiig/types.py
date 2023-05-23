@@ -33,18 +33,20 @@ from typing import (
 )
 
 from .constants import (
+    ALIASES_CATALOG_FILE_NAME,
     DEFAULT_AUTHOR,
-    DEFAULT_BUILD_FOLDER,
     DEFAULT_COPYRIGHT,
-    DEFAULT_DOC_FOLDER,
     DEFAULT_EMAIL,
-    DEFAULT_TEST_FOLDER,
     DEFAULT_TOOL_DESCRIPTION,
     DEFAULT_URL,
     DEFAULT_VERSION,
+    JIIG_CONFIG_ROOT,
     SUB_TASK_LABEL,
     TOP_TASK_LABEL,
+    PARAMS_CATALOG_FILE_NAME,
 )
+from .util.default import DefaultValue
+from .util.repetition import Repetition
 
 
 # The best we can do for now for a task function type hint, because Callable has
@@ -57,6 +59,47 @@ TaskReference = str | ModuleType | TaskFunction
 ModuleReference = str | ModuleType
 #: Argument adapter function callable type.
 ArgumentAdapter = Callable[..., Any]
+
+
+@dataclass
+class TaskField:
+    """Data extracted from task dataclass or task function signature."""
+    #: Task name.
+    name: str
+    #: Task description.
+    description: str
+    #: Scalar element type.
+    element_type: Any
+    #: Field type.
+    field_type: Any
+    #: Optional field default value,
+    default: DefaultValue | None
+    #: Optional field repetition.
+    repeat: Repetition | None
+    #: Optional field choices list.
+    choices: list | None
+    #: Argument conversion/validation adapters.
+    adapters: list[ArgumentAdapter]
+
+
+@dataclass
+class Field:
+    """Field specification derived from type annotation.
+
+    Use wrap_field(), instead of creating directly.
+    """
+    #: Scalar element type.
+    element_type: Any
+    #: Field description.
+    description: str
+    #: Field type (defaults to element_type if missing).
+    field_type: Any
+    #: optional field adapter function chain.
+    adapters: list[ArgumentAdapter] | None
+    #: Optional field repetition data.
+    repeat: Repetition | None
+    #: Optional value choices.
+    choices: list | None
 
 
 @dataclass
@@ -92,6 +135,26 @@ class ToolMetadata:
         if self.project_name is None:
             self.project_name = self.tool_name.capitalize()
 
+    @property
+    def aliases_catalog_path(self) -> Path:
+        """
+        Provide path to aliases catalog file.
+
+        Returns:
+            path to aliases catalog file
+        """
+        return JIIG_CONFIG_ROOT / self.tool_name / ALIASES_CATALOG_FILE_NAME
+
+    @property
+    def params_catalog_path(self) -> Path:
+        """
+        Provide path to tool parameters catalog file.
+
+        Returns:
+            path to tool variables catalog file
+        """
+        return JIIG_CONFIG_ROOT / self.tool_name / PARAMS_CATALOG_FILE_NAME
+
 
 @dataclass
 class ToolPaths:
@@ -100,14 +163,16 @@ class ToolPaths:
     venv: Path
     #: Tool base folder, with package containing task modules.
     base_folder: Path
-    #: Aliases file path.
-    aliases_path: Path
+    #: Aliases catalog file path.
+    aliases_catalog_path: Path
+    #: Values catalog file path.
+    params_catalog_path: Path
     #: Build folder path.
-    build: Path = DEFAULT_BUILD_FOLDER
+    build: Path
     #: Documentation folder path.
-    doc: Path = DEFAULT_DOC_FOLDER
+    doc: Path
     #: Test folder path.
-    test: Path = DEFAULT_TEST_FOLDER
+    test: Path
 
 
 @dataclass
@@ -129,11 +194,11 @@ class ToolOptions:
 class ToolCustomizations:
     """Tool customization data."""
 
+    #: Custom runtime context module or class reference (Runtime subclass).
     runtime: type | str | ModuleType | None
-    """Custom runtime context module or class reference (Runtime subclass)."""
 
+    #: Driver class reference.
     driver: type | str | ModuleType | None
-    """Driver class reference."""
 
 
 class RuntimeHelpGenerator(ABC):
@@ -148,3 +213,21 @@ class RuntimeHelpGenerator(ABC):
             show_hidden: show hidden task help if True
         """
         ...
+
+
+@dataclass
+class ToolParamValue:
+    """"Value and location where value applies."""
+
+    #: Value data.
+    value: Any
+
+    #: Description of value.
+    description: str
+
+    #: Folder hierarchy location where value applies. None is everywhere.
+    location: Path | None
+
+
+#: Dictionary mapping names to tool parameters/locations.
+ToolParamsDictionary = dict[str, ToolParamValue]

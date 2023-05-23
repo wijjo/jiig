@@ -20,8 +20,15 @@
 import os
 import sys
 import traceback
-from contextlib import contextmanager
-from typing import Any, Iterator, Sequence
+from contextlib import (
+    AbstractContextManager,
+    contextmanager,
+)
+from typing import (
+    Any,
+    Self,
+    Sequence,
+)
 
 from .options import OPTIONS
 from .exceptions import get_exception_stack
@@ -79,7 +86,8 @@ def set_log_writer(log_writer: LogWriter):
     """
     Establish a new log writer.
 
-    :param log_writer: new log writer
+    Args:
+        log_writer: new log writer
     """
     global _LOG_WRITER
     _LOG_WRITER = log_writer
@@ -348,7 +356,7 @@ class TopicLogger:
     def __init__(self,
                  topic: str,
                  delayed: bool = None,
-                 parent: 'TopicLogger' = None,
+                 parent: Self = None,
                  sub_tag: str = None):
         """Construct a topic or sub-topic.
 
@@ -433,7 +441,7 @@ class TopicLogger:
     def sub_topic(self,
                   topic: str,
                   delayed: bool = None,
-                  ) -> Iterator['TopicLogger']:
+                  ) -> AbstractContextManager[Self]:
         """Context manager to start a sub-topic.
 
         Args:
@@ -483,7 +491,9 @@ class TopicLogger:
 
 
 @contextmanager
-def log_topic(topic: str, delayed: bool = False) -> Iterator[TopicLogger]:
+def log_topic(topic: str,
+              delayed: bool = False,
+              ) -> AbstractContextManager[TopicLogger]:
     """Provide a context manager to start a topic.
 
     Topic errors, warnings, and messages are flushed at the end of the `with`

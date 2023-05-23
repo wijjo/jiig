@@ -13,8 +13,9 @@ def words(
     """
     count words using primitive whitespace splitting
 
-    :param runtime: jiig runtime api
-    :param blocks: text block(s) with words to count
+    Args:
+        runtime: jiig runtime api
+        blocks: text block(s) with words to count
     """
     count = len(' '.join(blocks).split())
     runtime.message(f'The word count is {count}.')

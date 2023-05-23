@@ -21,11 +21,12 @@ import os
 import sys
 from pathlib import Path
 from pprint import pformat
-from typing import Any, Self
+from typing import Any, Iterable, Self
 
 from .util.collections import AttributeDictionary
 from .util.log import log_heading, log_warning, log_error, log_message, abort
 from .util.options import OPTIONS
+from .util.prompt import text_prompt, boolean_prompt
 from .util.text.blocks import trim_text_blocks
 
 
@@ -36,19 +37,19 @@ class Context:
     - s: Dictionary and attribute style access to expansion symbols.
     """
 
-    def __init__(self, parent: Self | None, **kwargs):
+    def __init__(self, parent: Self | None, **symbols):
         """Construct context, possibly inheriting from a parent context.
 
         Args:
             parent: optional parent context
-            **kwargs: initial symbols
+            **symbols: initial symbols
         """
         if parent is not None:
             self.s = AttributeDictionary.new(no_defaults=True)
             self.copy_symbols(**parent.s)
         else:
             self.s = AttributeDictionary.new(no_defaults=True)
-        self.update(**kwargs)
+        self.update(**symbols)
         # Give useful symbols for free, e.g. newline.
         if 'nl' not in self.s:
             self.s['nl'] = os.linesep
@@ -96,7 +97,7 @@ class Context:
         """
         return False
 
-    def update(self, **kwargs) -> Self:
+    def update(self, **symbols) -> Self:
         """Update context symbols with text expansion.
 
         Expands in original caller's keyword argument order, which allows
@@ -106,25 +107,25 @@ class Context:
         the context.
 
         Args:
-            **kwargs: keyword symbols to expand and copy
+            **symbols: keyword symbols to expand and copy
         """
         try:
-            for key, value in kwargs.items():
+            for key, value in symbols.items():
                 self.s[key] = self.format(value)
             return self
         except ValueError as exc:
             self.abort(str(exc))
 
-    def copy_symbols(self, **kwargs) -> Self:
+    def copy_symbols(self, **symbols) -> Self:
         """Copy symbols to context without text expansion.
 
         This is chainable to allow use in the same `with` statement that creates
         the context.
 
         Args:
-            **kwargs: keyword symbols to copy
+            **symbols: keyword symbols to copy
         """
-        self.s.update(kwargs)
+        self.s.update(symbols)
         return self
 
     def format(self, text: str | list | tuple | None) -> str | list[str] | None:
@@ -244,6 +245,42 @@ class Context:
         """
         log_heading(self.format(message), level=level)
 
+    def prompt(self,
+               label: str,
+               default: str = None,
+               choices: Iterable[str] = None,
+               ) -> str:
+        """
+        Prompt for user input.
+
+        Retry if choices are specified and the input does not match any given choice.
+
+        Args:
+            label: prompt label
+            default: optional default text if no input is given
+            choices: optional choices to restrict input
+
+        Returns:
+            input text
+        """
+        return text_prompt(self.format(label), default=default, choices=choices)
+
+    def boolean_prompt(self,
+                       label: str,
+                       default: bool = None,
+                       ) -> bool:
+        """
+        Yes/no prompt.
+
+        Args:
+            label: prompt label
+            default: optional default boolean
+
+        Returns:
+            True if answered in the positive (y|yes)
+        """
+        return boolean_prompt(self.format(label), default=default)
+
 
 class ActionContext(Context):
     """Nestable execution context with text expansion symbols.
@@ -253,14 +290,14 @@ class ActionContext(Context):
     Supports text expansion capabilities provided by base Context class.
     """
 
-    def __init__(self, parent: Context | None, **kwargs):
+    def __init__(self, parent: Context | None, **symbols):
         """Construct action context.
 
         Args:
             parent: optional parent context for symbol inheritance
-            **kwargs: initial symbols
+            **symbols: initial symbols
         """
-        super().__init__(parent, **kwargs)
+        super().__init__(parent, **symbols)
         self.initial_working_folder = Path(os.getcwd())
         self.working_folder_changed = False
         # Convenient access to Jiig runtime options.

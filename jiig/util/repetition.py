@@ -17,8 +17,18 @@
 
 """Repetition specification and data class."""
 
+from dataclasses import dataclass
+
 from .log import log_error
-from .types import RepeatSpec, Repetition
+
+# Raw repetition specification type.
+RepeatSpec = int | tuple[int | None, int | None]
+
+
+@dataclass
+class Repetition:
+    minimum: int | None
+    maximum: int | None
 
 
 def repetition_from_spec(spec: RepeatSpec | None) -> Repetition:

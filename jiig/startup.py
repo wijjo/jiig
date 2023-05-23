@@ -38,11 +38,12 @@ from .constants import (
     DEFAULT_TOOL_DESCRIPTION,
     DEFAULT_URL,
     DEFAULT_VERSION,
+    JIIG_CONFIG_ROOT,
     JIIG_JSON_CONFIGURATION_NAME,
     JIIG_TOML_CONFIGURATION_NAME,
-    JIIG_VENV_ROOT,
     SUB_TASK_LABEL,
     TOP_TASK_LABEL,
+    VENV_FOLDER_NAME,
 )
 from .task import TaskTree
 from .types import (
@@ -221,6 +222,18 @@ class _ConfigurationDataExtractor:
             return {}
         return value
 
+    def params(self, name: str) -> tuple[dict[str, Any], dict[str, str]]:
+        raw_params = self.dictionary(name)
+        values: dict[str, Any] = {}
+        comments: dict[str, str] = {}
+        for name, param_data in raw_params.items():
+            if 'value' in param_data:
+                values[name] = param_data['value']
+                comments[name] = param_data.get('comment', '(no comment)')
+            else:
+                log_error('Ignoring configured default with no "value".')
+        return values, comments
+
 
 def tool_main(meta: ToolMetadata,
               task_tree: TaskTree,
@@ -233,7 +246,8 @@ def tool_main(meta: ToolMetadata,
               cli_args: list[str] = None,
               options: ToolOptions = None,
               custom: ToolCustomizations = None,
-              extra_symbols: dict[str, Any] = None,
+              param_defaults: dict[str, Any] = None,
+              param_comments: dict[str, str] = None,
               skip_venv_preparation: bool = False,
               ):
     """Start a Jiig tool application based on Python tool data objects.
@@ -253,7 +267,8 @@ def tool_main(meta: ToolMetadata,
         cli_args: CLI argument list (default: sys.argv[1:])
         options: tool options
         custom: optional tool customizations
-        extra_symbols: optional extra text expansion symbols
+        param_defaults: optional tool parameter defaults
+        param_comments: optional tool parameter comments
         skip_venv_preparation: skip active virtual environment preparation if True
     """
     from .internal import execution, initialization
@@ -263,8 +278,6 @@ def tool_main(meta: ToolMetadata,
         options = ToolOptions()
     if custom is None:
         custom = ToolCustomizations(None, None)
-    if extra_symbols is None:
-        extra_symbols = {}
     if runner_args is None:
         runner_args = sys.argv[:1]
     if cli_args is None:
@@ -272,7 +285,7 @@ def tool_main(meta: ToolMetadata,
 
     # Check, prepare, and invoke virtual environment as needed.
     if venv_folder is None:
-        venv_folder = JIIG_VENV_ROOT / meta.tool_name
+        venv_folder = JIIG_CONFIG_ROOT / meta.tool_name / VENV_FOLDER_NAME
     if not skip_venv_preparation:
         initialization.prepare_virtual_environment(
             venv_folder=venv_folder,
@@ -303,10 +316,32 @@ def tool_main(meta: ToolMetadata,
         tool_env=tool_env,
     )
 
+    # Create aliases and parameters catalog classes.
+    aliases_catalog = initialization.create_aliases_catalog(
+        meta.aliases_catalog_path,
+    )
+    params_catalog = initialization.create_params_catalog(
+        catalog_path=meta.params_catalog_path,
+        defaults=param_defaults,
+        comments=param_comments,
+    )
+
+    # Expand alias as needed and provide 'help' as default command.
+    arguments = initialization.prepare_arguments(
+        arguments=driver.preliminary_app_data.additional_arguments,
+        aliases_catalog=aliases_catalog,
+        runtime_root_task=runtime_root_task,
+    )
+
+    # Initialize driver to access app data object and help generator.
+    driver.initialize_application(
+        arguments=arguments,
+        root_task=runtime_root_task,
+    )
+
     # Initialize application and prepare Runtime API object.
     runtime = initialization.prepare_runtime(
         runtime_spec=custom.runtime,
-        runtime_root_task=runtime_root_task,
         meta=meta,
         venv_folder=venv_folder,
         base_folder=tool_env.base_folder,
@@ -314,7 +349,9 @@ def tool_main(meta: ToolMetadata,
         doc_folder=doc_folder,
         test_folder=test_folder,
         driver=driver,
-        extra_symbols=extra_symbols,
+        aliases_catalog=aliases_catalog,
+        params_catalog=params_catalog,
+        root_task=runtime_root_task,
     )
 
     # Execute application.
@@ -381,6 +418,7 @@ def jiigrun_main(skip_venv_check: bool = False):
     )
 
     task_tree = extractor.task_tree('tasks', DEFAULT_ROOT_TASK_NAME)
+    param_defaults, param_comments = extractor.params('params')
 
     tool_main(
         meta=meta,
@@ -394,6 +432,7 @@ def jiigrun_main(skip_venv_check: bool = False):
         cli_args=cli_args,
         options=options,
         custom=custom,
-        extra_symbols=extractor.dictionary('extra_symbols'),
+        param_defaults=param_defaults,
+        param_comments=param_comments,
         skip_venv_preparation=skip_venv_check,
     )

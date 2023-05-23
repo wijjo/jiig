@@ -27,10 +27,6 @@ from inspect import (
 from types import ModuleType
 from typing import Sequence
 
-from jiig.fields import (
-    TaskField,
-    Field,
-)
 from jiig.runtime import Runtime
 from jiig.task import (
     BUILTINS,
@@ -45,7 +41,9 @@ from jiig.task import (
     TaskTree,
 )
 from jiig.types import (
+    Field,
     ModuleReference,
+    TaskField,
     TaskFunction,
 )
 from jiig.util.log import (
@@ -67,7 +65,9 @@ from .tool_environment import ToolEnvironment
 
 DEFAULT_TASK_DESCRIPTION = '(no task description, e.g. in task doc string)'
 DEFAULT_FIELD_DESCRIPTION = '(no field description, e.g. in doc string :param:)'
-DOC_STRING_PARAM_REGEX = re.compile(r'^\s*:param\s+(\w+)\s*:\s*(.*)\s*$')
+DOC_STRING_SPHINX_PARAM_REGEX = re.compile(r'^\s*:param\s+(\w+)\s*:\s*(.*)\s*$')
+DOC_STRING_GOOGLE_HEADING_REGEX = re.compile(r'^\s*Args:\s*$')
+DOC_STRING_GOOGLE_PARAM_REGEX = re.compile(r'^\s*(\w+)\s*:\s*(.*)\s*$')
 
 
 def prepare_tasks(
@@ -239,27 +239,40 @@ class _RuntimeTaskPreparer:
                          app_notes: NotesList | None,
                          app_footnotes: NotesDict | None,
                          ) -> _DocData:
+        # Handle either Sphinx or Google style doc strings.
+        # Sphinx: pull out and parse `:param <name>: description` items.
+        # Google: look for "Args:" and parse trailing non-blank lines.
+        # For both styles stops reading text when first blank line is
+        # encountered after parameters have been matched.
         if doc_string is None:
             doc_string = ''
         footnote_builder = FootnoteBuilder()
-        # Pull out and parse `:param <name>: description` items from the doc string.
         non_param_lines: list[str] = []
         field_descriptions: dict[str, str] = {}
         param_name: str | None = None
+        param_regex: re.Pattern | None = None
         for line in doc_string.split(os.linesep):
-            param_matched = DOC_STRING_PARAM_REGEX.match(line)
-            if param_matched:
-                param_name, param_description = param_matched.groups()
-                field_descriptions[param_name] = param_description
-            else:
-                stripped_line = line.strip()
-                if stripped_line:
-                    if param_name:
-                        field_descriptions[param_name] += ' ' + stripped_line
+            if param_regex is None:
+                matched = DOC_STRING_SPHINX_PARAM_REGEX.match(line)
+                if matched:
+                    param_regex = DOC_STRING_SPHINX_PARAM_REGEX
                 else:
-                    param_name = None
-            if not param_name:
+                    matched = DOC_STRING_GOOGLE_HEADING_REGEX.match(line)
+                    if matched:
+                        param_regex = DOC_STRING_GOOGLE_PARAM_REGEX
+                        continue
+            if param_regex is None:
                 non_param_lines.append(line)
+            else:
+                line = line.strip()
+                if not line:
+                    break
+                param_matched = param_regex.match(line)
+                if param_matched:
+                    param_name, param_description = param_matched.groups()
+                    field_descriptions[param_name] = param_description
+                elif param_name is not None:
+                    field_descriptions[param_name] += ' ' + line
         # Parse the non-param lines to get the description, notes, and footnotes.
         doc_string = os.linesep.join(non_param_lines)
         footnote_builder.parse(doc_string)

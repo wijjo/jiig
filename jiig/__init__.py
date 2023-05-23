@@ -29,6 +29,7 @@ from .context import (
 from .runtime import (
     Runtime,
     RuntimeHelpGenerator,
+    TestRuntime,
 )
 from .startup import tool_main
 from .task import (

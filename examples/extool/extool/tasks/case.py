@@ -15,10 +15,11 @@ def case(
     """
     convert text case (default is "smart" conversion)
 
-    :param runtime: jiig runtime api
-    :param upper: convert to all-uppercase
-    :param lower: convert to all-lowercase
-    :param blocks: text block(s) to convert
+    Args:
+        runtime: jiig runtime api
+        upper: convert to all-uppercase
+        lower: convert to all-lowercase
+        blocks: text block(s) to convert
     """
     if upper and lower:
         raise RuntimeError('Conflicting upper/lower options specified.')

@@ -34,10 +34,23 @@ class DriverPreliminaryAppData:
 
     E.g. for early access to global options.
     """
-    # Attributes received from options.
+    #: Parsed argument data.
     data: object
     # Additional arguments, not present as data attributes.
     additional_arguments: list[str]
+
+
+@dataclass
+class DriverArgumentCheckData:
+    """Data provided when arguments are checked."""
+    #: Parsed argument data.
+    data: object
+    #: Command/sub-command names.
+    names: list[str]
+    #: Trailing arguments.
+    trailing_arguments: list[str]
+    #: Error message if one occurred.
+    error: str | None
 
 
 @dataclass
@@ -134,6 +147,38 @@ class Driver(ABC):
 
         Returns:
             driver application data
+        """
+        ...
+
+    def check_arguments(self,
+                        command_line_arguments: Sequence[str],
+                        ) -> DriverArgumentCheckData:
+        """Check command line arguments.
+
+        Must be called after initialize_application(). Otherwise the driver
+        implementation will not have initialized the task tree.
+
+        E.g. used to validate alias commands and their arguments.
+
+        Args:
+            command_line_arguments: command line arguments
+
+        Returns:
+            argument checking data
+        """
+        return self.on_check_arguments(command_line_arguments)
+
+    @abstractmethod
+    def on_check_arguments(self,
+                           command_line_arguments: Sequence[str],
+                           ) -> DriverArgumentCheckData:
+        """Required argument checking call-back.
+
+        Args:
+            command_line_arguments: command line arguments
+
+        Returns:
+            argument checking data
         """
         ...
 

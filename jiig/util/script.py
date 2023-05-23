@@ -18,10 +18,16 @@
 """Shell script builder."""
 
 import os
-from contextlib import contextmanager
-from typing import ContextManager, Sequence
+from contextlib import (
+    AbstractContextManager,
+    contextmanager,
+)
+from typing import Sequence
 
-from .collections import AttributeDictionary, make_list
+from .collections import (
+    AttributeDictionary,
+    make_list,
+)
 from .text.blocks import trim_text_blocks
 
 
@@ -38,9 +44,10 @@ class Script:
         """
         Construct script.
 
-        :param unchecked: do not check return code if True
-        :param run_by_root: script will be run by root user (don't need sudo)
-        :param blocks: initial script blocks (not typically used)
+        Args:
+            unchecked: do not check return code if True
+            run_by_root: script will be run by root user (don't need sudo)
+            blocks: initial script blocks (not typically used)
         """
         self.unchecked = unchecked
         self.run_by_root = run_by_root
@@ -54,7 +61,7 @@ class Script:
         self.blocks.append(os.linesep.join(lines))
 
     @contextmanager
-    def indent(self) -> ContextManager:
+    def indent(self) -> AbstractContextManager:
         """Indent lines added within `with` statement block."""
         self.indent_level += 1
         yield
@@ -65,7 +72,7 @@ class Script:
               predicate: str = None,
               location: str = None,
               messages: dict = None,
-              ) -> ContextManager:
+              ) -> AbstractContextManager:
         """Wrap a block with optional predicate condition and status messages.
 
         Args:

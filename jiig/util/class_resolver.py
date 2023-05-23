@@ -21,7 +21,7 @@ import sys
 from dataclasses import dataclass
 from inspect import isclass, ismodule
 from types import ModuleType
-from typing import TypeVar, Type, Generic
+from typing import TypeVar, Generic
 
 from .log import abort, log_error
 from .python import ModuleReferenceResolver
@@ -36,7 +36,7 @@ class ClassResolver(Generic[ST]):
     @dataclass
     class ResolvedClass:
         """Successful class resolution data."""
-        subclass: Type[ST]
+        subclass: type[ST]
         module: ModuleType
 
     @dataclass
@@ -46,14 +46,15 @@ class ClassResolver(Generic[ST]):
         module: ModuleType
 
     def __init__(self,
-                 base_class_type: Type[ST],
+                 base_class_type: type[ST],
                  name: str,
                  ):
         """
         ResolvedClass constructor.
 
-        :param base_class_type: expected base class for resolved references
-        :param name: human-friendly name for logged messages
+        Args:
+            base_class_type: expected base class for resolved references
+            name: human-friendly name for logged messages
         """
         self.base_class_type = base_class_type
         self.base_class_type_name = '.'.join([base_class_type.__module__,
@@ -62,9 +63,9 @@ class ClassResolver(Generic[ST]):
         self.module_resolver = ModuleReferenceResolver()
 
     def resolve_class(self,
-                      reference: Type[ST] | str | ModuleType,
+                      reference: type[ST] | str | ModuleType,
                       ) -> ResolvedClass:
-        found_class: Type[ST] | None = None
+        found_class: type[ST] | None = None
         # Resolve class type directly?
         if isclass(reference):
             if issubclass(reference, self.base_class_type):

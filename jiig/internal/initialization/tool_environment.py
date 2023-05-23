@@ -17,6 +17,7 @@
 
 """Task tree initialization."""
 
+import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -74,8 +75,9 @@ def prepare_tool_environment(
             abort('Failed to load tasks package.', tasks_package_name)
     else:
         # If the tasks package is resolved, assume the base folder is the one
-        # containing tasks parent package folder.
-        package_path = Path(resolved_tasks_package.__file__).resolve()
+        # containing tasks parent package folder. Account for package.__file__
+        # referencing the __init__.py file.
+        package_path = Path(os.path.dirname(resolved_tasks_package.__file__)).resolve()
         tool_package_base_folder = package_path.parent.parent
     # If the tool isn't Jiig, need the Jiig package to resolve built-in tasks.
     if tool_name != JIIG_TOOL_NAME:

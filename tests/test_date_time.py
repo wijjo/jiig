@@ -15,6 +15,12 @@
 # You should have received a copy of the GNU General Public License
 # along with Jiig.  If not, see <https://www.gnu.org/licenses/>.
 
+"""Date/time utility functions test suite.
+
+Used https://timeanddate.com to cross-check calculations
+TODO: Improve tests to cover more edge cases.
+"""
+
 import time
 import unittest
 from typing import Sequence
@@ -25,17 +31,14 @@ from jiig.util.date_time import apply_date_time_delta_string, parse_date_time
 CUR_TS = time.localtime()
 
 
-# Used https://timeanddate.com to cross-check calculations
-# TODO: Improve tests to cover more edge cases.
-
 class TestTimeDelta(unittest.TestCase):
 
     @staticmethod
-    def assertApplyDelta(tt_start: Sequence,
-                         delta: str,
-                         tt_expect: Sequence,
-                         negative: bool = False
-                         ):
+    def check(tt_start: Sequence,
+              delta: str,
+              tt_expect: Sequence,
+              negative: bool = False
+              ):
         if len(tt_start) < 6:
             tt_start = list(tt_start) + ([0] * (6 - len(tt_start)))
         tt_start2 = time.struct_time((tt_start[0],
@@ -52,32 +55,32 @@ class TestTimeDelta(unittest.TestCase):
             raise AssertionError(f'Delta result mismatch: result={tt_result[:6]} expect={tt_expect[:6]}')
 
     def test_small_fwd(self):
-        self.assertApplyDelta((2000, 2, 5, 0, 0, 0), '5d', (2000, 2, 10, 0, 0, 0))
+        self.check((2000, 2, 5, 0, 0, 0), '5d', (2000, 2, 10, 0, 0, 0))
 
     def test_small_bkd(self):
-        self.assertApplyDelta((2000, 2, 5, 0, 0, 0), '-5d', (2000, 1, 31, 0, 0, 0))
+        self.check((2000, 2, 5, 0, 0, 0), '-5d', (2000, 1, 31, 0, 0, 0))
 
     def test_small_neg(self):
-        self.assertApplyDelta((2000, 2, 5, 0, 0, 0), '5d', (2000, 1, 31, 0, 0, 0), negative=True)
+        self.check((2000, 2, 5, 0, 0, 0), '5d', (2000, 1, 31, 0, 0, 0), negative=True)
 
     def test_small_mix_1(self):
-        self.assertApplyDelta((2000, 2, 5, 0, 0, 0), '5d,-10d', (2000, 1, 31, 0, 0, 0))
+        self.check((2000, 2, 5, 0, 0, 0), '5d,-10d', (2000, 1, 31, 0, 0, 0))
 
     def test_small_mix_2(self):
-        self.assertApplyDelta((2000, 2, 5, 0, 0, 0), '105d,-110d', (2000, 1, 31, 0, 0, 0))
+        self.check((2000, 2, 5, 0, 0, 0), '105d,-110d', (2000, 1, 31, 0, 0, 0))
 
     def test_large_1_fwd(self):
-        self.assertApplyDelta((2014, 4, 8, 0, 0, 0), '5y,9m,28d', (2020, 2, 5, 0, 0, 0))
+        self.check((2014, 4, 8, 0, 0, 0), '5y,9m,28d', (2020, 2, 5, 0, 0, 0))
 
     def test_large_1_bkd(self):
         # It needs -27 days instead of -28 to get the same start date as above
         # due to 2020 being a leap year, and the calculation always applies y/m
         # adjustments before d/H/M/S.
-        self.assertApplyDelta((2020, 2, 5, 0, 0, 0), '-5y,-9m,-27d', (2014, 4, 8, 0, 0, 0))
+        self.check((2020, 2, 5, 0, 0, 0), '-5y,-9m,-27d', (2014, 4, 8, 0, 0, 0))
 
     def test_large_1_neg(self):
         # See comment above explaining why 27d is used instead of the original 28d.
-        self.assertApplyDelta((2020, 2, 5, 0, 0, 0), '5y,9m,27d', (2014, 4, 8, 0, 0, 0), negative=True)
+        self.check((2020, 2, 5, 0, 0, 0), '5y,9m,27d', (2014, 4, 8, 0, 0, 0), negative=True)
 
 
 class TestParseDateTime(unittest.TestCase):

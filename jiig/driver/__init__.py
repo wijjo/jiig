@@ -19,6 +19,11 @@
 
 from . import cli
 from .cli import CLIDriver, CLI_HINT_OPTIONS, CLI_HINT_TRAILING
-from .driver import Driver
+from .driver import (
+    Driver,
+    DriverAppData,
+    DriverArgumentCheckData,
+    DriverPreliminaryAppData,
+)
 from .driver_field import DriverField
 from .driver_options import DriverOptions

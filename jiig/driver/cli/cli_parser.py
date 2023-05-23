@@ -21,8 +21,14 @@ import argparse
 import os
 import re
 import sys
-from contextlib import contextmanager
-from typing import Sequence, Any
+from contextlib import (
+    AbstractContextManager,
+    contextmanager,
+)
+from typing import (
+    Any,
+    Sequence,
+)
 
 from jiig.util.collections import make_list
 from jiig.util.default import DefaultValue
@@ -37,10 +43,6 @@ REQUIRED_SUB_COMMAND_REGEX = re.compile(r'^the following arguments are required:
 
 
 logger = Logger(sub_tag='argparse')
-
-
-class CLIParserError(Exception):
-    pass
 
 
 class _ArgumentParser(argparse.ArgumentParser):
@@ -166,10 +168,10 @@ class _ArgumentParser(argparse.ArgumentParser):
             message: error message
 
         Raises:
-            CLIParserError: if any error occurs
+            ValueError: if an error occurs and raise_exceptions is True
         """
         if self.raise_exceptions:
-            raise CLIParserError(message)
+            raise ValueError(message)
         if REQUIRED_SUB_COMMAND_REGEX.match(message):
             logger.message(f'Command: {self.prog}')
             logger.error(message)
@@ -204,7 +206,7 @@ class _ArgumentParser(argparse.ArgumentParser):
 
     @classmethod
     @contextmanager
-    def _exceptions(cls):
+    def _exceptions(cls) -> AbstractContextManager:
         cls.raise_exceptions = True
         try:
             yield

@@ -179,40 +179,40 @@ def _get_configuration_expansions(config_path: Path,
             if isinstance(config_templates, list):
                 expansions: dict[str, _TemplateExpansionSpec] = {}
                 for item_num, template_dict in enumerate(config_templates, start=1):
-                    sub_logger = topic.sub_topic(f'"templates" item #{item_num}')
-                    if not isinstance(template_dict, dict):
-                        sub_logger.error('not a dictionary')
-                        continue
-                    path = template_dict.get('path')
-                    if not path:
-                        sub_logger.error('no "path" element')
-                        continue
-                    if path in expansions:
-                        sub_logger.error(f'path "{path}" is repeated')
-                        continue
-                    output_path = template_dict.get('output_path', path)
-                    output_path = _expand_template_path(output_path, topic, symbols=symbols)
-                    if not output_path:
-                        output_path = path
-                    expansion = template_dict.get('expansion')
-                    if expansion and expansion not in ALL_EXPANSIONS:
-                        sub_logger.error(f' bad "expansion" value "{expansion}"')
-                        # `issue_once_tag` makes the message appear only once.
-                        sub_logger.message(
-                            f'allowed expansions are {ALL_EXPANSIONS}',
-                            issue_once_tag='ALLOWED_EXPANSIONS')
-                        expansion = DEFAULT_EXPANSION
-                    executable = template_dict.get('executable', False)
-                    description = template_dict.get('description')
-                    if not isinstance(executable, bool):
-                        sub_logger.error(f'bad non-boolean "executable" value "{executable}"')
-                        executable = False
-                    expansion_items.append(
-                        _ConfigExpansionItem(path,
-                                             output_path,
-                                             description,
-                                             expansion,
-                                             executable))
+                    with topic.sub_topic(f'"templates" item #{item_num}') as sub_logger:
+                        if not isinstance(template_dict, dict):
+                            sub_logger.error('not a dictionary')
+                            continue
+                        path = template_dict.get('path')
+                        if not path:
+                            sub_logger.error('no "path" element')
+                            continue
+                        if path in expansions:
+                            sub_logger.error(f'path "{path}" is repeated')
+                            continue
+                        output_path = template_dict.get('output_path', path)
+                        output_path = _expand_template_path(output_path, topic, symbols=symbols)
+                        if not output_path:
+                            output_path = path
+                        expansion = template_dict.get('expansion')
+                        if expansion and expansion not in ALL_EXPANSIONS:
+                            sub_logger.error(f' bad "expansion" value "{expansion}"')
+                            # `issue_once_tag` makes the message appear only once.
+                            sub_logger.message(
+                                f'allowed expansions are {ALL_EXPANSIONS}',
+                                issue_once_tag='ALLOWED_EXPANSIONS')
+                            expansion = DEFAULT_EXPANSION
+                        executable = template_dict.get('executable', False)
+                        description = template_dict.get('description')
+                        if not isinstance(executable, bool):
+                            sub_logger.error(f'bad non-boolean "executable" value "{executable}"')
+                            executable = False
+                        expansion_items.append(
+                            _ConfigExpansionItem(path,
+                                                 output_path,
+                                                 description,
+                                                 expansion,
+                                                 executable))
             else:
                 topic.error('"templates" element is not a list')
         else:
@@ -481,13 +481,14 @@ def expand_folder(source_base_folder: str | Path,
     Reads source template configuration, if found to determine what kind of
     special handling may be needed.
 
-    :param source_base_folder: template source root folder path
-    :param target_base_folder: base target folder
-    :param sub_folder: optional relative sub-folder path applied to source and target roots
-    :param includes: optional relative paths, supporting wildcards, for files to include
-    :param excludes: optional relative paths, supporting wildcards, for files to exclude
-    :param overwrite: force overwriting of existing files if True
-    :param symbols: symbols used for template expansion
+    Args:
+        source_base_folder: template source root folder path
+        target_base_folder: base target folder
+        sub_folder: optional relative sub-folder path applied to source and target roots
+        includes: optional relative paths, supporting wildcards, for files to include
+        excludes: optional relative paths, supporting wildcards, for files to exclude
+        overwrite: force overwriting of existing files if True
+        symbols: symbols used for template expansion
     """
     if not isinstance(source_base_folder, Path):
         source_base_folder = Path(source_base_folder)

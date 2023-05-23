@@ -52,11 +52,13 @@ def main():
         task_tree=TaskTree(
             sub_tasks=[
                 BuiltinTaskGroup(name='build', visibility=0),
-                BuiltinTaskGroup(name='config', visibility=0),
+                BuiltinTaskGroup(name='utility', visibility=0),
                 BuiltinTaskGroup(name='doc', visibility=0),
                 BuiltinTask(name='unittest', visibility=0),
-                BuiltinTaskGroup(name='alias', visibility=1),
+                BuiltinTask(name='alias', visibility=1),
                 BuiltinTask(name='help', visibility=1),
+                BuiltinTask(name='param', visibility=1),
+                BuiltinTaskGroup(name='venv', visibility=1),
             ],
         ),
         runner_args=sys.argv[:1],

@@ -17,8 +17,9 @@ def _year(
     """
     display current year
 
-    :param runtime: jiig runtime api
-    :param year: optional year override (2 or 4 digits)
+    Args:
+        runtime: jiig runtime api
+        year: optional year override (2 or 4 digits)
     """
     if year is None:
         t = datetime.now()

@@ -18,6 +18,7 @@
 """Jiig task decorator and classes for task discovery."""
 
 import os
+import re
 import sys
 import textwrap
 from dataclasses import dataclass
@@ -27,16 +28,19 @@ from inspect import (
 )
 from types import ModuleType
 from typing import (
-    Sequence,
-    Self,
-    TypeVar,
-    Type,
     Any,
+    Self,
+    Sequence,
+    TypeVar,
 )
 
-from .constants import DEFAULT_ROOT_TASK_NAME
-from .fields import TaskField
+from .constants import (
+    BUILTIN_TASK_NAME_FORMAT,
+    BUILTIN_TASK_NAME_PATTERN,
+    DEFAULT_ROOT_TASK_NAME,
+)
 from .types import (
+    TaskField,
     TaskFunction,
     TaskReference,
 )
@@ -774,7 +778,7 @@ class _TaskGroupSubTaskScrubber:
     def scrub_sub_tasks(self,
                         parent_name: str,
                         sub_tasks: Sequence[Task | TaskGroup],
-                        filter_type: Type[T_task_or_group],
+                        filter_type: type[T_task_or_group],
                         ) -> list[T_task_or_group]:
         scrubbed: list[T_task_or_group] = []
         for sub_task in sub_tasks:
@@ -800,6 +804,7 @@ class _TaskTreeElementConverter:
         else:
             log_error('Task tree element data is not a dictionary.')
             self.raw_data = {}
+        self.builtin_regex = re.compile(fr'^{BUILTIN_TASK_NAME_PATTERN}$')
 
     def _get_raw_data(self, name: str) -> Any | None:
         if name not in self.keys_used:
@@ -905,12 +910,13 @@ class _TaskTreeElementConverter:
             return []
         sub_tasks: list[Task | TaskGroup] = []
         for name, raw_item_data in raw_data.items():
-            # Built-in tasks and groups are indicated by names surrounded by '__' and '__'.
-            # TOML doesn't support many name characters without needing quotes.
-            if name.startswith('__') and name.endswith('__'):
-                name = name[2:-2]
+            # Check for special built-in task/group name.
+            matched_name = self.builtin_regex.match(name)
+            if matched_name is not None:
+                name = matched_name.group(1)
                 if name not in BUILTINS:
-                    abort(f'Unknown built-in task or group: {name} (__{name}__)')
+                    abort(f'Unknown built-in task or group:'
+                          f' {name} ({BUILTIN_TASK_NAME_FORMAT.format(name)})')
                 builtin = BUILTINS[name]
                 if isinstance(builtin, TaskGroup):
                     sub_tasks.append(BuiltinTaskGroup.from_raw_data(name, raw_item_data))
@@ -939,17 +945,14 @@ class _TaskTreeElementConverter:
 
 
 BUILTINS: dict[str, Task | TaskGroup] = {
-    #: Task group for "alias" sub-commands.
-    'alias': TaskGroup(
+    #: Task for "alias" management.
+    'alias': Task(
         name='alias',
-        sub_tasks=[
-            Task(name='delete'),
-            Task(name='description'),
-            Task(name='list', cli_options={'expand_names': ['-e', '--expand-names']}),
-            Task(name='rename'),
-            Task(name='set', cli_options={'description': ['-d', '--description']}),
-            Task(name='show'),
-        ],
+        cli_options={
+            'all': ['-a', '--all'],
+            'comment': ['-c', '--comment'],
+            'delete': ['-d', '--delete'],
+        },
         visibility=1,
     ),
 
@@ -962,13 +965,11 @@ BUILTINS: dict[str, Task | TaskGroup] = {
         visibility=1,
     ),
 
-    #: Task group for configuration manipulation tools.
-    'config': TaskGroup(
-        name='config',
-        sub_tasks=[
-            Task(name='toml_to_json'),
-        ],
+    #: Task for "help" command.
+    'help': Task(
+        name='help',
         visibility=1,
+        cli_options={'all_tasks': ['-a', '--all']},
     ),
 
     #: Task group for generating and serving documentation.
@@ -983,16 +984,29 @@ BUILTINS: dict[str, Task | TaskGroup] = {
         visibility=1,
     ),
 
-    #: Task for "help" command.
-    'help': Task(
-        name='help',
+    #: Task for parameter management.
+    'param': Task(
+        name='param',
+        cli_options={
+            'all': ['-a', '--all'],
+            'delete': ['-d', '--delete'],
+        },
         visibility=1,
-        cli_options={'all_tasks': ['-a', '--all']},
     ),
 
     #: Task for running unit tests.
     'unittest': Task(
         name='unittest',
+        visibility=1,
+        cli_options={'name_sort': ['-n', '--name-sort']},
+    ),
+
+    #: Task group utility commands.
+    'utility': TaskGroup(
+        name='utility',
+        sub_tasks=[
+            Task(name='toml_to_json'),
+        ],
         visibility=1,
     ),
 

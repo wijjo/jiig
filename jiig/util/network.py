@@ -264,10 +264,11 @@ class ElementScanner:
         """
         HTML element scanner constructor.
 
-        :param tag: case-insensitive tag literal for filtering elements
-        :param style_classes: style class regex patterns
-        :param text_pattern: regular expression for searching the inner text block
-        :param function: callback function
+        Args:
+            tag: case-insensitive tag literal for filtering elements
+            style_classes: style class regex patterns
+            text_pattern: regular expression for searching the inner text block
+            function: callback function
         """
         self.tag = tag
         self.style_classes = style_classes
