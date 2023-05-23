@@ -31,7 +31,7 @@ def param(
     delete: jiig.f.boolean() = None,
     all: jiig.f.boolean() = None,
 ):
-    """Multi-mode parameter management.
+    """Tool parameter management.
 
     Parameters may be a list, but only if they have a list default value.
 

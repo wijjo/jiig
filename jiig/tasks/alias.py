@@ -38,7 +38,7 @@ def alias(
     delete: jiig.f.boolean() = None,
     all: jiig.f.boolean() = None,
 ):
-    """Multi-mode alias management.
+    """Tool alias management.
 
     # Mode 1: Set alias
 
