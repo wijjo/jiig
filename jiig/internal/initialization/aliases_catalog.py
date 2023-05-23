@@ -36,11 +36,22 @@ def create_aliases_catalog(catalog_path: Path) -> ScopedCatalog:
 
     class AliasesCatalog(ScopedCatalog):
         """Scoped aliases catalog class."""
+
         path = catalog_path
         item_label = 'alias'
         payload_label = 'alias command'
         payload_label_plural = 'alias commands'
-        @staticmethod
-        def payload_formatter(payload: Any):
+
+        def payload_formatter(self, name: str, payload: Any) -> str:
+            """Override payload formatter in order to use shell quoting.
+
+            Args:
+                name: alias name (not used)
+                payload: alias command
+
+            Returns:
+                shell-quoted formatted string
+            """
             return shell_command_string(*payload)
+
     return AliasesCatalog()

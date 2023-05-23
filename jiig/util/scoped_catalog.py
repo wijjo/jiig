@@ -148,8 +148,6 @@ class ScopedCatalog:
         self._modified = False
         self._disable_saving = False
         self._item_map: dict[str, _ScopedItem] = {}
-        # Defaults are not used elsewhere in this class, but scoped catalog
-        # tasks may use the information to glean expected payload types.
         self.defaults = defaults or {}
         if defaults:
             for name, payload in defaults.items():
@@ -238,6 +236,9 @@ class ScopedCatalog:
             self._sorted = False
         else:
             item = self._item_map[result.name]
+        # A list default value forces conversion of a scalar payload to a list.
+        if self.item_has_list_payloads(result.name) and not isinstance(payload, list):
+            payload = [payload]
         if result.found_scope is not None:
             if result.found_scope == '':
                 item.global_payload = payload
@@ -486,7 +487,7 @@ class ScopedCatalog:
             if active is None and qactive:
                 scope_string += ' *'
             comment_string = qcomment or ''
-            payload_string = self.payload_formatter(qpayload)
+            payload_string = self.payload_formatter(qname, qpayload)
             yield qname, scope_string, comment_string, payload_string
 
     def format_table(self,
@@ -644,16 +645,25 @@ class ScopedCatalog:
             self.save()
         return False
 
-    @staticmethod
-    def payload_formatter(payload: Any):
+    def payload_formatter(self, name: str, payload: Any) -> str:
         """Default payload formatter - converts payload to string.
 
         Args:
+            name: item name, e.g. for looking up default data type
             payload: payload to format
 
         Returns:
             payload string
         """
+        if self.item_has_list_payloads(name):
+            if not isinstance(payload, list):
+                payload = [payload]
+            # Try to use JSON dumps() to format as list with double quotes.
+            try:
+                return json.dumps(payload)
+            except (ValueError, TypeError) as exc:
+                # Fall back to ordinary Python stringizing.
+                log_error(f'Unable to format payload as list: {exc}')
         return str(payload)
 
     @staticmethod
@@ -683,6 +693,18 @@ class ScopedCatalog:
             scoped name string
         """
         return name if scope is None else NAME_SCOPE_SEPARATOR.join([name, scope])
+
+    def item_has_list_payloads(self, scoped_name: str) -> bool:
+        """Check if item has list payloads, based on default data type, if any.
+
+        Args:
+            scoped_name: item name with optional ignored "@scope"
+
+        Returns:
+            True if item has list payloads
+        """
+        name, _scope = self.split_name(scoped_name)
+        return isinstance(self.defaults.get(name), list)
 
     @staticmethod
     def _get_active_scope(item: _ScopedItem) -> str:

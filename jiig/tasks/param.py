@@ -17,6 +17,8 @@
 
 """Create and manage tool parameters."""
 
+import json
+
 import jiig
 
 from ._common import handle_action
@@ -40,6 +42,14 @@ def param(
     global scope, if "@scope" was not provided.
 
     Parameter values will be saved as a list when the default value is a list.
+    List values may either be specified as separate arguments or as a single
+    JSON-style list argument string.
+
+    List strings will be parsed using json.loads(). This allow for direct copy,
+    paste, and tweaking from a parameter listing. See example below with a list
+    string argument.
+
+        <tool-name> param mylistparam '["aaa", "bbb", "ccc"]'
 
     If a value is not provided then parameters and values are listed, filtering
     on an optional name[@scope] specification.
@@ -53,8 +63,17 @@ def param(
     """
     if value:
         unscoped_name, _scope = runtime.internal.params_catalog.split_name(name)
-        default_value = runtime.internal.params_catalog.defaults.get(unscoped_name)
-        if not isinstance(default_value, list):
+        if runtime.internal.params_catalog.item_has_list_payloads(unscoped_name):
+            # Try JSON parsing to convert a single value that looks like a list.
+            if (len(value) == 1
+                    and isinstance(value[0], str)
+                    and len(value[0]) >= 2
+                    and value[0][0] == '[' and value[0][-1] == ']'):
+                try:
+                    value = json.loads(value[0])
+                except json.JSONDecodeError as exc:
+                    runtime.error(f'Failed to parse parameter value list string: {exc}')
+        else:
             if len(value) > 1:
                 runtime.abort(f'Parameter only accepts a simple value: {unscoped_name}')
             value = value[0]
