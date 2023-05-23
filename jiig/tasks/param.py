@@ -33,20 +33,16 @@ def param(
 ):
     """Tool parameter management.
 
-    Parameters may be a list, but only if they have a list default value.
+    The name can have an optional "@scope" specifier, where scope is a relative
+    or absolute filesystem path. Scoped values apply at and below the path.
 
-    # Mode 1: Set parameter
+    Values apply either to a specific scope, or they default to the active or
+    global scope, if "@scope" was not provided.
 
-    Given a vale: Create or update parameter. Scope required if any exist. Add
-    comment if provided.
+    Parameter values will be saved as a list when the default value is a list.
 
-    # Mode 2: Delete parameter value
-
-    When delete is True: Delete parameter. Scope required if any exist.
-
-    # Mode 3: Display parameter(s)
-
-    Display parameters, filtered by name[@scope], if provided.
+    If a value is not provided then parameters and values are listed, filtering
+    on an optional name[@scope] specification.
 
     Args:
         runtime: jiig Runtime API

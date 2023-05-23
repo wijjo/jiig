@@ -40,18 +40,14 @@ def alias(
 ):
     """Tool alias management.
 
-    # Mode 1: Set alias
+    The name can have an optional "@scope" specifier, where scope is a relative
+    or absolute filesystem path. Scoped aliases apply at and below the path.
 
-    Given a command: Create or update alias. Scope required if any exist. Add
-    comment if provided.
+    Alias commands apply either to a specific scope, or they default to the
+    active or global scope, if "@scope" was not provided.
 
-    # Mode 2: Delete alias
-
-    When delete is True: Delete alias. Scope required if any exist.
-
-    # Mode 3: Display alias(es)
-
-    Display aliases, filtered by name[@scope], if provided.
+    If an alias command is not provided then aliases are listed, filtering on an
+    optional name[@scope] specification.
 
     Args:
         runtime: jiig Runtime API
