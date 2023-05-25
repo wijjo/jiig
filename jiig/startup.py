@@ -286,7 +286,7 @@ def tool_main(meta: ToolMetadata,
 
     # Check, prepare, and invoke virtual environment as needed.
     if JIIG_CONFIG_ROOT_ENV_VAR in os.environ:
-        jiig_config_root = Path(JIIG_CONFIG_ROOT)
+        jiig_config_root = Path(os.environ[JIIG_CONFIG_ROOT_ENV_VAR])
     else:
         jiig_config_root = JIIG_CONFIG_ROOT
     if venv_folder is None:
