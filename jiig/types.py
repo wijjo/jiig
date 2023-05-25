@@ -41,9 +41,9 @@ from .constants import (
     DEFAULT_URL,
     DEFAULT_VERSION,
     JIIG_CONFIG_ROOT,
+    PARAMS_CATALOG_FILE_NAME,
     SUB_TASK_LABEL,
     TOP_TASK_LABEL,
-    PARAMS_CATALOG_FILE_NAME,
 )
 from .util.default import DefaultValue
 from .util.repetition import Repetition
@@ -130,14 +130,14 @@ class ToolMetadata:
     sub_task_label: str = SUB_TASK_LABEL
     #: Pip packages required for virtual environment.
     pip_packages: list[str] = field(default_factory=list)
-    #: Tool configuration root folder, typically JIIG_CONFIG_ROOT/<tool_name>.
-    tool_config_root: Path = None
+    #: Jiig configuration root folder (default: constants.JIIG_CONFIG_ROOT).
+    jiig_config_root: Path = None
 
     def __post_init__(self):
         if self.project_name is None:
             self.project_name = self.tool_name.capitalize()
-        if self.tool_config_root is None:
-            self.tool_config_root = JIIG_CONFIG_ROOT / self.tool_name
+        if self.jiig_config_root is None:
+            self.jiig_config_root = JIIG_CONFIG_ROOT
 
     @property
     def aliases_catalog_path(self) -> Path:
@@ -147,7 +147,7 @@ class ToolMetadata:
         Returns:
             path to aliases catalog file
         """
-        return self.tool_config_root / ALIASES_CATALOG_FILE_NAME
+        return self.jiig_config_root / self.tool_name / ALIASES_CATALOG_FILE_NAME
 
     @property
     def params_catalog_path(self) -> Path:
@@ -155,9 +155,9 @@ class ToolMetadata:
         Provide path to tool parameters catalog file.
 
         Returns:
-            path to tool variables catalog file
+            path to tool parameters catalog file
         """
-        return self.tool_config_root / PARAMS_CATALOG_FILE_NAME
+        return self.jiig_config_root / self.tool_name / PARAMS_CATALOG_FILE_NAME
 
 
 @dataclass

@@ -285,12 +285,8 @@ def tool_main(meta: ToolMetadata,
         cli_args = sys.argv[1:]
 
     # Check, prepare, and invoke virtual environment as needed.
-    if JIIG_CONFIG_ROOT_ENV_VAR in os.environ:
-        jiig_config_root = Path(os.environ[JIIG_CONFIG_ROOT_ENV_VAR])
-    else:
-        jiig_config_root = JIIG_CONFIG_ROOT
     if venv_folder is None:
-        venv_folder = jiig_config_root / meta.tool_name / VENV_FOLDER_NAME
+        venv_folder = meta.jiig_config_root / meta.tool_name / VENV_FOLDER_NAME
     if not skip_venv_preparation:
         initialization.prepare_virtual_environment(
             venv_folder=venv_folder,
@@ -348,7 +344,6 @@ def tool_main(meta: ToolMetadata,
     runtime = initialization.prepare_runtime(
         runtime_spec=custom.runtime,
         meta=meta,
-        jiig_config_root=jiig_config_root,
         venv_folder=venv_folder,
         base_folder=tool_env.base_folder,
         build_folder=build_folder,
@@ -421,6 +416,7 @@ def jiigrun_main(skip_venv_check: bool = False):
         top_task_label=extractor.string('tool.top_task_label', TOP_TASK_LABEL),
         sub_task_label=extractor.string('tool.top_task_label', SUB_TASK_LABEL),
         pip_packages=extractor.string_list('tool.pip_packages', []),
+        jiig_config_root=Path(os.environ.get(JIIG_CONFIG_ROOT_ENV_VAR, JIIG_CONFIG_ROOT)),
     )
 
     task_tree = extractor.task_tree('tasks', DEFAULT_ROOT_TASK_NAME)

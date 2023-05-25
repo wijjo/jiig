@@ -42,7 +42,6 @@ from jiig.util.scoped_catalog import ScopedCatalog
 def prepare_runtime(*,
                     runtime_spec: type[Runtime] | str | ModuleType | None,
                     meta: ToolMetadata,
-                    jiig_config_root: Path,
                     venv_folder: str | Path | None,
                     base_folder: str | Path | None,
                     build_folder: str | Path | None,
@@ -58,7 +57,6 @@ def prepare_runtime(*,
     Args:
         runtime_spec: runtime class specification
         meta: tool metadata
-        jiig_config_root: Jiig configuration root folder
         venv_folder: optional virtual environment override path
         base_folder: tool base folder containing tool package with task modules
         build_folder: optional build folder override
@@ -82,7 +80,8 @@ def prepare_runtime(*,
     if isinstance(base_folder, str):
         base_folder = Path(base_folder)
     paths = ToolPaths(
-        venv=_resolve_path(venv_folder, jiig_config_root / meta.tool_name / VENV_FOLDER_NAME),
+        venv=_resolve_path(
+            venv_folder, meta.jiig_config_root / meta.tool_name / VENV_FOLDER_NAME),
         base_folder=_resolve_path(base_folder),
         aliases_catalog_path=meta.aliases_catalog_path,
         params_catalog_path=meta.params_catalog_path,
