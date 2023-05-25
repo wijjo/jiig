@@ -130,10 +130,14 @@ class ToolMetadata:
     sub_task_label: str = SUB_TASK_LABEL
     #: Pip packages required for virtual environment.
     pip_packages: list[str] = field(default_factory=list)
+    #: Tool configuration root folder, typically JIIG_CONFIG_ROOT/<tool_name>.
+    tool_config_root: Path = None
 
     def __post_init__(self):
         if self.project_name is None:
             self.project_name = self.tool_name.capitalize()
+        if self.tool_config_root is None:
+            self.tool_config_root = JIIG_CONFIG_ROOT / self.tool_name
 
     @property
     def aliases_catalog_path(self) -> Path:
@@ -143,7 +147,7 @@ class ToolMetadata:
         Returns:
             path to aliases catalog file
         """
-        return JIIG_CONFIG_ROOT / self.tool_name / ALIASES_CATALOG_FILE_NAME
+        return self.tool_config_root / ALIASES_CATALOG_FILE_NAME
 
     @property
     def params_catalog_path(self) -> Path:
@@ -153,7 +157,7 @@ class ToolMetadata:
         Returns:
             path to tool variables catalog file
         """
-        return JIIG_CONFIG_ROOT / self.tool_name / PARAMS_CATALOG_FILE_NAME
+        return self.tool_config_root / PARAMS_CATALOG_FILE_NAME
 
 
 @dataclass

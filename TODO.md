@@ -5,7 +5,7 @@
     * [ ] Or add chained decorator, similar to @property getter/setter pairs.
     * [ ] Test it.
 
-* [ ] Automatic file backups, e.g. for ~/.jiig-aliases.
+* [ ] Automatic file backups, e.g. for ~/.jiig.
     * [ ] Accept "backup discipline" as optional argument.
     * [ ] Define backup discipline protocol (as a class) for future expansion.
     * [ ] Implement backup discipline for single backup copy, possibly with

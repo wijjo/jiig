@@ -240,8 +240,7 @@ class TestRuntime(Runtime):
             payload_label = 'test alias command'
             payload_label_plural = 'test alias commands'
 
-            @staticmethod
-            def payload_formatter(payload: Any):
+            def payload_formatter(self, name: str, payload: Any):
                 return shell_command_string(*payload)
 
         class TestParamsCatalog(ScopedCatalog):

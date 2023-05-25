@@ -39,6 +39,7 @@ from .constants import (
     DEFAULT_URL,
     DEFAULT_VERSION,
     JIIG_CONFIG_ROOT,
+    JIIG_CONFIG_ROOT_ENV_VAR,
     JIIG_JSON_CONFIGURATION_NAME,
     JIIG_TOML_CONFIGURATION_NAME,
     SUB_TASK_LABEL,
@@ -284,8 +285,12 @@ def tool_main(meta: ToolMetadata,
         cli_args = sys.argv[1:]
 
     # Check, prepare, and invoke virtual environment as needed.
+    if JIIG_CONFIG_ROOT_ENV_VAR in os.environ:
+        jiig_config_root = Path(JIIG_CONFIG_ROOT)
+    else:
+        jiig_config_root = JIIG_CONFIG_ROOT
     if venv_folder is None:
-        venv_folder = JIIG_CONFIG_ROOT / meta.tool_name / VENV_FOLDER_NAME
+        venv_folder = jiig_config_root / meta.tool_name / VENV_FOLDER_NAME
     if not skip_venv_preparation:
         initialization.prepare_virtual_environment(
             venv_folder=venv_folder,
@@ -343,6 +348,7 @@ def tool_main(meta: ToolMetadata,
     runtime = initialization.prepare_runtime(
         runtime_spec=custom.runtime,
         meta=meta,
+        jiig_config_root=jiig_config_root,
         venv_folder=venv_folder,
         base_folder=tool_env.base_folder,
         build_folder=build_folder,

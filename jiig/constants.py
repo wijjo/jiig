@@ -31,6 +31,8 @@ JIIG_TOML_CONFIGURATION_NAME = 'jiig.toml'
 JIIG_JSON_CONFIGURATION_NAME = 'jiig.json'
 #: Root folder path containing generated virtual environments.
 JIIG_CONFIG_ROOT = HOME_FOLDER_PATH / '.jiig'
+#: Environment variable that can override Jiig configuration root.
+JIIG_CONFIG_ROOT_ENV_VAR = 'JIIG_CONFIG_ROOT'
 #: Aliases catalog file name.
 ALIASES_CATALOG_FILE_NAME = 'aliases.json'
 #: Parameters catalog file name.

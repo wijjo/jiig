@@ -324,7 +324,6 @@ def main():
         ),
         task_tree=TaskTree(
             name='(extool root)',
-            package='extool.tasks',
             sub_tasks=[
                 Task(name='calc'),
                 Task(name='case',
@@ -344,6 +343,7 @@ def main():
                 )
             ],
         ),
+        script_path=__file__,
     )
 
 if __name__ == '__main__':
