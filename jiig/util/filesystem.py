@@ -97,7 +97,7 @@ def search_folder_stack_for_file(folder: str | Path,
 def short_path(long_path: str | Path,
                is_folder: bool = None,
                real_path: bool = False,
-               is_local: bool = False,
+               assume_remote: bool = False,
                ) -> str:
     """Shorten path, e.g. for display.
 
@@ -105,31 +105,39 @@ def short_path(long_path: str | Path,
         long_path: path to shorten
         is_folder: consider it a folder if True
         real_path: resolve real path if True
-        is_local: assume it is a local path if True
+        assume_remote: assume it is a remote path if True
 
     Returns:
         shortened path
     """
     long_path = str(long_path)
     # Special case for remote paths.
-    if not is_local and is_remote_path(long_path):
+    if assume_remote or is_remote_path(long_path):
         if is_folder:
             return folder_path_string(long_path)
         return long_path
-    # Normal handling of local paths.
+    # Make absolute and optionally resolve symlinks if real_path is True.
     if real_path:
         path = os.path.realpath(long_path)
     else:
         path = os.path.abspath(long_path)
+    # Strip trailing '/'.
     if path.endswith(os.path.sep):
         path = path[:-1]
+    # Shorten paths relative to working folder.
     working_folder = os.getcwd()
     if real_path:
         working_folder = os.path.realpath(working_folder)
     if path.startswith(working_folder + os.path.sep):
         path = path[len(working_folder) + 1:]
+    # Shorten HOME-relative paths.
+    home_folder = os.environ['HOME']
+    if path.startswith(home_folder + os.path.sep):
+        path = os.path.join('~', path[len(home_folder) + 1:])
+    # Convert empty path to '.'.
     if not path:
         path = '.'
+    # Append '/' to folder.
     if is_folder or (is_folder is not None and os.path.isdir(path)):
         path = folder_path_string(path)
     return path
