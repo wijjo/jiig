@@ -113,7 +113,8 @@ class FootnoteBuilder:
         """
         Format footnotes reference text.
 
-        :return: formatted text with footnote definitions
+        Returns:
+            formatted text with footnote definitions
         """
         paragraphs: NotesList = []
         for label_num, label in enumerate(self.labels, start=1):

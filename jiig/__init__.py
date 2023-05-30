@@ -46,7 +46,6 @@ from .types import (
     ToolPaths,
 )
 from .util.options import OPTIONS
-from .util.script import Script
 
 # Top level public modules and their shortened aliases.
 from . import adapters
