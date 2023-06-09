@@ -31,7 +31,6 @@ Write-only modules return no data.
 import os
 import sys
 from inspect import isfunction
-from typing import Callable
 
 from jiig.runtime import Runtime
 from jiig.task import RuntimeTask
@@ -120,34 +119,29 @@ def execute_application(task_stack: list[RuntimeTask],
         # added, are invoked in reverse, inner to outer order. The string is the
         # name used for errors. The dict is for keyword call arguments (task
         # functions only).
-        run_calls: list[tuple[str, Callable, dict]] = []
-        for task in task_stack:
+        names: list[str] = []
+        for level, task in enumerate(task_stack):
+            if level == 0:
+                names.append(runtime.meta.tool_name)
+            else:
+                names.append(task.name)
+            command_string = ' '.join(names)
             # Extract the data needed to populate task dataclass fields.
-            # noinspection PyDataclass
             task_field_data = {
                 field.name: data_preparer.prepared_data[field.name]
                 for field in task.fields
                 if field.name in data_preparer.prepared_data
             }
-            # Add task function to callables?
             if isfunction(task.task_function):
-                if task.full_name == task.name:
-                    full_name = ''
-                else:
-                    full_name = f' ({task.full_name})'
-                run_name = f'task "{task.name}"{full_name}'
-                run_function = task.task_function
-                run_calls.append((run_name, run_function, task_field_data))
-        # Invoke run callable stack.
-        for run_name, run_function, run_kwargs in run_calls:
-            # noinspection PyBroadException
-            try:
-                log_message(f'Invoking {run_name}...', debug=True)
-                run_function(runtime, **run_kwargs)
-            except Exception as exc:
-                abort(f'Exception invoking {run_name}.',
-                      exc,
-                      exception_traceback_skip=1)
+                # noinspection PyBroadException
+                try:
+                    log_message(f'Invoking command "{command_string}"...', debug=True)
+                    task.task_function(runtime, **task_field_data)
+                except Exception as exc:
+                    abort(f'Command failed due to an exception.',
+                          commmand=command_string,
+                          exception=exc,
+                          exception_traceback_skip=1)
         # Invoke done callable stack (reverse of run callable order).
         if runtime.when_done_callables:
             for done_call in runtime.when_done_callables:

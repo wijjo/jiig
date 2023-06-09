@@ -38,6 +38,8 @@ MESSAGES_ISSUED_ONCE: set[str] = set()
 LINES_WRITTEN = 0
 EXCEPTION_COUNT = 0
 
+DEBUG_INFO_MESSAGE = '(use debug option or JIIG_DEBUG=1 for more details)'
+
 
 class LogWriter:
     """Abstract base class for log writers."""
@@ -101,6 +103,8 @@ def log_message(text: Any, *args, **kwargs):
        sub_tag                    optional text to enclose in square brackets next to the tag
        verbose                    True if requires VERBOSE mode
        debug                      True if requires DEBUG mode
+       is_error                   handle as an error, e.g. by using stderr instead of stdout
+       is_fatal                   handle as a fatal error that exits
        issue_once_tag             unique tag to prevent issuing the message more than once
        exception_traceback        dump traceback stack if an exception is being reported
        exception_traceback_skip   number of stack frames to skip
@@ -115,8 +119,9 @@ def log_message(text: Any, *args, **kwargs):
     tag = kwargs.pop('tag', None)
     verbose = kwargs.pop('verbose', None)
     debug = kwargs.pop('debug', None)
-    issue_once_tag = kwargs.pop('issue_once_tag', None)
     is_error = kwargs.pop('is_error', False)
+    is_fatal = kwargs.pop('is_fatal', False)
+    issue_once_tag = kwargs.pop('issue_once_tag', None)
     exception_traceback = kwargs.pop('exception_traceback', None)
     exception_traceback_skip = kwargs.pop('exception_traceback_skip', None)
     skip_non_source_frames = kwargs.pop('skip_non_source_frames', None)
@@ -139,8 +144,8 @@ def log_message(text: Any, *args, **kwargs):
             has_exception = True
             break
     # Dump a traceback stack if DEBUG and an exception is being reported.
+    global EXCEPTION_COUNT
     if has_exception:
-        global EXCEPTION_COUNT
         EXCEPTION_COUNT += 1
         if OPTIONS.debug:
             exc_lines = traceback.format_exc().split(os.linesep)
@@ -164,13 +169,8 @@ def log_message(text: Any, *args, **kwargs):
                         lines.append(f'{item.location_string}: {item.text}')
                 if lines:
                     log_message(f'Exception stack{note}:', *lines, tag=tag, is_error=True)
-        if not OPTIONS.debug and EXCEPTION_COUNT == 1:
-            if OPTIONS.is_initialized:
-                log_message('(enable debug option for more information)', tag=tag)
-            else:
-                log_message(f'(set JIIG_DEBUG=1 or enable debug option'
-                            f' for more information)',
-                            tag=tag)
+    if not OPTIONS.debug and ((has_exception and EXCEPTION_COUNT == 1) or is_fatal):
+        log_message(DEBUG_INFO_MESSAGE, is_error=True, tag=tag)
 
 
 def abort(text: Any, *args, **kwargs):
@@ -185,6 +185,7 @@ def abort(text: Any, *args, **kwargs):
     skip = kwargs.pop('skip', 0)
     kwargs['tag'] = 'FATAL'
     kwargs['is_error'] = True
+    kwargs['is_fatal'] = True
     kwargs['exception_traceback'] = True
     log_message(text, *args, **kwargs)
     # If DEBUG is enabled dump a call stack and strip off the non-meaningful tail.

@@ -143,36 +143,44 @@ def boolean(repeat: RepeatSpec = None) -> FIELD_BOOL_TYPE:
 
 
 def filesystem_folder(absolute_path: bool = False,
+                      exists: bool = False,
                       repeat: RepeatSpec = None,
                       ) -> FIELD_TEXT_TYPE:
     """Declare a folder path field.
 
     Args:
         absolute_path: convert to absolute path if True
+        exists: it must exist if True
         repeat: optional repetition as count or minimum/maximum pair
 
     Returns:
         field specification
     """
-    adapters_list = [path_is_folder]
+    adapters_list: list[ArgumentAdapter] = []
+    if exists:
+        adapters_list.append(path_is_folder)
     if absolute_path:
         adapters_list.append(path_to_absolute)
     return wrap_field(str, adapters=adapters_list, repeat=repeat)
 
 
 def filesystem_file(absolute_path: bool = False,
+                    exists: bool = False,
                     repeat: RepeatSpec = None,
                     ) -> FIELD_TEXT_TYPE:
     """Declare a folder path field.
 
     Args:
         absolute_path: convert to absolute path if True
+        exists: it must exist if True
         repeat: optional repetition as count or minimum/maximum pair
 
     Returns:
         field specification
     """
-    adapters_list = [path_is_file]
+    adapters_list: list[ArgumentAdapter] = []
+    if exists:
+        adapters_list.append(path_is_file)
     if absolute_path:
         adapters_list.append(path_to_absolute)
     return wrap_field(str, adapters=adapters_list, repeat=repeat)

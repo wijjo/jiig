@@ -139,7 +139,7 @@ def run(cmd_args: list,
         message_data['exec'] = 'yes'
     if quiet:
         message_data['verbose'] = True
-    log_message('Run command.', cmd_string, **message_data)
+    log_message('Run command.', cmd_string, **message_data, verbose=True)
     # A dry run can stop here, before taking real action.
     if OPTIONS.dry_run and not run_always:
         return subprocess.CompletedProcess(cmd_strings, 0)
@@ -327,5 +327,4 @@ def format_dotenv(**variables) -> str:
         else:
             value = simple_shell_quote(str(value))
         lines.append(f'{name}={value}')
-    lines.append('')
     return os.linesep.join(lines)

@@ -57,8 +57,6 @@ DEFAULT_DOC_FOLDER_NAME = 'doc'
 DEFAULT_TESTS_FOLDER_NAME = 'tests'
 #: Default build folder name.
 DEFAULT_BUILD_FOLDER_NAME = 'build'
-#: Default name for root (top level) task.
-DEFAULT_ROOT_TASK_NAME = '(root)'
 #: Default help label for sub-tasks.
 SUB_TASK_LABEL = 'SUB_TASK'
 #: Default help label for top task.

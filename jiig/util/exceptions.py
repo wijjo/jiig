@@ -157,14 +157,12 @@ def format_exception(exc: Exception,
     Returns:
         text string for exception
     """
-    parts = []
-    if label:
-        parts.append(label)
+    parts = [label or 'exception']
     if show_exception_location:
         stack = get_exception_stack(skip_frame_count=skip_frame_count)
         if stack:
             item = stack.items[0]
             parts.append(f'{os.path.basename(item.path)}.{item.line}')
-    parts.append(f'exception[{exc.__class__.__name__}]')
+    parts.append(exc.__class__.__name__)
     parts.append(str(exc))
     return ': '.join(parts)

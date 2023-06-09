@@ -37,7 +37,6 @@ from typing import (
 from .constants import (
     BUILTIN_TASK_NAME_FORMAT,
     BUILTIN_TASK_NAME_PATTERN,
-    DEFAULT_ROOT_TASK_NAME,
 )
 from .types import (
     TaskField,
@@ -321,17 +320,15 @@ class TaskTree(TaskGroup):
     def __init__(self,
                  *,
                  sub_tasks: Sequence[Task | TaskGroup],
-                 name: str | None = None,
                  ):
         """TaskGroup constructor.
 
         Args:
             sub_tasks: nested sub-tasks and or sub-groups
-            name: optional task tree name (default: default root task name)
         """
-        super().__init__(name=name,
+        super().__init__(name='',
                          sub_tasks=sub_tasks,
-                         description='root task',
+                         description='task tree',
                          visibility=2)
 
     def copy(self, visibility: int = None) -> Self:
@@ -344,7 +341,6 @@ class TaskTree(TaskGroup):
             task group copy
         """
         tree_copy = TaskTree(
-            name=self.name,
             sub_tasks=[],
         )
         tree_copy.tasks = self.tasks.copy()
@@ -366,7 +362,6 @@ class TaskTree(TaskGroup):
         """
         converter = _TaskTreeElementConverter(raw_data)
         task_tree = cls(
-            name=name,
             sub_tasks=converter.get_sub_tasks(),
         )
         hints = converter.get_hints()
@@ -667,7 +662,7 @@ class RuntimeTask:
             new RuntimeTask
         """
         return RuntimeTask(
-            name=DEFAULT_ROOT_TASK_NAME,
+            name='',
             full_name='',
             sub_tasks=sub_tasks,
             visibility=2,

@@ -268,7 +268,7 @@ class TestRuntime(Runtime):
             aliases_catalog=TestAliasesCatalog(),
             params_catalog=TestParamsCatalog(),
             driver=TestDriver('test', 'test driver', DriverOptions()),
-            root_task=RuntimeTask('(root)', '(root)', 0, 'test root task'),
+            root_task=RuntimeTask('test', '', 0, 'test root task'),
         )
 
 

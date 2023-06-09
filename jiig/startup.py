@@ -34,7 +34,6 @@ from .constants import (
     DEFAULT_AUTHOR,
     DEFAULT_COPYRIGHT,
     DEFAULT_EMAIL,
-    DEFAULT_ROOT_TASK_NAME,
     DEFAULT_TOOL_DESCRIPTION,
     DEFAULT_URL,
     DEFAULT_VERSION,
@@ -202,14 +201,14 @@ class _ConfigurationDataExtractor:
                 paths.append(extra_path)
         return paths
 
-    def task_tree(self, name: str, top_task_name: str) -> TaskTree:
+    def task_tree(self, name: str) -> TaskTree:
         value = self._get(name)
         if value is None:
-            return TaskTree(name=top_task_name, sub_tasks=[])
+            return TaskTree(sub_tasks=[])
         # The extracted value is just the sub-tasks. Wrap so that
         # TaskTree.from_raw_data() works properly.
         wrapped_data = {'sub_tasks': value}
-        return TaskTree.from_raw_data(name=top_task_name, raw_data=wrapped_data)
+        return TaskTree.from_raw_data('', raw_data=wrapped_data)
 
     def any(self, name: str, default: Any) -> Any:
         value = self._get(name)
@@ -419,7 +418,7 @@ def jiigrun_main(skip_venv_check: bool = False):
         jiig_config_root=Path(os.environ.get(JIIG_CONFIG_ROOT_ENV_VAR, JIIG_CONFIG_ROOT)),
     )
 
-    task_tree = extractor.task_tree('tasks', DEFAULT_ROOT_TASK_NAME)
+    task_tree = extractor.task_tree('tasks')
     param_defaults, param_comments = extractor.params('params')
 
     tool_main(

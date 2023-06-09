@@ -78,8 +78,9 @@ def format_message_lines(text: Any, *args, **kwargs) -> Iterator[str]:
                     yield f'{OPTIONS.message_indent}{key}[{idx + 1}]: {sub_value}'
             else:
                 if isinstance(value, Exception):
-                    value = {format_exception(value)}
-                yield f'{OPTIONS.message_indent}{key}: {value}'
+                    yield f'{OPTIONS.message_indent}{format_exception(value, label=key)}'
+                else:
+                    yield f'{OPTIONS.message_indent}{key}: {value}'
 
     if not tag:
         for line in _generate_raw_lines():

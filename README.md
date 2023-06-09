@@ -323,7 +323,6 @@ def main():
             pip_packages=[],
         ),
         task_tree=TaskTree(
-            name='(extool root)',
             sub_tasks=[
                 Task(name='calc'),
                 Task(name='case',

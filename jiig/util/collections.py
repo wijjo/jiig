@@ -17,7 +17,12 @@
 
 """Attribute dictionary meta-classes, classes, and functions."""
 
-from typing import Any, Callable, Sequence, Self
+from typing import (
+    Any,
+    Callable,
+    Self,
+    Sequence,
+)
 
 
 def make_list(value: Any,
@@ -85,16 +90,21 @@ class MetaAttributeDictionary(type):
                 mcs_name: str,
                 bases: tuple[type],
                 namespace: [str, Any],
+                class_name: str = None,
                 no_defaults: bool = False,
                 read_only: bool = False,
                 max_depth: int = None,
-                ):
+                ) -> 'MetaAttributeDictionary':
         """Create a new attribute-dictionary class.
+
+        Nested attribute-dictionary instances have a "__key_stack__" attribute
+        that allows exception messages to report the full key name.
 
         Args:
             mcs_name: class name
             bases: base classes
             namespace: class attributes
+            class_name: optional class name override
             no_defaults: raise AttributeError for missing keys if True
             read_only: disable write access if True
             max_depth: maximum depth for wrapping sub-dictionaries (default: no
@@ -109,26 +119,40 @@ class MetaAttributeDictionary(type):
             raise TypeError(f'Class {mcs_name} is not based on dict.')
 
         # Create the class before mixing in attribute access methods below.
-        new_class = super(MetaAttributeDictionary, mcs).__new__(mcs, mcs_name, bases, namespace)
+        dict_class = super(MetaAttributeDictionary, mcs).__new__(
+            mcs, mcs_name, bases, namespace)
 
-        # --- __getattr__()
+        if class_name is None:
+            class_name = mcs_name
+
+        def get_full_key_name(dict_instance: dict, key: Any):
+            return '.'.join(getattr(dict_instance, '__key_stack__', []) + [key])
+
+        # --- enhanced __getattr__()
 
         if no_defaults:
             def get_item_function(self, key: Any) -> Any:
                 if key not in self:
-                    raise AttributeError(f"Attempt to read missing attribute"
-                                         f" '{key}' in {mcs_name}.")
+                    full_name = get_full_key_name(self, key)
+                    raise AttributeError(
+                        f'{class_name} attribute does not exist: {full_name}')
                 return self[key]
         else:
             # noinspection PyUnresolvedReferences
-            get_item_function = new_class.get
+            get_item_function = dict_class.get
 
         if max_depth != 1:
-            def get_function(self, key: Any) -> Any:
+            def get_attribute_function(self, name: Any) -> Any:
+                if name == '__key_stack__':
+                    return super(dict, self).__getattr__(name)
+
                 def wrap_value_recursive(value: Any, depth: int = 0) -> Any:
                     if max_depth is None or depth < max_depth:
                         if isinstance(value, dict):
-                            return new_class(value)
+                            sub_dict = dict_class(value)
+                            parent_key_stack = getattr(value, '__key_stack__', [])
+                            setattr(sub_dict, '__key_stack__', parent_key_stack + [name])
+                            return sub_dict
                         if isinstance(value, list):
                             return [wrap_value_recursive(sub_value, depth=depth + 1)
                                     for sub_value in value]
@@ -136,26 +160,33 @@ class MetaAttributeDictionary(type):
                             return tuple(wrap_value_recursive(sub_value, depth=depth + 1)
                                          for sub_value in value)
                     return value
-                return wrap_value_recursive(get_item_function(self, key))
+
+                return wrap_value_recursive(get_item_function(self, name))
         else:
-            get_function = get_item_function
-        setattr(new_class, '__getattr__', get_function)
+            get_attribute_function = get_item_function
+        setattr(dict_class, '__getattr__', get_attribute_function)
 
-        # --- __setattr__()
+        # --- enhanced __setattr__()
 
-        # Attribute write access attempt with read_only=True raises AttributeError.
         if read_only:
-            # noinspection PyUnusedLocal
-            def setattr_stub(self, name, value):
-                raise AttributeError(f"Attempt to write to attribute '{name}' in read-only {mcs_name}.")
-            setattr(new_class, '__setattr__', setattr_stub)
+            # Read-only attribute write raises AttributeError.
 
-        # Attribute write access otherwise performs dictionary assignment.
+            def set_attribute_function(self, name, value):
+                # Reject attribute write, except for special key stack one.
+                if name == '__key_stack__':
+                    super(dict, self).__setattr__(name, value)
+                    return
+                full_name = get_full_key_name(self, name)
+                raise AttributeError(
+                    f'{class_name} attribute may not be  set: {full_name}')
+
         else:
+            # Non-read-only attribute write performs dictionary assignment.
             # noinspection PyUnresolvedReferences
-            setattr(new_class, '__setattr__', new_class.__setitem__)
+            set_attribute_function = dict_class.__setitem__
+        setattr(dict_class, '__setattr__', set_attribute_function)
 
-        return new_class
+        return dict_class
 
 
 class AttributeDictionary(dict):
@@ -188,6 +219,7 @@ class AttributeDictionary(dict):
         """
         class CustomAttributeDictionary(cls,
                                         metaclass=MetaAttributeDictionary,
+                                        class_name=cls.__name__,
                                         no_defaults=no_defaults,
                                         read_only=read_only,
                                         max_depth=max_depth,

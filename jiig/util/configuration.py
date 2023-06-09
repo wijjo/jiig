@@ -24,9 +24,16 @@ from pathlib import Path
 from .collections import AttributeDictionary
 
 
+class Configuration(AttributeDictionary):
+    pass
+
+
 def read_toml_configuration(config_path: Path | str,
                             ignore_decode_error: bool = False,
-                            ) -> AttributeDictionary | None:
+                            allow_missing: bool = False,
+                            writeable: bool = False,
+                            defaults: dict = None,
+                            ) -> Configuration | None:
     """Read TOML format configuration file.
 
     Expect configuration data to produce a dictionary.
@@ -34,6 +41,10 @@ def read_toml_configuration(config_path: Path | str,
     Args:
         config_path: configuration file path
         ignore_decode_error: ignore decode errors and return None if True
+        allow_missing: return None instead of raising AttributeError for
+                       missing keys if True
+        writeable: allow updates if True
+        defaults: optional dictionary providing defaults for missing elements
 
     Returns:
         dictionary data or None if ignore_decode_error is True and decoding
@@ -45,24 +56,22 @@ def read_toml_configuration(config_path: Path | str,
         IOError: if a problem occurs while opening or reading the file
         OSError: if an OS error occurs while accessing the file
     """
-    with open(config_path, 'rb') as config_file:
-        try:
-            config_data = tomllib.load(config_file)
-            if not isinstance(config_data, dict):
-                raise TypeError(f'TOML configuration file data is not a'
-                                f' dictionary: {config_path}')
-            return AttributeDictionary.new(config_data)
-        except tomllib.TOMLDecodeError as decode_exc:
-            if ignore_decode_error:
-                return None
-            raise ValueError(f'Unable to parse TOML configuration file:'
-                             f' {config_path}: {decode_exc}')
+    data = _load_toml(config_path, ignore_decode_error)
+    return _create_configuration(data,
+                                 config_path,
+                                 'TOML',
+                                 defaults=defaults,
+                                 allow_missing=allow_missing,
+                                 writeable=writeable)
 
 
 def read_json_configuration(config_path: Path | str,
                             skip_file_header: bool = False,
                             ignore_decode_error: bool = False,
-                            ) -> AttributeDictionary | None:
+                            allow_missing: bool = False,
+                            writeable: bool = False,
+                            defaults: dict = None,
+                            ) -> Configuration | None:
     """Read JSON format configuration file.
 
     Expect configuration data to produce a dictionary.
@@ -71,6 +80,10 @@ def read_json_configuration(config_path: Path | str,
         config_path: configuration file path
         skip_file_header: skip to first line that starts with "{"
         ignore_decode_error: ignore decode errors and return None if True
+        allow_missing: return None instead of raising AttributeError for
+                       missing keys if True
+        writeable: allow updates if True
+        defaults: optional dictionary providing defaults for missing elements
 
     Returns:
         dictionary data or None if ignore_decode_error is True and decoding
@@ -82,6 +95,34 @@ def read_json_configuration(config_path: Path | str,
         IOError: if a problem occurs while opening or reading the file
         OSError: if an OS error occurs while accessing the file
     """
+    data = _load_json(config_path, ignore_decode_error, skip_file_header)
+    return _create_configuration(
+        data,
+        config_path,
+        'JSON',
+        defaults=defaults,
+        allow_missing=allow_missing,
+        writeable=writeable,
+    )
+
+
+def _load_toml(config_path: Path | str,
+               ignore_decode_error: bool,
+               ) -> object | None:
+    with open(config_path, 'rb') as config_file:
+        try:
+            return tomllib.load(config_file)
+        except tomllib.TOMLDecodeError as decode_exc:
+            if ignore_decode_error:
+                return None
+            raise ValueError(f'Unable to parse TOML configuration file:'
+                             f' {config_path}: {decode_exc}')
+
+
+def _load_json(config_path: Path | str,
+               ignore_decode_error: bool,
+               skip_file_header: bool,
+               ) -> object | None:
     with open(config_path, encoding='utf-8') as config_file:
         lines = config_file.readlines()
         skipped = 0
@@ -93,14 +134,39 @@ def read_json_configuration(config_path: Path | str,
                 skipped += 1
         data_string = ''.join(lines)
         try:
-            config_data = json.loads(data_string)
-            if not isinstance(config_data, dict):
-                raise TypeError(f'JSON configuration file data is not a'
-                                f' dictionary: {config_path}')
-            return AttributeDictionary.new(config_data)
+            return json.loads(data_string)
         except json.JSONDecodeError as decode_exc:
             if ignore_decode_error:
                 return None
             raise ValueError(f'Unable to parse JSON configuration file at line'
                              f' {decode_exc.lineno + skipped}, column {decode_exc.colno}:'
                              f' {config_path}: {decode_exc.msg}')
+
+
+def _create_configuration(config_data,
+                          config_path: Path | str,
+                          label: str,
+                          defaults: dict = None,
+                          allow_missing: bool = False,
+                          writeable: bool = False,
+                          ) -> Configuration | None:
+    if config_data is None:
+        return None
+    if not isinstance(config_data, dict):
+        raise TypeError(f'{label} configuration file data is not a'
+                        f' dictionary: {config_path}')
+
+    if defaults:
+
+        def _update_recursive(item_data: dict, item_defaults: dict):
+            for item_name, item_value in item_defaults.items():
+                if item_name not in item_data:
+                    item_data[item_name] = item_value
+                elif isinstance(item_value, dict):
+                    _update_recursive(item_data[item_name], item_value)
+
+        _update_recursive(config_data, defaults)
+
+    return Configuration.new(config_data,
+                             no_defaults=not allow_missing,
+                             read_only=not writeable)

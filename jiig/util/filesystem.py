@@ -25,7 +25,7 @@ from abc import ABC, abstractmethod
 from contextlib import contextmanager, AbstractContextManager
 from glob import glob
 from pathlib import Path
-from typing import Iterator, Any, Sequence
+from typing import Iterator, Any, Sequence, Iterable
 
 from .thirdparty.gitignore_parser import gitignore_parser
 
@@ -267,7 +267,11 @@ def copy_folder(source_folder_path: str | Path,
                 merge: bool = False,
                 quiet: bool = False,
                 ):
-    """Copy source folder to destination using rsync or cp as appropriate.
+    """Copy source folder to destination using rsync.
+
+    The synchronize_folders() function provides a functionality superset. This
+    somewhat redundant function primarily exists as a less intimidating choice
+    for simple use cases.
 
     Args:
         source_folder_path: source folder path
@@ -279,6 +283,7 @@ def copy_folder(source_folder_path: str | Path,
         check_folder_exists(source_folder_path)
     if not merge:
         delete_folder(target_folder_path, quiet=quiet)
+    synchronize_folders(source_folder_path, target_folder_path)
     create_folder(os.path.dirname(target_folder_path), quiet=quiet)
     short_source_folder_path = short_path(source_folder_path, is_folder=True)
     short_target_folder_path = short_path(target_folder_path, is_folder=True)
@@ -286,10 +291,7 @@ def copy_folder(source_folder_path: str | Path,
         log_message('Folder copy.',
                     source=short_source_folder_path,
                     target=short_target_folder_path)
-    if os.path.isdir(target_folder_path):
-        run(['rsync', '-aq', short_source_folder_path, short_target_folder_path])
-    else:
-        run(['cp', '-a', short_source_folder_path, short_target_folder_path])
+    run(['rsync', '-aq', short_source_folder_path, short_target_folder_path])
 
 
 def copy_file(source_file_path: str | Path,
@@ -413,9 +415,11 @@ def move_folder(source_folder_path: str | Path,
 
 def synchronize_folders(source_folder_path: str | Path,
                         target_folder_path: str | Path,
-                        exclude: list = None,
+                        exclude: str | Iterable[str] = None,
+                        merge: bool = False,
                         check_contents: bool = False,
                         show_files: bool = False,
+                        show_statistics: bool = False,
                         quiet: bool = False,
                         ):
     """Synchronize folders using rsync.
@@ -423,9 +427,11 @@ def synchronize_folders(source_folder_path: str | Path,
     Args:
         source_folder_path: source folder path
         target_folder_path: target folder path
-        exclude: optional exclusions (rsync --exclude options)
-        check_contents: compare file contents if True (rsync -c option)
-        show_files: display synchronized files (rsync -v option)
+        exclude: optional exclusion(s) (rsync --exclude)
+        merge: merge, i.e. don't delete extraneous target files if True
+        check_contents: compare file contents if True (rsync -c)
+        show_files: display synchronized files (rsync -v)
+        show_statistics: display statistics after transfer (rsync --stats)
         quiet: suppress non-error messages
     """
     # Add the trailing slash for rsync. This works for remote paths too.
@@ -439,14 +445,22 @@ def synchronize_folders(source_folder_path: str | Path,
     cmd_args = ['rsync']
     if OPTIONS.dry_run:
         cmd_args.append('--dry-run')
-    cmd_args.extend(['-a', '--stats', '-h'])
+    short_options = '-rlptgoDh'
     if check_contents:
-        cmd_args.append('-c')
+        short_options += 'c'
     if show_files:
-        cmd_args.append('-v')
+        short_options += 'v'
+    long_options: list[str] = []
+    if not merge:
+        long_options.append('--delete')
+        long_options.append('--delete-excluded')
     if exclude:
-        for excluded in exclude:
-            cmd_args.extend(['--exclude', excluded])
+        for excluded in make_list(exclude):
+            long_options.extend(['--exclude', excluded])
+    if show_statistics:
+        long_options.append('--stats')
+    cmd_args.append(short_options)
+    cmd_args.extend(long_options)
     cmd_args.extend([source_folder_path_string, target_folder_path_string])
     run(cmd_args)
 
