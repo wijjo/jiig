@@ -1,7 +1,7 @@
 # Improvements
 
 * [ ] Add task function support for delayed clean-up?
-    * [X] Support `runtime.when_done(function)`? 
+    * [X] Support `runtime.when_done(function)`?
     * [ ] Or add chained decorator, similar to @property getter/setter pairs.
     * [ ] Test it.
 
@@ -17,8 +17,18 @@
 
 # Fixes
 
-Improve util.python.import_module_path()'s error handling. Decide whether or not
-to raise exceptions, etc.
+## Improve util.python.import_module_path()'s error handling.
+
+Decide whether or not to raise exceptions, etc.
+
+## Help issues
+
+`jiig help` and `jiig help <command>` don't seem to work properly anymore.
+Compare to `wizzer help` and `wizzer help <command>`.
+
+## Rebuild virtual environment fails.
+
+`jiig venv build -r` fails.
 
 # Planned Features
 
