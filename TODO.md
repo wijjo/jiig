@@ -21,11 +21,6 @@
 
 Decide whether or not to raise exceptions, etc.
 
-## Help issues
-
-`jiig help` and `jiig help <command>` don't seem to work properly anymore.
-Compare to `wizzer help` and `wizzer help <command>`.
-
 ## Rebuild virtual environment fails.
 
 `jiig venv build -r` fails.
