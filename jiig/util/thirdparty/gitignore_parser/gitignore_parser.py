@@ -51,7 +51,7 @@ class _IgnoreRule:
             rel_path = str(Path(abs_path))
         # Path() strips the trailing slash, so we need to preserve it
         # in case of directory-only negation
-        if self.negation and type(abs_path) == str and abs_path[-1] == '/':
+        if self.negation and type(abs_path) is str and abs_path[-1] == '/':
             rel_path += '/'
         if rel_path.startswith('./'):
             rel_path = rel_path[2:]

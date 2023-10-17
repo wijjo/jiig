@@ -98,10 +98,10 @@ def get_exception_stack(skip_external_frames: bool = False,
     Returns:
         stack item list
     """
-    last_exc_tb = sys.exc_info()[2]
+    _exc_type, _exc, last_tb = sys.exc_info()
     # Get trimmed list of raw traceback items.
-    if last_exc_tb is not None:
-        tb_items = traceback.extract_tb(last_exc_tb)
+    if last_tb is not None:
+        tb_items = traceback.extract_tb(last_tb)
         if skip_frame_count:
             tb_items = tb_items[skip_frame_count:]
     else:
