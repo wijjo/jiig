@@ -30,6 +30,8 @@ from typing import (
     Sequence,
 )
 
+from jiig.constants import CLI_OPTIONS_DEBUG
+
 from .options import OPTIONS
 from .exceptions import get_exception_stack
 from .messages import format_message_lines
@@ -38,7 +40,12 @@ MESSAGES_ISSUED_ONCE: set[str] = set()
 LINES_WRITTEN = 0
 EXCEPTION_COUNT = 0
 
-DEBUG_INFO_MESSAGE = '(use debug option or JIIG_DEBUG=1 for more details)'
+DEBUG_INFO_TEXT = f'''
+---
+For additional termination information try one of the following:
+- Specify DEBUG command line option: {' or '.join(CLI_OPTIONS_DEBUG)}
+- Set environment variable: JIIG_DEBUG=1
+'''.strip()
 
 
 class LogWriter:
@@ -170,7 +177,7 @@ def log_message(text: Any, *args, **kwargs):
                 if lines:
                     log_message(f'Exception stack{note}:', *lines, tag=tag, is_error=True)
     if not OPTIONS.debug and ((has_exception and EXCEPTION_COUNT == 1) or is_fatal):
-        log_message(DEBUG_INFO_MESSAGE, is_error=True, tag=tag)
+        log_message(DEBUG_INFO_TEXT)
 
 
 def abort(text: Any, *args, **kwargs):

@@ -20,6 +20,13 @@
 from inspect import isclass
 from typing import Sequence
 
+from jiig.constants import (
+    CLI_OPTIONS_DEBUG,
+    CLI_OPTIONS_DRY_RUN,
+    CLI_OPTION_KEEP_FILES,
+    CLI_OPTIONS_PAUSE,
+    CLI_OPTIONS_VERBOSE,
+)
 from jiig.task import (
     RuntimeTask,
     get_task_stack,
@@ -60,31 +67,31 @@ CLI_GLOBAL_OPTIONS = [
     CLIOptionArgument(
         'debug',
         'enable debug mode for additional diagnostics',
-        ['--debug'],
+        CLI_OPTIONS_DEBUG,
         is_boolean=True,
     ),
     CLIOptionArgument(
         'dry_run',
         'display actions without executing them (dry run)',
-        ['--dry-run'],
+        CLI_OPTIONS_DRY_RUN,
         is_boolean=True,
     ),
     CLIOptionArgument(
         'verbose',
         'display additional (verbose) messages',
-        ['-v', '--verbose'],
+        CLI_OPTIONS_VERBOSE,
         is_boolean=True,
     ),
     CLIOptionArgument(
         'pause',
         'pause before significant activity',
-        ['--pause'],
+        CLI_OPTIONS_PAUSE,
         is_boolean=True,
     ),
     CLIOptionArgument(
         'keep_files',
         'keep (do not delete) temporary files',
-        ['--keep-files'],
+        CLI_OPTION_KEEP_FILES,
         is_boolean=True,
     ),
 ]

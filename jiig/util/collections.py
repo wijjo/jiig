@@ -190,13 +190,13 @@ class MetaAttributeDictionary(type):
 
 
 class AttributeDictionary(dict):
-    """Abstract placeholder class for new() return."""
+    """Placeholder class for new() return."""
 
     def __getattr__(self, key: Any) -> Any:
-        ...
+        raise NotImplementedError(f'Create {self.__class__.__name__} with new().')
 
     def __setattr__(self, key: Any, value: Any):
-        ...
+        raise NotImplementedError(f'Create {self.__class__.__name__} with new().')
 
     @classmethod
     def new(cls,

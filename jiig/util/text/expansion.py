@@ -37,7 +37,7 @@ class StringExpansionError(RuntimeError):
         """
         self.value = value
         self.missing = list(missing)
-        self.missing_string = ' '.join([f'{{{symbol}}}' for symbol in missing])
+        self.missing_string = ' '.join([f'{symbol}' for symbol in missing])
         super().__init__()
 
     def __str__(self) -> str:

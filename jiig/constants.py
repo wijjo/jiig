@@ -33,6 +33,16 @@ JIIG_JSON_CONFIGURATION_NAME = 'jiig.json'
 JIIG_CONFIG_ROOT = HOME_FOLDER_PATH / '.jiig'
 #: Environment variable that can override Jiig configuration root.
 JIIG_CONFIG_ROOT_ENV_VAR = 'JIIG_CONFIG_ROOT'
+#: Debug command line options.
+CLI_OPTIONS_DEBUG = ['--debug']
+#: Dry run command line options.
+CLI_OPTIONS_DRY_RUN = ['--dry-run']
+#: Verbose command line options.
+CLI_OPTIONS_VERBOSE = ['-v', '--verbose']
+#: Pause command line options.
+CLI_OPTIONS_PAUSE = ['--pause']
+#: Jiig debug command line option.
+CLI_OPTION_KEEP_FILES = ['--keep-files']
 #: Aliases catalog file name.
 ALIASES_CATALOG_FILE_NAME = 'aliases.json'
 #: Parameters catalog file name.
