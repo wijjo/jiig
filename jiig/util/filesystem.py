@@ -201,7 +201,7 @@ def create_folder(folder_path: str | Path,
     if not os.path.exists(folder_path):
         if not quiet:
             log_message('Create folder.', short_folder_path)
-        run(['mkdir', '-p', short_folder_path], quiet=quiet)
+        run(['mkdir', '-p', folder_path], quiet=quiet)
     elif not os.path.isdir(folder_path):
         abort('Path is not a folder', short_folder_path)
 
