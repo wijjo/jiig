@@ -131,7 +131,7 @@ def log_message(text: Any, *args, **kwargs):
     issue_once_tag = kwargs.pop('issue_once_tag', None)
     exception_traceback = kwargs.pop('exception_traceback', None)
     exception_traceback_skip = kwargs.pop('exception_traceback_skip', None)
-    skip_non_source_frames = kwargs.pop('skip_non_source_frames', None)
+    skip_non_source_frames = kwargs.pop('skip_non_source_frames', False)
     string_file_name = kwargs.pop('string_file_name', None)
     if verbose and not OPTIONS.verbose:
         return
@@ -140,6 +140,7 @@ def log_message(text: Any, *args, **kwargs):
     if issue_once_tag:
         if issue_once_tag in MESSAGES_ISSUED_ONCE:
             return
+        # noinspection PyTypeChecker
         MESSAGES_ISSUED_ONCE.add(issue_once_tag)
     for line in format_message_lines(text, *args, **kwargs,
                                      tag=tag,

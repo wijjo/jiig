@@ -25,10 +25,7 @@ from .options import OPTIONS
 
 
 def format_message_lines(text: Any, *args, **kwargs) -> Iterator[str]:
-    """Generate message line(s) and indented lines for relevant keyword data.
-
-    Located in the "python" utility library module because of its special
-    formatting applied to Python Exception objects.
+    """Generate message line(s) and lines for relevant keyword data.
 
     Keywords:
     - tag: special prefix string for all lines with an uppercase tag string

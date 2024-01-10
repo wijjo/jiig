@@ -35,8 +35,9 @@ from inspect import isfunction
 from jiig.runtime import Runtime
 from jiig.task import RuntimeTask
 from jiig.util.exceptions import format_exception
-from jiig.util.log import abort, log_message
+from jiig.util.log import abort, log_error, log_message
 from jiig.util.options import OPTIONS
+from jiig.util.text.expansion import StringExpansionError
 
 
 class ArgumentNameError(RuntimeError):
@@ -119,6 +120,7 @@ def execute_application(task_stack: list[RuntimeTask],
         # added, are invoked in reverse, inner to outer order. The string is the
         # name used for errors. The dict is for keyword call arguments (task
         # functions only).
+        missing_symbols: dict[str, list[str]] = {}
         names: list[str] = []
         for level, task in enumerate(task_stack):
             if level == 0:
@@ -137,11 +139,21 @@ def execute_application(task_stack: list[RuntimeTask],
                 try:
                     log_message(f'Invoking command "{command_string}"...', debug=True)
                     task.task_function(runtime, **task_field_data)
+                except StringExpansionError as exc:
+                    for missing_symbol in exc.missing:
+                        missing_symbols.setdefault(missing_symbol, []).append(exc.value)
                 except Exception as exc:
                     abort(f'Command failed due to an exception.',
                           commmand=command_string,
                           exception=exc,
                           exception_traceback_skip=1)
+        if missing_symbols:
+            log_error(f'Missing symbols: {len(missing_symbols)}')
+            for name in sorted(missing_symbols.keys()):
+                log_error(f'  symbol: {name}:')
+                for line in missing_symbols[name]:
+                    log_error(f'    reference: {line}')
+            abort('Giving up due to missing symbols.')
         # Invoke done callable stack (reverse of run callable order).
         if runtime.when_done_callables:
             for done_call in runtime.when_done_callables:
