@@ -17,8 +17,8 @@
 
 """Awk-like text processing with decorated classes.
 
-Basic usage involves deriving a TScanner subclass and implementing
-@handle()-decorated methods that receive matches. The subclass can collect data
+Basic usage involves deriving a TextScanner subclass and implementing
+@match()-decorated methods that receive matches. The subclass can collect data
 as it receives matches.
 
 It can also change state via the set_state() method to efficiently route
@@ -26,7 +26,7 @@ processing to different matchers and handlers.
 
 The begin() method, if implemented is called at the start of a scan.
 
-An @handle() method may call end_scan() to stop scanning and return. It can
+An @match() method may call end_scan() to stop scanning and return. It can
 also call next_line() to skip any other handlers for the current line.
 """
 
