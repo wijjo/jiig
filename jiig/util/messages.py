@@ -40,9 +40,9 @@ def format_message_lines(text: Any, *args, **kwargs) -> Iterator[str]:
     Returns:
         line iterator
     """
-    tag = kwargs.pop('tag', None)
-    sub_tag = kwargs.pop('sub_tag', None)
-    string_file_name = kwargs.pop('string_file_name', None)
+    tag: str | None = kwargs.pop('tag', None)
+    sub_tag: str | None = kwargs.pop('sub_tag', None)
+    string_file_name: str | None = kwargs.pop('string_file_name', None)
 
     def _generate_exception_lines(exc: Exception) -> Iterator[str]:
         exc_lines = format_exception(exc).split(os.linesep)

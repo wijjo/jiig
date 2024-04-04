@@ -501,7 +501,7 @@ def symbols_to_dataclass(symbols: dict,
         missing_names = set(required).difference(input_symbols.keys())
         if missing_names:
             if from_uppercase:
-                missing_names = map(str.upper, missing_names)
+                missing_names = [name.upper() for name in missing_names]
             attribute_word = pluralize('attribute', countable=missing_names)
             message = format_message_block(f'{dc_type.__name__} data is missing'
                                            f' the following {attribute_word}:',
