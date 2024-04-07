@@ -20,36 +20,26 @@
 import json
 
 import jiig
-from jiig.util.configuration import read_toml_configuration
-
-
-def _read_toml_configuration(runtime: jiig.Runtime, config_path: str) -> dict:
-    try:
-        return read_toml_configuration(config_path)
-    except TypeError as type_exc:
-        runtime.abort(str(type_exc))
-    except ValueError as value_exc:
-        runtime.abort(str(value_exc))
-    except (IOError, OSError) as file_exc:
-        runtime.abort(f'Failed to read TOML configuration file.',
-                      path=config_path,
-                      exception=file_exc)
+from jiig.util.configuration import load_configuration
 
 
 @jiig.task
-def toml_to_json(
+def config_to_json(
     runtime: jiig.Runtime,
     source: jiig.f.filesystem_file(),
     target: jiig.f.filesystem_object(),
 ):
-    """Convert configuration file format.
+    """Convert configuration file format to JSON.
 
     Args:
         runtime: Jiig runtime API.
         source: Source TOML format configuration file.
         target: Target JSON format configuration file.
     """
-    data = _read_toml_configuration(runtime, source)
+    data = load_configuration(source, ignore_decode_error=True)
+    if data is None:
+        runtime.abort(f'Failed to read TOML configuration file.',
+                      path=source)
     try:
         with open(target, 'w', encoding='utf-8') as target_file:
             json.dump(data, target_file, indent=2)

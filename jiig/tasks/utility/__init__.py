@@ -18,5 +18,5 @@
 """Manage configuration files."""
 
 from . import (
-    toml_to_json,
+    config_to_json,
 )

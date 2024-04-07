@@ -1000,7 +1000,7 @@ BUILTINS: dict[str, Task | TaskGroup] = {
     'utility': TaskGroup(
         name='utility',
         sub_tasks=[
-            Task(name='toml_to_json'),
+            Task(name='config_to_json'),
         ],
         visibility=1,
     ),

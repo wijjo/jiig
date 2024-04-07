@@ -55,16 +55,12 @@ from .util.collections import (
     AttributeDictionary,
     make_list,
 )
-from .util.configuration import (
-    read_json_configuration,
-    read_toml_configuration,
-)
-from .util.filesystem import search_folder_stack_for_file
+from .util.configuration import load_configuration
+from .util.filesystem import search_folder_stack
 from .util.log import (
     abort,
     log_error,
 )
-from .util.stream import open_input_file
 
 RE_CONFIG_EMPTY_LINE = re.compile(r'^\s*$')
 RE_CONFIG_COMMENT_LINE = re.compile(r'^\s*#.*\s*$')
@@ -78,67 +74,25 @@ def _fatal(*messages: str):
     sys.exit(1)
 
 
-def _read_toml_configuration(config_path: Path,
-                             ignore_decode_error: bool = False,
-                             ) -> AttributeDictionary | None:
-    try:
-        return read_toml_configuration(config_path, ignore_decode_error=ignore_decode_error)
-    except TypeError as type_exc:
-        abort(str(type_exc))
-    except ValueError as value_exc:
-        abort(str(value_exc))
-    except (IOError, OSError) as file_exc:
-        abort(f'Failed to read TOML configuration file.',
-              path=config_path,
-              exception=file_exc)
-
-
-def _read_json_configuration(config_path: Path,
-                             ignore_decode_error: bool = False,
-                             skip_file_header: bool = False,
-                             ) -> AttributeDictionary | None:
-    try:
-        return read_json_configuration(config_path,
-                                       skip_file_header=skip_file_header,
-                                       ignore_decode_error=ignore_decode_error)
-    except TypeError as type_exc:
-        abort(str(type_exc))
-    except ValueError as value_exc:
-        abort(str(value_exc))
-    except (IOError, OSError) as file_exc:
-        abort(f'Failed to read JSON configuration file.',
-              path=config_path,
-              exception=file_exc)
-
-
 def _read_script_configuration(script_path: Path) -> AttributeDictionary:
-    # The first character of the first non-comment/non-blank line can help
-    # indentify the configuration format.
-    config_format: str | None = None
-    with open_input_file(script_path) as script_file:
-        for line in script_file:
-            if not RE_CONFIG_COMMENT_LINE.match(line) and not RE_CONFIG_EMPTY_LINE.match(line):
-                match_first_line = RE_CONFIG_FIRST_LINE.match(line)
-                if match_first_line is not None:
-                    first_chunk = match_first_line.group(1)
-                    if first_chunk.startswith('['):
-                        config_format = 'toml'
-                    elif first_chunk.startswith('{'):
-                        config_format = 'json'
-
-    if config_format == 'toml':
-        return _read_toml_configuration(script_path)
-    if config_format == 'json':
-        return _read_json_configuration(script_path, skip_file_header=True)
-    # Otherwise find and read a separate configuration file..
-    config_path = search_folder_stack_for_file(script_path.parent,
-                                               JIIG_TOML_CONFIGURATION_NAME)
+    config_data = load_configuration(script_path, ignore_decode_error=True)
+    if config_data is not None:
+        return config_data
+    config_path = search_folder_stack(script_path.parent,
+                                      JIIG_TOML_CONFIGURATION_NAME,
+                                      JIIG_JSON_CONFIGURATION_NAME,
+                                      )
     if config_path is not None:
-        return _read_toml_configuration(config_path)
-    config_path = search_folder_stack_for_file(script_path.parent,
-                                               JIIG_JSON_CONFIGURATION_NAME)
-    if config_path is not None:
-        return _read_json_configuration(config_path)
+        try:
+            return load_configuration(config_path)
+        except TypeError as type_exc:
+            abort(str(type_exc))
+        except ValueError as value_exc:
+            abort(str(value_exc))
+        except (IOError, OSError) as file_exc:
+            abort(f'Failed to read configuration file.',
+                  path=config_path,
+                  exception=file_exc)
     abort(f'Could not find {JIIG_TOML_CONFIGURATION_NAME} or'
           f' {JIIG_JSON_CONFIGURATION_NAME} based on script path.',
           script_path=script_path)

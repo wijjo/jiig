@@ -68,16 +68,16 @@ def is_remote_path(path: str | Path) -> bool:
     return bool(REMOTE_PATH_REGEX.match(str(path)))
 
 
-def search_folder_stack_for_file(folder: str | Path,
-                                 name: str,
-                                 ) -> Path | None:
-    """Look up folder stack for a specific file or folder name.
+def search_folder_stack(folder: str | Path,
+                        *names: str,
+                        ) -> Path | None:
+    """Search up folder stack for a specific file/folder names.
 
     Name can be a relative path with '/' separators.
 
     Args:
         folder: starting folder path
-        name: file or folder name to look for
+        names: file or folder names to look for
 
     Returns:
         found folder path or None if the name was not found
@@ -86,8 +86,9 @@ def search_folder_stack_for_file(folder: str | Path,
         folder = Path(folder)
     check_folder = folder
     while True:
-        if (check_folder / name).exists():
-            return check_folder
+        for name in names:
+            if (check_folder / name).exists():
+                return check_folder
         next_check_folder = check_folder.parent
         if next_check_folder == check_folder:
             return None
